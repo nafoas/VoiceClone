@@ -18,7 +18,10 @@ little instrument. Intermediate/learning stages are out of scope for now.
    voice must not add cuteness on top (no babyish pitch, no sing-song). He
    means everything literally and at face value.
 5. **Balance.** Not grave or clinical, not kawaii. A little round guy trying
-   his best.
+   his best. Realism and cuteness are both kept; neither is sacrificed.
+6. **Every rule here is in service of the balance.** If following a rule
+   literally makes him sound weird, gross or strained, the balance wins and
+   the rule gets softened.
 
 ## Instrument (timbre)
 
@@ -28,7 +31,7 @@ little instrument. Intermediate/learning stages are out of scope for now.
 | Pitch | Moderately high, noticeably lower than the formants suggest. This mismatch keeps him out of "child" territory. |
 | Breath | Lightly breathy in normal/soft speech. Excited sounds are **firm and fully voiced**. |
 | Nasality | Constant, gentle nasal resonance (obligate nose-breather). Baseline colour, not a cold. |
-| Placement | Forward. Resonance sits far forward and high in the mouth. |
+| Placement | Generally forward — resonance sits forward and high in the mouth. A tendency, not a hard rule: use it where it makes him sound naturally cuter; back off wherever it starts to sound weird, wet or strained. |
 
 ## Pronunciation
 
@@ -97,7 +100,5 @@ Narration is never spoken.
 ## Open questions
 
 1. **"Bun Brain Case™"** — is the ™ spoken?
-2. **Forward placement** — only on S words, or his general mouth posture for
-   all speech?
-3. Recordings of Prince's real sniffs/huffs available?
-4. Runtime: Python locally? GPU? Existing TTS engine to integrate with?
+2. Recordings of Prince's real sniffs/huffs available?
+3. Runtime: Python locally? GPU? Existing TTS engine to integrate with?
