@@ -43,6 +43,7 @@ little instrument. Intermediate/learning stages are out of scope for now.
   pulled forward. "Boss" ≈ [bɵːɕ] — almost "Bosh", weight on the O.
 - Applies everywhere, including over-inflected endings:
   `thinkings` → soft trailing [ɕ], `maybees` → soft trailing [ʑ].
+- **"I's"** is said like "eyes" — so it ends in the soft [ʑ]: [aɪʑ].
 - Over-inflected forms (`thinkings`, `dids`, `happeneds`) are pronounced fully
   and sincerely, as real attempts at the word.
 
@@ -66,7 +67,7 @@ These get individually tuned renderings rather than plain TTS.
 |---|---|
 | lowercase | Normal soft, casual voice |
 | `!!` | Excited, brighter, more energy |
-| ALL CAPS | His most intense (see open question 3) |
+| ALL CAPS | Very excited. Pent-up energy from a little round body. Noticeable volume increase, higher pitch, faster, firm and fully voiced — but never screaming or adult-yelling. A small body's "loud". |
 | `??` | Eager, rising question |
 | `?` | Gentle, curious question |
 | `...` | Real pause — Bun Brain Case™ working |
@@ -95,10 +96,8 @@ Narration is never spoken.
 
 ## Open questions
 
-1. **"I's"** — like "eyes", or more like "I-ss" (with the soft [ɕ])?
-2. **"Bun Brain Case™"** — is the ™ spoken?
-3. **ALL CAPS** — genuinely loud, or bright/intense without much extra volume?
-4. **Forward placement** — only on S words, or his general mouth posture for
+1. **"Bun Brain Case™"** — is the ™ spoken?
+2. **Forward placement** — only on S words, or his general mouth posture for
    all speech?
-5. Recordings of Prince's real sniffs/huffs available?
-6. Runtime: Python locally? GPU? Existing TTS engine to integrate with?
+3. Recordings of Prince's real sniffs/huffs available?
+4. Runtime: Python locally? GPU? Existing TTS engine to integrate with?
