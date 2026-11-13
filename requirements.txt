@@ -1,0 +1,6 @@
+kokoro>=0.9
+misaki[en]
+pyworld
+soundfile
+numpy
+scipy

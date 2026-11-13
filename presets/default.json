@@ -1,0 +1,42 @@
+{
+  "voice": "af_heart",
+  "speed": 0.92,
+  "pitch_st": 3.0,
+  "pitch_range": 0.8,
+  "formant_shift": 1.25,
+  "breathiness": 0.3,
+  "nasality": 0.35,
+  "nasal_pole_hz": 380.0,
+  "nasal_zero_hz": 1100.0,
+  "softness": 0.5,
+  "soft_s": true,
+  "z_mode": "sh",
+  "lengthen_before_s": true,
+  "de_ess_db": 6.0,
+  "gap_s": 0.1,
+  "sentence_gap_s": 0.28,
+  "ellipsis_pause_s": 0.65,
+  "stretch_speed": 0.55,
+  "excited": {
+    "pitch_st": 2.0,
+    "range_mul": 1.35,
+    "gain_db": 2.5,
+    "breath_mul": 0.5,
+    "speed_mul": 1.06
+  },
+  "caps": {
+    "pitch_st": 3.5,
+    "range_mul": 1.5,
+    "gain_db": 4.5,
+    "breath_mul": 0.25,
+    "speed_mul": 1.1
+  },
+  "soft": {
+    "pitch_st": -0.5,
+    "range_mul": 0.8,
+    "gain_db": -3.0,
+    "breath_mul": 1.3,
+    "speed_mul": 0.94
+  },
+  "eager_question_rise_st": 3.0
+}
