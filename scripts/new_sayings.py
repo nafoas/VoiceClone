@@ -33,14 +33,14 @@ SAYINGS = {
         [216, 216, 215, 215, 214], 1.0),
     # mama: version F (Da Boss's pick): derived back "ah" (F2 1700), word-starting m
     "mama": (
-        [U("m", 115, gain_db=-6, stress=True), U("ɑ", 145, stress=True), U("m", 85, gain_db=-5),
+        [U("m", 115, gain_db=-4, stress=True), U("ɑ", 145, stress=True), U("m", 85, gain_db=-3),
          U("ɑ", 200, fade_ms=100)],
         [218, 218, 216, 215], 1.0),
     "nanni": (
         [U("n", 105), U("ã", 145), U("n", 70), U("iː", 300, fade_ms=100)],
         [216, 216, 214, 213], 1.0),
     "mama_nanni": (
-        [U("m", 115, gain_db=-6, stress=True), U("ɑ", 145, stress=True), U("m", 85, gain_db=-5), U("ɑ", 100),
+        [U("m", 115, gain_db=-4, stress=True), U("ɑ", 145, stress=True), U("m", 85, gain_db=-3), U("ɑ", 100),
          U("n", 75), U("ã", 140),
          U("n", 65), U("iː", 300, fade_ms=100)],
         [218, 218, 216, 216, 262, 265, 263, 262], 1.0),
@@ -67,7 +67,8 @@ UTTERANCES = {
 # than the one it was recorded beside gets that consonant's edge (lips closing
 # for m/p), so "mama" isn't heard as "nana". Sounds next to their recorded
 # neighbours are untouched.
-FRESH = dict(recolor=0.6, lip_depth=0.28, crisp_release=True)
+FRESH = dict(recolor=1.0, lip_full_half=True, crisp_release=True, lip_depth=0.28,
+             jaw_open=0.35, crisp_ms=50, lip_rise_ms=65)   # lip + jaw opening, smooth clean release
 
 
 def say(name, cat):

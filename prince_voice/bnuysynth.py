@@ -278,7 +278,8 @@ def _source_refit(sp: np.ndarray, f_from: np.ndarray, f_to: np.ndarray, depth,
     return sp * 10 ** (gain / 10)
 
 
-def _lip_edge(steady: np.ndarray, k: int, depth: float, toward_start: bool) -> np.ndarray:
+def _lip_edge(steady: np.ndarray, k: int, depth: float, toward_start: bool,
+              jaw: float = 0.0) -> np.ndarray:
     """k frames of a vowel edge next to a lip consonant: the steady vowel shape
     with all resonances pulled down (lips closing lowers them), easing back up
     into the vowel. toward_start: the lips are at frame 0 (else at frame k-1)."""
@@ -290,10 +291,14 @@ def _lip_edge(steady: np.ndarray, k: int, depth: float, toward_start: bool) -> n
         x = x * x * (3 - 2 * x)
         d = depth * (1.0 - x)
         # lips lower the low resonances (F1, F2); F3 and above stay put (an F3
-        # drop would be heard as "r"): the warp fades out between 1.8 and 2.8 kHz
+        # drop would be heard as "r"): the warp fades out between 1.8 and 2.8 kHz.
+        # jaw: below ~1.3 kHz (F1) the mouth is still nearly closed at the release
+        # and opens over the edge, so F1 climbs from the consonant's ~400 Hz
+        # instead of jumping (an instant jump sounds like choking)
         hz = bins / (nb - 1) * (SR / 2)
         w = np.clip((2800.0 - hz) / 1000.0, 0, 1)
-        src = bins / (1.0 - d * w)
+        dj = jaw * (1.0 - x) * np.clip((1500.0 - hz) / 500.0, 0, 1)
+        src = bins / np.maximum(0.2, 1.0 - d * w - dj)
         out[j] = np.interp(src, bins, steady, right=steady[-1])
     return out
 
@@ -318,6 +323,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           attack_ms: float = 0.0, release_ms: float = 0.0, recolor: float = 0.0,
           lip_depth: float = 0.35, derhotic: bool = False, crisp_release: bool = False,
           crisp_ms: float = 8.0, lip_full_half: bool = False, lip_rise_ms: float = 45.0,
+          jaw_open: float = 0.0, join_texture: float = 0.0, join_texture_ms: float = 20.0,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -654,7 +660,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                         # it: a ~45 ms rise from the lips onto the vowel's middle, then the vowel
                         nl_ = c["nl"]; kr = max(2, min(nl_, int(lip_rise_ms / FRAME_MS)))
                         mid_sp, mid_ap = tr[nl_ - 1].copy(), ta[nl_ - 1].copy()
-                        tr[:kr] = _lip_edge(mid_sp, kr, lip_depth, toward_start=True)
+                        tr[:kr] = _lip_edge(mid_sp, kr, lip_depth, toward_start=True, jaw=jaw_open)
                         tr[kr:nl_] = mid_sp; ta[:nl_] = mid_ap
                         kk = 0
                     if kk:
@@ -827,6 +833,19 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     synth.last = dict(f0=f0.copy(), owner_f0=owner_f0.copy(), picks=picks,
                       bounds=[(int(b), units[k].ph, units[k + 1].ph) for k, b in enumerate(edges_[1:-1])])
     end_fade_ms = 15.0
+    if join_texture > 0:
+        # his real joins briefly roughen as the mouth changes shape (purity dips to
+        # HNR ~7-16 at his joins); perfectly clean joins read as synthetic
+        e_ = np.cumsum([0] + [max(1, int(round(x.ms / FRAME_MS))) for x in units])
+        fqj = np.linspace(0, SR / 2, ap.shape[1])
+        band = np.clip((fqj - 300.0) / 700.0, 0, 1)
+        tt_ = np.arange(len(ap))
+        for k_ in range(len(units) - 1):
+            a_, b_ = units[k_].ph, units[k_ + 1].ph
+            if "_" in (a_, b_) or cat.dynamic.get(a_, False) or cat.dynamic.get(b_, False):
+                continue
+            g_ = np.exp(-0.5 * ((tt_ - e_[k_ + 1]) / (join_texture_ms / FRAME_MS / 2)) ** 2)
+            ap = np.clip(ap + join_texture * g_[:, None] * (1 - ap) * band[None, :], 0, 1)
     y = pw.synthesize(f0, np.ascontiguousarray(sp), np.ascontiguousarray(ap), SR, FRAME_MS)
     for off, w, g in bursts:   # splice his real bursts
         w = w * 10 ** (g / 20)

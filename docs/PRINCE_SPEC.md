@@ -104,9 +104,21 @@ M. With the lip edge rebuilt over its first ~45 ms (G, H) it passes.
 
 | Phoneme | Built from | How | Identity | Class | Transition | Voice | Da Boss |
 |---|---|---|---|---|---|---|---|
-| ɑ ("ah", mama) | ã | F2 2160 -> 1700 | pass | pass (B1 wide) | F: +90 lean to n; G/H: pass | 94–100 % | F best so far; G/H to hear |
+| ɑ ("ah", mama) | ã | F2 2160 -> 1700 | pass | pass (B1 wide) | pass (lip + jaw rise) | 94 % | F best; G/H "choking" -> fixed (see below), to hear |
 | **ɪ ("ih")** | iː | `[(375,520),(3240,2300),(3900,3700)]`, calibrated in context to F1 ~435, F2 ~2700 | **pass** (ninny, minny) | pass | pass | 94–100 % | **to hear** |
 
 Calibration note: a derivation only moves the measured formants ~40% of the
 requested shift in a short vowel between consonants (neighbours pull it back),
 so derivations are calibrated by measuring the result in a real word.
+
+### Release lessons (from "mama" sounding like choking)
+- An instant F1 jump at a lip release (405 -> 964 Hz in 10 ms) plus a purity
+  collapse (HNR 3–6) sounds like choking. His real releases stay clean
+  (HNR ~9–13). Fix: the jaw opens over the lip edge (`jaw_open=0.35`), a 50 ms
+  release blend, a 65 ms lip rise: release HNR 12.
+- Into an open vowel his F1 does climb fast (his n->ã: 395 Hz per 10 ms), so a
+  fast F1 rise is fine; the roughness spike was the problem.
+- The m's murmur dip depends on the next vowel: before an open vowel ~-4 dB,
+  before a closed one ~0 dB (his m->ũ loudness change: 3.7 dB).
+- His joins briefly roughen (HNR 7–16) while mine stay clean (22–26); adding
+  noise did not reproduce it (and lowered the voice score), so it is left open.
