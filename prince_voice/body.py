@@ -52,6 +52,13 @@ class BodySettings:
     chirp_st: float = 0.0
     end_flick_st: float = 0.0
     end_rise_st: float = 0.0
+    hum_db: float = 0.0          # pitch-locked cliff above the 2nd harmonic
+    hum_start: float = 1.6       # cliff starts at this multiple of f0
+    hum_end: float = 3.2         # ... and is fully down by this multiple
+    transplant: float = 0.0
+    transplant_jump: float = 0.6
+    transplant_hold: float = 0.15
+    transplant_ref: str = ""
     words: list[WordPitch] = field(default_factory=list)
 
 
@@ -175,6 +182,19 @@ def transform(x: np.ndarray, fs: int, s: BodySettings) -> np.ndarray:
         hi = freqs > 5000
         tilt[hi] = (freqs[hi] / 5000.0) ** (-3.0 * s.softness)
         sp = sp * tilt[None, :] ** 2
+
+    if s.transplant > 0:  # rebuild voiced frames from Prince's real sound
+        from .transplant import transplant
+        sp, ap = transplant(sp, ap, f0, fs, FRAME_MS, amount=s.transplant,
+                            ref_path=s.transplant_ref or None,
+                            jump_cost=s.transplant_jump, hold_cost=s.transplant_hold)
+
+    if s.hum_db > 0:  # the hum: keep H1-H2, drop everything above by hum_db
+        F = np.where(f0 > 0, f0, np.median(f0[f0 > 0]) if (f0 > 0).any() else 250.0)
+        x = (freqs[None, :] / F[:, None] - s.hum_start) / (s.hum_end - s.hum_start)
+        x = np.clip(x, 0, 1)
+        x = x * x * (3 - 2 * x)  # smoothstep
+        sp = sp * 10 ** (-s.hum_db * x / 10)
 
     if s.de_ess_db > 0:
         hf = freqs > 3500

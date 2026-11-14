@@ -157,12 +157,15 @@ class PrinceVoice:
             formant_low=p.formant_low, formant_high=p.formant_high,
             formant_low_hz=p.formant_low_hz, formant_high_hz=p.formant_high_hz,
             roundness=p.roundness, roundness_hz=p.roundness_hz,
+            hum_db=p.hum_db, hum_start=p.hum_start, hum_end=p.hum_end,
             breathiness=float(np.clip(p.breathiness * st.breath_mul, 0, 1)),
             nasality=p.nasality, nasal_pole_hz=p.nasal_pole_hz, nasal_zero_hz=p.nasal_zero_hz,
             softness=p.softness, de_ess_db=p.de_ess_db,
             terrace=p.terrace, onset_fall_st=p.onset_fall_st, chirp_st=p.chirp_st,
             end_flick_st=p.end_flick_st if seg.question == 0 else 0.0,
             end_rise_st=p.eager_question_rise_st if seg.question == 2 else 0.0,
+            transplant=p.transplant, transplant_jump=p.transplant_jump,
+            transplant_hold=p.transplant_hold, transplant_ref=p.transplant_ref,
             words=self.word_pitch(words, p),
         )
         y = transform(audio, SR, body)

@@ -38,7 +38,10 @@ class Params:
     formant_high: float = 1.40
     formant_low_hz: float = 700.0
     formant_high_hz: float = 2200.0
-    roundness: float = 6.5       # extra spectral tilt, dB/octave above roundness_hz
+    hum_db: float = 20.0         # THE hum: drop everything above the 2nd harmonic by this much
+    hum_start: float = 1.6       #   cliff starts at this multiple of pitch
+    hum_end: float = 3.0         #   and is fully down here
+    roundness: float = 0.0       # extra spectral tilt (superseded by hum), dB/octave above roundness_hz
     roundness_hz: float = 480.0  #   (the humming, fundamental-heavy tone)
     breathiness: float = 0.4     # 0..1; tuned so noise level matches the reference (still cleaner than normal speech)
     nasality: float = 0.2        # 0..1, nasal resonance
@@ -46,6 +49,12 @@ class Params:
     nasal_zero_hz: float = 1100.0
     softness: float = 0.5        # 0..1, gentle roll-off above 5 kHz
     legato: float = 0.4          # 0..1, evens out loudness inside a phrase
+
+    # --- frame transplant (rebuild voiced sound from the reference clip) ----
+    transplant: float = 0.0      # 0 = off, 1 = every voiced frame is his real sound
+    transplant_jump: float = 0.6 # higher = longer runs of his real transitions
+    transplant_hold: float = 0.15
+    transplant_ref: str = ""     # reference wav ("" = reference/source/prince_reference.wav)
 
     # --- terraced pitch ----------------------------------------------------
     terrace: float = 0.9         # 0 = TTS melody, 1 = dead-flat plateau per word
