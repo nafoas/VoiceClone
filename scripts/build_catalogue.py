@@ -41,20 +41,33 @@ def main():
     f0, t = pw.harvest(x, SR, frame_period=FRAME_MS, f0_floor=60, f0_ceil=900)
     sp, ap = pw.cheaptrick(x, f0, t, SR), pw.d4c(x, f0, t, SR)
     labels, store, voiced, dyn, f0s = [], {}, [], [], []
+    instances = {}
     for i, (lab, spans) in enumerate(SEGMENTS.items()):
         if lab in DYNAMIC:
             s, e = spans[0]
             m = (t >= s) & (t < e)
             S, A = sp[m], ap[m]
             fr = np.linspace(0, SR / 2, ap.shape[1]); band = (fr > 300) & (fr < 4000)
+            store[f"wav_{i}"] = x[int(s * SR): int(e * SR)].astype(np.float32)  # real burst audio
             store[f"vm_{i}"] = ((f0[m] > 0) & (A[:, band].mean(1) < 0.5)).astype(np.int8)  # tone, not noise
             f = float(np.median(f0[m][f0[m] > 0])) if (f0[m] > 0).any() else 0.0
         else:
             S_all, A_all, F = [], [], []
-            for s, e in spans:
+            inst = []
+            for k, (s, e) in enumerate(spans):
                 d = e - s
                 m = (t >= s + d * 0.25) & (t < e - d * 0.25)
                 S_all.append(np.log(sp[m] + 1e-20)); A_all.append(ap[m]); F.append(f0[m])
+                # per-instance: snapshot + natural micro-movement (residual trajectory)
+                mm = (t >= s + d * 0.1) & (t < e - d * 0.1)
+                Lm = np.log(sp[mm] + 1e-20)
+                snap = np.median(np.log(sp[m] + 1e-20), 0)
+                fv = f0[m][f0[m] > 0]
+                store[f"isp_{i}_{k}"] = snap
+                store[f"iap_{i}_{k}"] = np.median(ap[m], 0)
+                store[f"ires_{i}_{k}"] = (Lm - Lm.mean(0)).astype(np.float32)
+                inst.append(dict(span=[s, e], f0=float(np.median(fv)) if len(fv) else 0.0))
+            instances[lab] = inst
             S = np.exp(np.median(np.vstack(S_all), 0))
             A = np.median(np.vstack(A_all), 0)
             Fv = np.concatenate(F); Fv = Fv[Fv > 0]
@@ -62,7 +75,7 @@ def main():
         store[f"sp_{i}"], store[f"ap_{i}"] = S, A
         labels.append(lab); voiced.append(lab in VOICED); dyn.append(lab in DYNAMIC); f0s.append(f)
         print(f"{lab:3} {'dynamic ' + str(len(S)) + ' frames' if lab in DYNAMIC else 'steady':18} f0 {f:5.0f}")
-    meta = dict(labels=labels, voiced=voiced, dynamic=dyn, f0=f0s,
+    meta = dict(labels=labels, voiced=voiced, dynamic=dyn, f0=f0s, instances=instances,
                 source="reference/source/prince_reference.wav", frame_ms=FRAME_MS)
     out = ROOT / "models"; out.mkdir(exist_ok=True)
     np.savez(out / "catalogue.npz", meta=json.dumps(meta, ensure_ascii=False), **store)

@@ -15,7 +15,7 @@ import parselmouth as pm
 import soundfile as sf
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "scripts"))
 from prince_voice.bnuysynth import SR, Catalogue, Unit, synth  # noqa: E402
 
 U = Unit
@@ -47,12 +47,10 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     pause = np.zeros(int(0.34 * SR), np.float32)
 
-    # 1. the transcription, rebuilt
-    p1 = [U("n", 105), U("ã", 145), U("n", 75), U("ɐ˞", 95), U("ɹ", 50), U("m", 90),
-          U("ũ", 120), U("n", 60), U("iː", 200), U("ɕ", 90)]
-    p2 = [U("p", 55), U("iː", 180, fade_ms=100), U("tʰ", 45), U("iː", 230, fade_ms=100),
-          U("tʰ", 40), U("iː", 310, fade_ms=100)]
-    y = np.concatenate([synth(p1, ref_f0(0.05), cat), pause, synth(p2, ref_f0(1.455), cat)])
+    # 1. the transcription, rebuilt. Fair: each sound must come from a different
+    #    instance in the clip when one exists (no copying the same moment).
+    from iterate import P1, P2, T1, T2
+    y = np.concatenate([synth(P1, ref_f0(T1), cat), pause, synth(P2, ref_f0(T2), cat)])
     sf.write(out / "rebuilt_reference.wav", y / np.abs(y).max() * 0.8, SR)
 
     # 2. new things he never said in the clip
@@ -65,8 +63,9 @@ def main():
                        [330, 330, 300, 300],
                        [U("n", 90), U("ã", 140), U("n", 70), U("iː", 240, fade_ms=100)],
                        [300, 300, 340, 340]),
-        "tee_pee_meeni": ([U("tʰ", 45), U("iː", 160, fade_ms=80), U("p", 55), U("iː", 160, fade_ms=80)],
-                          [380, 380, 360, 360],
+        "tee_pee_meeni": ([U("tʰ", 45), U("iː", 160, fade_ms=80), U("_", 30), U("p", 55),
+                           U("iː", 160, fade_ms=80)],
+                          [380, 380, 0, 360, 360],
                           [U("m", 80), U("iː", 140), U("n", 60), U("iː", 220, fade_ms=100)],
                           [300, 300, 300, 330]),
     }
