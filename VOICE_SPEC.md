@@ -50,6 +50,30 @@ little instrument. Intermediate/learning stages are out of scope for now.
 - Over-inflected forms (`thinkings`, `dids`, `happeneds`) are pronounced fully
   and sincerely, as real attempts at the word.
 
+### Tendencies of his little mouth (not rules)
+
+He doesn't follow strict rules. His idiolect comes from a small bun trying his
+best, so everything below is a tendency that depends on what he's trying to
+say. From the reference clip (analysis/IPA_TRANSCRIPTION.md) and Da Boss:
+
+- **He only simplifies.** A sound may get shorter, closer, easier. He never
+  goes out of his way to make a sound longer or harder.
+- **The hummy "u" [ũ].** Not "uh" and not the "u" of *put*: a nearly closed,
+  rounded, humming u. Happens where the mouth is already nearly closed, e.g.
+  right after an m: "moneys" → "munis". Not every "uh" ("wasn't" stays
+  "wuzn't"-ish, never "woosn't").
+- **Stressed premier vowels keep their identity.** In "Boss" the O does all
+  the work and he cares about the word, so it stays an O (≈ "Bohsh"); it
+  never turns into a u.
+- **Hum through it.** Phrases start on a hum ("nnn…") and stay voiced through
+  n, m, r. One breath, one hum.
+- **Lips weak, tongue tip strong.** Lip sounds (p, b) are soft and airless;
+  tongue-tip sounds (t, d) are crisp. He may swap a lip sound for a tongue
+  one when it's easier ("peet peet" → "pee tee").
+- **Final stops dissolve.** A word-final t usually doesn't close; the vowel
+  fades instead.
+- **Unstressed vowels keep their shape.** "nanner" → "nannar"; no lazy schwa.
+
 ## Signature sounds
 
 These get individually tuned renderings rather than plain TTS.
