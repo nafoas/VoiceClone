@@ -19,6 +19,11 @@ sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "scripts"))
 from prince_voice.bnuysynth import SR, Catalogue, Unit, synth  # noqa: E402
 
 U = Unit
+
+# settings for new phrases (how he'd speak: one breath, one steady hum, joins
+# that melt like his real ones, little manipulation of his recordings)
+NEW_PHRASE = dict(pitch_life=0.75, pitch_loud=0.6, w_pitch=4.0, edge_ms=10, hum_boost_db=4,
+                  hum_steady=0.4, breath_support=0.7, attack_ms=40, release_ms=50)
 REF = ROOT / "reference/source/prince_reference.wav"
 
 
@@ -71,8 +76,7 @@ def main():
             parts = []
             for k, (phrase, mood) in enumerate(phrases):
                 units, f = phrase_pitch(phrase, mood, seed=100 * take + 10 * k + len(name), cat=novel)
-                parts.append(synth(units, f, novel, pitch_life=0.75, pitch_loud=0.8, w_pitch=4.0,
-                                   edge_ms=10, hum_boost_db=4, hum_steady=0.4))
+                parts.append(synth(units, f, novel, **NEW_PHRASE))
                 if k + 1 < len(phrases):
                     parts.append(pause[: int(0.3 * SR)])
             y = np.concatenate(parts)

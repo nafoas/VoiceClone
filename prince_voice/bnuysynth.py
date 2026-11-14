@@ -242,6 +242,8 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           wave_max_shift_st: float = 1.0, pitch_life: float = 0.0, pitch_life_hp_ms: float = 25.0,
           pitch_loud: float = 0.0, edge_ms: float = 40.0, hum_smooth_ms: float = 40.0,
           w_pitch: float = 2.0, hum_boost_db: float = 0.0, hum_steady: float = 0.0,
+          breath_support: float = 0.0, breath_ms: float = 200.0,
+          attack_ms: float = 0.0, release_ms: float = 0.0,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -257,6 +259,13 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                 fade_drop_ms), then a quiet humming tail dying by fade_tail_db
     edge_ms     at joins between pieces, spread their mismatch over this much of
                 each side so they meet halfway instead of stepping
+    attack_ms   a phrase swells in over this long (his: ~40 ms from silence),
+                instead of starting at full volume
+    release_ms  a phrase that doesn't end on one of his natural fades eases out
+    breath_support  0..1: one breath carries the phrase. Voiced frames' loudness
+                is pulled toward a slow breath curve (breath_ms smoothing), so
+                borrowed sounds don't bring their own loudness jumps; fades and
+                unvoiced sounds keep their natural levels
     hum_steady  0..1: steady his hum's loudness within continuous voiced
                 stretches (keeps slow rises/falls, evens out fast wobble)
     hum_boost_db  extra pitch-locked hum cliff (dB) for new phrases, whose hum
@@ -566,6 +575,31 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
 
     # keep his hum when the pitch differs from where the sound was recorded
     owner_f0 = np.array(owner_f0, dtype=float)
+    if breath_support > 0:
+        fade_mask = np.array(breath) > 0
+        m = (f0 > 0) & ~fade_mask
+        if m.sum() > 5:
+            le = np.log(sp.sum(1) + 1e-30)
+            ii = np.arange(len(le))
+            fill = np.interp(ii, ii[m], le[m])            # bridge consonants
+            kb = max(3, int(breath_ms / FRAME_MS) | 1)
+            curve = np.convolve(np.pad(fill, kb // 2, mode="edge"), np.ones(kb) / kb, "valid")
+            corr = np.where(m, breath_support * (curve - le), 0.0)
+            ks = max(3, int(30 / FRAME_MS) | 1)               # no step at the edges of the mask
+            corr = np.convolve(np.pad(corr, ks // 2, mode="edge"), np.ones(ks) / ks, "valid")
+            sp *= np.exp(corr)[:, None]
+    if attack_ms > 0 or release_ms > 0:
+        T_ = len(f0)
+        g_ = np.zeros(T_)
+        if attack_ms > 0:
+            ka = min(T_, max(1, int(attack_ms / FRAME_MS)))
+            x_ = np.linspace(0, 1, ka)
+            g_[:ka] += -40.0 * (1 - x_ * x_ * (3 - 2 * x_))          # from -40 dB, S-shaped swell
+        if release_ms > 0 and not units[-1].fade_ms and not cat.dynamic.get(units[-1].ph, False):
+            kr = min(T_, max(1, int(release_ms / FRAME_MS)))
+            x_ = np.linspace(0, 1, kr)
+            g_[T_ - kr:] += -30.0 * x_ * x_
+        sp *= (10 ** (g_ / 10))[:, None]
     if hum_steady > 0:   # breath support: even out fast loudness wobble inside a hum
         v = f0 > 0
         le = np.log(sp.sum(1) + 1e-30)
