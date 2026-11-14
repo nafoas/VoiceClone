@@ -95,7 +95,7 @@ def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None
                 units.append(Unit(ph, ms / speed, stress=stressed))
             levels.append(lv)
     if cat is not None and natural > 0:
-        _natural_timing(units, cat, natural)
+        _natural_timing(units, cat, natural, levels)
     first = units[0].ph if units else ""
     onset = 1.0 if first in ("n", "m", "ɹ") else 0.0   # his hummed fall into a nasal start
     if levels and onset > 0:   # his hummed start peaks ~344 Hz: never start above ~360
@@ -104,15 +104,18 @@ def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None
     return units, levels, kw
 
 
-def _natural_timing(units, cat, natural):
-    """Choose each steady sound's recording by context; blend in its real length."""
+def _natural_timing(units, cat, natural, levels=None, w_pitch=5.0):
+    """Choose each steady sound's recording by context and planned pitch (a calm
+    word shouldn't get a recording from his excited peets); blend in its real length."""
     for i, u in enumerate(units):
         if u.ph == "_" or cat.dynamic.get(u.ph, False) or not cat.inst.get(u.ph):
             continue
         left = units[i - 1].ph if i > 0 else "#"
         right = "#" if i + 1 >= len(units) else ("_" if u.fade_ms else units[i + 1].ph)
-        c = cat.pick_half(u.ph, "L", left, float("nan"), u.stress, i == 0)
-        cr = cat.pick_half(u.ph, "R", right, float("nan"), u.stress, i == len(units) - 1, same_as=c, w_join=1.0)
+        hz = float(levels[i]) if levels is not None else float("nan")
+        c = cat.pick_half(u.ph, "L", left, hz, u.stress, i == 0, w_pitch=w_pitch)
+        cr = cat.pick_half(u.ph, "R", right, hz, u.stress, i == len(units) - 1, same_as=c, w_join=1.0,
+                           w_pitch=w_pitch)
         if c is None:
             continue
         rec = 1000 * (c["span"][1] - c["span"][0])

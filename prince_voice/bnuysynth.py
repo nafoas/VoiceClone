@@ -240,7 +240,8 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           hum_start: float = 1.5, hum_end: float = 3.2, per_sound_hum: bool = True,
           w_join: float = 1.0, smooth_warp: bool = True, fill_pitch: bool = True,
           wave_max_shift_st: float = 1.0, pitch_life: float = 0.0, pitch_life_hp_ms: float = 25.0,
-          pitch_loud: float = 0.0,
+          pitch_loud: float = 0.0, pitch_source: str = "plan", follow: float = 0.5,
+          keep_st: float = 1.5, w_pitch: float = 2.0,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -254,6 +255,10 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     hold_cons   hold fraction for steady consonants (n, m, ɹ, ɕ): closures hold
     fade_*      his fades are two-stage: a quick drop (fade_drop_db within
                 fade_drop_ms), then a quiet humming tail dying by fade_tail_db
+    pitch_source "plan": pitch comes from f0_fn. "recorded": each sound keeps his
+                real recorded pitch contour, shifted per sound toward f0_fn by
+                `follow` (0 = exactly as recorded, 1 = fully the plan's level);
+                the shifts change smoothly across consonants
     pitch_loud  dB of extra loudness per semitone above the phrase's middle pitch
                 (0 for the rebuild, whose loudness is already his; ~0.8 for new)
     pitch_life  add each recording's own pitch micro-movement (0 for the rebuild,
@@ -296,6 +301,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     trajs = []            # (start frame, log-sp trajectory, ap trajectory)
     plife = []            # (start frame, recorded pitch micro-movement, semitones)
     picks = []            # (sound, left-half recording, right-half recording) for diagnostics
+    recp = []             # (start frame, recorded absolute pitch in st per frame) for pitch_source="recorded"
     owner_f0 = []
     owner_hum = []        # each frame's recorded hum depth (dB), for re-pitching
     prev_burst = False
@@ -367,10 +373,11 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
             # when it fades; a mid-phrase fade leads into silence ("_")
             rctx = "#" if ui + 1 >= len(units) else ("_" if u.fade_ms else units[ui + 1].ph)
             iL = cat.pick_half(u.ph, "L", lctx, med(fr[: n // 2 + 1]), u.stress, ui == 0, u.avoid,
-                               w_ctx=w_ctx, avoid_penalty=avoid_penalty, prefer=u.prefer) if sub_phonemes else None
+                               w_ctx=w_ctx, avoid_penalty=avoid_penalty, prefer=u.prefer,
+                               w_pitch=w_pitch) if sub_phonemes else None
             iR = cat.pick_half(u.ph, "R", rctx, med(fr[n // 2:]), u.stress, ui == len(units) - 1, u.avoid,
                                w_ctx=w_ctx, avoid_penalty=avoid_penalty,
-                               same_as=iL, w_join=w_join, prefer=u.prefer) if sub_phonemes else None
+                               same_as=iL, w_join=w_join, prefer=u.prefer, w_pitch=w_pitch) if sub_phonemes else None
             picks.append((u.ph, iL["span"] if iL else None, iR["span"] if iR else None))
             if iL is not None and iR is not None:
                 tL, tR, aL, aR = iL["L"], iR["R"], iL["aL"], iR["aR"]
@@ -402,7 +409,13 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                     tv = tinst["tailvm"].astype(float)
                     vm = np.concatenate([vm[:nv], warp(tv, nf).reshape(-1) > 0.5])
                 trajs.append((pos, np.vstack(tr), np.vstack(ta)))
-                if pitch_life > 0 and "PL" in iL and "PR" in iR:
+                if pitch_source == "recorded" and "PL" in iL and "PR" in iR and fL > 0 and fR > 0:
+                    rs = np.concatenate([warp(iL["PL"], nl).reshape(-1) + 12 * np.log2(fL),
+                                         warp(iR["PR"], nr).reshape(-1) + 12 * np.log2(fR)])
+                    if nf:
+                        rs = np.concatenate([rs, np.full(nf, rs[-1])])
+                    recp.append((pos, rs))
+                if pitch_life > 0 and pitch_source != "recorded" and "PL" in iL and "PR" in iR:
                     pl = np.concatenate([warp(iL["PL"], nl), warp(iR["PR"], nr), np.zeros(nf)]).reshape(-1)
                     if pitch_life_hp_ms > 0 and len(pl) > 3:   # keep fine detail only, not
                         kk = max(3, int(pitch_life_hp_ms / FRAME_MS) | 1)   # the recording's big shapes
@@ -514,7 +527,42 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
         sp[p0:p0 + len(res)] += life * res * taper
 
     f0 = np.array(f0s)
-    if pitch_loud:   # effort: a higher syllable is a little louder (his ~1 dB per semitone)
+    if pitch_source == "recorded" and recp:
+        # his own pitch inside each sound; per-sound offset toward the plan,
+        # smoothed so the offsets change across consonants, not inside vowels
+        T = len(f0)
+        rec = np.full(T, np.nan)
+        off = np.full(T, np.nan)
+        for p0, rs in recp:
+            seg = f0[p0:p0 + len(rs)]
+            v = seg > 0
+            if not v.any():
+                continue
+            plan_st = np.median(12 * np.log2(seg[v]))
+            rec[p0:p0 + len(rs)] = rs[: len(seg)]
+            d = plan_st - np.median(rs[: len(seg)][v])
+            keep = float(np.clip(d * (1 - follow), -keep_st, keep_st))   # his own level, within limits
+            off[p0:p0 + len(rs)] = d - keep
+        idx = np.arange(T)
+        ok = np.isfinite(off)
+        if ok.any():
+            off = np.interp(idx, idx[ok], off[ok])
+            k = max(3, int(40 / FRAME_MS) | 1)
+            off = np.convolve(np.pad(off, k // 2, mode="edge"), np.ones(k) / k, "valid")
+            have = np.isfinite(rec) & (f0 > 0)
+            f0 = f0.copy()
+            f0[have] = 2 ** ((rec[have] + off[have]) / 12)
+            # voiced frames without a recording (e.g. after a burst): plan, shifted
+            # by the same smoothed offset relative to the plan
+            synth.last_offsets = off
+    if pitch_loud and pitch_source == "recorded" and recp:
+        # effort follows the planned shift only (his recorded pitch movement
+        # already carries its own natural loudness)
+        v = f0 > 0
+        g = np.array(gains, dtype=float)
+        g[v] += pitch_loud * np.clip(off[v] - np.median(off[v]), -6, 6)
+        gains = list(g)
+    elif pitch_loud:   # effort: a higher syllable is a little louder (his ~1 dB per semitone)
         v = f0 > 0
         if v.any():
             stv = 12 * np.log2(np.where(v, f0, 1.0))
