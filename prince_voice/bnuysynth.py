@@ -291,12 +291,15 @@ def _lip_edge(steady: np.ndarray, k: int, depth: float, toward_start: bool,
         x = x * x * (3 - 2 * x)
         d = depth * (1.0 - x)
         # lips lower the low resonances (F1, F2); F3 and above stay put (an F3
-        # drop would be heard as "r"): the warp fades out between 1.8 and 2.8 kHz.
+        # drop would be heard as "r"): the warp fades out between 3.0 and 3.6 kHz.
         # jaw: below ~1.3 kHz (F1) the mouth is still nearly closed at the release
         # and opens over the edge, so F1 climbs from the consonant's ~400 Hz
         # instead of jumping (an instant jump sounds like choking)
         hz = bins / (nb - 1) * (SR / 2)
-        w = np.clip((2800.0 - hz) / 1000.0, 0, 1)
+        # his tract is small: front-vowel F2 sits at 2700-3300 Hz and F3 at ~3500+,
+        # so protect only above ~3.0 kHz (protecting from 1.8 kHz switched the lip
+        # cue off for his front vowels: "minny" sounded like "ninny")
+        w = np.clip((3600.0 - hz) / 600.0, 0, 1)
         dj = jaw * (1.0 - x) * np.clip((1500.0 - hz) / 500.0, 0, 1)
         src = bins / np.maximum(0.2, 1.0 - d * w - dj)
         out[j] = np.interp(src, bins, steady, right=steady[-1])
