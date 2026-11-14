@@ -31,7 +31,7 @@ CLOSURE_MS = 25
 
 
 def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None,
-         vary: float = 1.0):
+         vary: float = 1.0, cat=None, natural: float = 0.7):
     """Returns (units, levels_hz, pitch_kwargs).
 
     seed/vary: he doesn't say things the same way twice. With a seed, each
@@ -39,16 +39,19 @@ def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None
     template measured from the clip):
       base level +-0.7 st, word steps 2-4.5 st (sometimes none / down),
       onset fall 0-100 %, durations +-8 %, final stretch 1.4-1.9x,
-      slow plateau drift, and an ending that may flick up, fall or stay level.
+      and an ending that may flick up, fall or stay level.
+    cat/natural: with a catalogue, each sound's recording is chosen here by
+      context, and its natural recorded length is blended in (natural 0..1);
+      the synth is told to use that same recording (Unit.prefer).
     """
     rng = np.random.default_rng(seed)
     r = (lambda lo, hi, mid: mid + vary * (rng.uniform(lo, hi) - mid)) if seed is not None else \
         (lambda lo, hi, mid: mid)
-    base = CALM * 2 ** (r(-0.7, 0.7, 0.0) / 12)
-    step = r(2.0, 4.5, 3.6)
+    base = CALM * 2 ** (r(-0.5, 0.5, 0.0) / 12)
+    step = r(1.0, 2.8, 2.0)    # smaller than the clip's one big step: not every word steps
     if seed is not None and vary > 0:
         u = rng.uniform()
-        step = -0.6 * step if u < 0.15 * vary else (0.0 if u < 0.3 * vary else step)
+        step = -0.5 * step if u < 0.15 * vary else (0.0 if u < 0.45 * vary else step)
     final_stretch = r(1.4, 1.9, FINAL_STRETCH)
     units, levels = [], []
     n_words = len(phrase)
@@ -79,12 +82,35 @@ def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None
                     ms *= 2 ** r(-0.12, 0.12, 0.0)
                     units.append(Unit(ph, ms / speed, stress=stressed))
                 levels.append(level)
-    kw = dict(onset=r(0.0, 1.0, 1.0), drift_st=[r(-0.6, 0.6, 0.0) for _ in units],
-              end_st=r(-1.5, 2.0, 0.0), seed=seed if seed is not None else 7)
+    if cat is not None and natural > 0:
+        _natural_timing(units, cat, natural)
+    end = r(-1.0, 1.2, 0.0) if (seed is None or rng.uniform() < 0.5) else 0.0
+    kw = dict(onset=r(0.3, 1.0, 1.0), end_st=end, seed=seed if seed is not None else 7,
+              step_ms=r(70.0, 110.0, 75.0))
     return units, levels, kw
 
 
-def phrase_pitch(phrase, mood="calm", seed=None, vary=1.0):
+def _natural_timing(units, cat, natural):
+    """Choose each steady sound's recording by context; blend in its real length."""
+    for i, u in enumerate(units):
+        if u.ph == "_" or cat.dynamic.get(u.ph, False) or not cat.inst.get(u.ph):
+            continue
+        left = units[i - 1].ph if i > 0 else "#"
+        right = "_" if u.fade_ms else (units[i + 1].ph if i + 1 < len(units) else "#")
+        c = cat.pick_half(u.ph, "L", left, float("nan"), u.stress, i == 0)
+        cr = cat.pick_half(u.ph, "R", right, float("nan"), u.stress, i == len(units) - 1, same_as=c, w_join=1.0)
+        if c is None:
+            continue
+        rec = 1000 * (c["span"][1] - c["span"][0])
+        if u.stress is not None and c["stress"] != u.stress:
+            rec *= 1.25 if u.stress else 0.8
+        body = u.ms - u.fade_ms
+        u.ms = u.fade_ms + (1 - natural) * body + natural * rec * (body / max(body, 1e-3)) ** 0
+        if c is cr:
+            u.prefer = tuple(c["span"])
+
+
+def phrase_pitch(phrase, mood="calm", seed=None, vary=1.0, cat=None, natural=0.7):
     """Convenience: (units, f0_fn) for a phrase."""
-    units, levels, kw = plan(phrase, mood, seed=seed, vary=vary)
+    units, levels, kw = plan(phrase, mood, seed=seed, vary=vary, cat=cat, natural=natural)
     return units, pitch_plan(units, levels, **kw)

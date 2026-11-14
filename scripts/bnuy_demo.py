@@ -69,8 +69,8 @@ def main():
         for take in range(3):
             parts = []
             for k, (phrase, mood) in enumerate(phrases):
-                units, f = phrase_pitch(phrase, mood, seed=100 * take + 10 * k + len(name))
-                parts.append(synth(units, f, novel))
+                units, f = phrase_pitch(phrase, mood, seed=100 * take + 10 * k + len(name), cat=novel)
+                parts.append(synth(units, f, novel, pitch_life=0.75))
                 if k + 1 < len(phrases):
                     parts.append(pause[: int(0.3 * SR)])
             y = np.concatenate(parts)

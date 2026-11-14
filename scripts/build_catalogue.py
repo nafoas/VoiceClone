@@ -50,7 +50,7 @@ SEGMENTS["tʰ"] = [(1.712, 1.772), (2.035, 2.09)]    # crisp burst + aspiration 
 SEGMENTS["ɕ"] = [(1.00, 1.15)]
 # fade tails: the quiet humming decay after a vowel whose final t never closes,
 # keyed by the vowel instance it follows
-TAILS = {1.52: (1.60, 1.70), 1.77: (1.90, 2.00), 2.09: (2.30, 2.40)}
+TAILS = {1.52: (1.60, 1.70), 1.77: (1.90, 2.00), 2.09: (2.30, 2.47)}   # last one decays to ~2.46
 DYNAMIC = {"p", "tʰ", "ɕ"}
 VOICED = {"n", "ã", "ɐ˞", "ɹ", "m", "ũ", "iː", "p", "tʰ"}
 
@@ -115,6 +115,16 @@ def main():
                 for side, (a0, a1) in (("L", (s, mid)), ("R", (mid, e))):
                     mh = (t >= a0) & (t < a1)
                     store[f"iT{side}_{i}_{k}"] = np.log(sp[mh] + 1e-20).astype(np.float32)
+                    # his real pitch micro-movement in this half (semitones, mean 0)
+                    fh = f0[mh].astype(float); vh = fh > 0
+                    if vh.sum() >= 2:
+                        stt = 12 * np.log2(np.where(vh, fh, 1.0))
+                        idx_ = np.arange(len(fh))
+                        stt = np.interp(idx_, idx_[vh], stt[vh])
+                        stt -= stt.mean()
+                    else:
+                        stt = np.zeros(len(fh))
+                    store[f"iP{side}_{i}_{k}"] = stt.astype(np.float32)
                     store[f"iTa{side}_{i}_{k}"] = ap[mh].astype(np.float32)
                 # this instance's own hum: how far its 3rd harmonic sits below the
                 # 1st, compared with ordinary speech (~-11 dB) -> cliff depth
@@ -128,7 +138,9 @@ def main():
                     mt = (t >= tail[0]) & (t < tail[1])
                     store[f"itail_{i}_{k}"] = np.log(sp[mt] + 1e-20).astype(np.float32)
                     store[f"itaila_{i}_{k}"] = ap[mt].astype(np.float32)
-                    store[f"itailvm_{i}_{k}"] = (f0[mt] > 0).astype(np.int8)
+                    fr_ = np.linspace(0, SR / 2, ap.shape[1]); bd = (fr_ > 300) & (fr_ < 4000)
+                    # voiced only where still tonal: his tail turns to breath before it ends
+                    store[f"itailvm_{i}_{k}"] = ((f0[mt] > 0) & (ap[mt][:, bd].mean(1) < 0.6)).astype(np.int8)
                 inst.append(dict(span=[s, e], f0=float(np.median(fv)) if len(fv) else 0.0,
                                  has_tail=bool(tail), hum_db=hum_db, **halves, **CONTEXT[(lab, s)]))
             instances[lab] = inst
