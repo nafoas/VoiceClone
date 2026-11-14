@@ -53,28 +53,22 @@ def main():
     y = np.concatenate([synth(P1, ref_f0(T1), cat), pause, synth(P2, ref_f0(T2), cat)])
     sf.write(out / "rebuilt_reference.wav", y / np.abs(y).max() * 0.8, SR)
 
-    # 2. new things he never said in the clip, with his pitch model at his own
-    #    levels (calm 215, raised 265, excited 330-390)
-    from prince_voice.bnuypitch import CALM, RAISED, pitch_plan
-    C, R = CALM, RAISED
+    # 2. new things he never said in the clip, planned by his prosody rules
+    #    (stress -> duration, new word -> pitch step, pitch moves in consonants)
+    from prince_voice.bnuypitch import pitch_plan
+    from prince_voice.bnuyprosody import plan
+    S, W = True, False
     new = {
-        "munis_nannar": [
-            ([U("m", 90), U("ũ", 120), U("n", 60), U("iː", 200), U("ɕ", 90)], [R, R, R, R, R]),
-            ([U("n", 105), U("ã", 145), U("n", 75), U("ɐ˞", 105), U("ɹ", 55)], [C, C, C, C, C]),
-        ],
-        "mama_nanni": [
-            ([U("m", 100), U("ã", 140), U("m", 90), U("ã", 220, fade_ms=100)], [C, C, R, R]),
-            ([U("n", 100), U("ã", 140), U("n", 70), U("iː", 240, fade_ms=100)], [C, C, R, R]),
-        ],
-        "tee_pee_meeni": [
-            ([U("tʰ", 45), U("iː", 200, fade_ms=100), U("_", 30), U("p", 60), U("iː", 220, fade_ms=100)],
-             [390, 390, 390, 350, 350]),
-            ([U("m", 90), U("iː", 150), U("n", 65), U("iː", 230, fade_ms=100)], [C, C, R, R]),
-        ],
+        "munis_nannar": [([[("m ũ", S), ("n iː ɕ", W)]], "calm"),
+                         ([[("n ã", S), ("n ɐ˞ ɹ", W)]], "calm")],
+        "mama_nanni":   [([[("m ã", S), ("m ã", W)], [("n ã", S), ("n iː", W)]], "calm")],
+        "tee_pee_meeni": [([[("tʰ iː", S)], [("p iː", S)]], "excited"),
+                          ([[("m iː", S), ("n iː", W)]], "calm")],
     }
     for name, phrases in new.items():
         parts = []
-        for k, (units, lv) in enumerate(phrases):
+        for k, (phrase, mood) in enumerate(phrases):
+            units, lv = plan(phrase, mood)
             parts.append(synth(units, pitch_plan(units, lv), cat))
             if k + 1 < len(phrases):
                 parts.append(pause[: int(0.3 * SR)])

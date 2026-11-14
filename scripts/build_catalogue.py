@@ -110,6 +110,13 @@ def main():
                     mh = (t >= a0) & (t < a1)
                     store[f"iT{side}_{i}_{k}"] = np.log(sp[mh] + 1e-20).astype(np.float32)
                     store[f"iTa{side}_{i}_{k}"] = ap[mh].astype(np.float32)
+                # this instance's own hum: how far its 3rd harmonic sits below the
+                # 1st, compared with ordinary speech (~-11 dB) -> cliff depth
+                fqs = np.linspace(0, SR / 2, sp.shape[1]); hd = []
+                for q in np.where(m & (f0 > 0))[0]:
+                    a1 = np.interp(f0[q], fqs, sp[q]); a3 = np.interp(3 * f0[q], fqs, sp[q])
+                    hd.append(-(10 * np.log10(a3 / a1 + 1e-20) + 11.0))
+                hum_db = float(np.clip(np.median(hd), 0, 40)) if hd else 0.0
                 tail = TAILS.get(round(s, 3)) if lab == "iː" else None
                 if tail:
                     mt = (t >= tail[0]) & (t < tail[1])
@@ -117,7 +124,7 @@ def main():
                     store[f"itaila_{i}_{k}"] = ap[mt].astype(np.float32)
                     store[f"itailvm_{i}_{k}"] = (f0[mt] > 0).astype(np.int8)
                 inst.append(dict(span=[s, e], f0=float(np.median(fv)) if len(fv) else 0.0,
-                                 has_tail=bool(tail), **halves, **CONTEXT[(lab, s)]))
+                                 has_tail=bool(tail), hum_db=hum_db, **halves, **CONTEXT[(lab, s)]))
             instances[lab] = inst
             S = np.exp(np.median(np.vstack(S_all), 0))
             A = np.median(np.vstack(A_all), 0)

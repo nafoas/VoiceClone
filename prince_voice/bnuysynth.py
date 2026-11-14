@@ -209,12 +209,14 @@ def _cliff_db(freqs: np.ndarray, f0: np.ndarray, depth: float, start: float, end
     return -depth * x * x * (3 - 2 * x)
 
 
-def _source_refit(sp: np.ndarray, f_from: np.ndarray, f_to: np.ndarray, depth: float,
+def _source_refit(sp: np.ndarray, f_from: np.ndarray, f_to: np.ndarray, depth,
                   start: float, end: float) -> np.ndarray:
     """Re-pitch his hum while keeping his mouth shape: remove the cliff where
-    it sat at the recorded pitch, put it back at the new pitch. Formants stay put."""
+    it sat at the recorded pitch, put it back at the new pitch. Formants stay put.
+    depth: per frame (each recorded sound's own measured hum), or a constant."""
     freqs = np.linspace(0, SR / 2, sp.shape[1])
-    gain = _cliff_db(freqs, f_to, depth, start, end) - _cliff_db(freqs, f_from, depth, start, end)
+    d = np.broadcast_to(np.asarray(depth, dtype=float), f_to.shape)[:, None]
+    gain = d * (_cliff_db(freqs, f_to, 1.0, start, end) - _cliff_db(freqs, f_from, 1.0, start, end))
     return sp * 10 ** (gain / 10)
 
 
@@ -225,7 +227,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           hum_fix: float = 0.5, sub_phonemes: bool = True, w_ctx: float = 1.0,
           avoid_penalty: float = 0.0, trajectories: bool = True, join_ms: float = 20.0,
           real_tails: bool = True, hum_mode: str = "source", hum_depth: float = 25.0,
-          hum_start: float = 1.5, hum_end: float = 3.2,
+          hum_start: float = 1.5, hum_end: float = 3.2, per_sound_hum: bool = True,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -260,6 +262,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     lifes = []            # (start frame, residual trajectory)
     trajs = []            # (start frame, log-sp trajectory, ap trajectory)
     owner_f0 = []
+    owner_hum = []        # each frame's recorded hum depth (dB), for re-pitching
     prev_burst = False
     pos = 0
     t = 0.0
@@ -280,6 +283,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                 anchors.append((pos + j, quiet, np.ones_like(some)))
                 f0s.append(0.0); gains.append(u.gain_db); breath.append(0.0)
             owner_f0 += [0.0] * n
+            owner_hum += [0.0] * n
             prev_burst = True
             pos += n; t += n * FRAME_MS / 1000
             continue
@@ -348,6 +352,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                 half_f0 = [fL] * nl + [fR] * (n - nl)
                 prev_burst = cat.dynamic[u.ph] and burst_wave and u.ph in cat.wav
                 owner_f0 += half_f0
+                owner_hum += [iL.get("hum_db", hum_depth)] * nl + [iR.get("hum_db", hum_depth)] * (n - nl)
                 for j in range(n):
                     tt = t + j * FRAME_MS / 1000
                     f = f0_fn(tt) if vm[j] else np.nan
@@ -385,8 +390,10 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
         prev_burst = cat.dynamic[u.ph] and burst_wave and u.ph in cat.wav
         if cat.dynamic[u.ph] or not cat.inst.get(u.ph):
             owner_f0 += [cat.f0_ref[u.ph]] * n
+            owner_hum += [0.0 if cat.dynamic[u.ph] else hum_depth] * n
         else:
             owner_f0 += half_f0
+            owner_hum += [(inst or {}).get("hum_db", hum_depth)] * n
         for j in range(n):
             tt = t + j * FRAME_MS / 1000
             f = f0_fn(tt) if vm[j] else np.nan
@@ -453,13 +460,15 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     if hum_mode == "source":   # source x mouth: move only the hum cliff with pitch
         sel = (owner_f0 > 0) & (f0 > 0)
         if sel.any():
-            sp[sel] = _source_refit(sp[sel], owner_f0[sel], f0[sel], hum_depth, hum_start, hum_end)
+            depth = np.array(owner_hum, dtype=float)[sel] if per_sound_hum else hum_depth
+            sp[sel] = _source_refit(sp[sel], owner_f0[sel], f0[sel], depth, hum_start, hum_end)
     for f_from in (np.unique(owner_f0[owner_f0 > 0]) if hum_fix > 0 and hum_mode == "warp" else []):
         sel = (owner_f0 == f_from) & (f0 > 0)
         if sel.any():   # partial: full correction over-deepens the cliff
             fixed = _hum_correct(sp[sel], f_from, f0[sel])
             sp[sel] = np.exp((1 - hum_fix) * np.log(sp[sel] + 1e-20) + hum_fix * np.log(fixed + 1e-20))
 
+    synth.last = dict(f0=f0.copy(), owner_f0=owner_f0.copy())  # for diagnostics
     y = pw.synthesize(f0, np.ascontiguousarray(sp), np.ascontiguousarray(ap), SR, FRAME_MS)
     for off, w, g in bursts:   # splice his real bursts
         w = w * 10 ** (g / 20)
