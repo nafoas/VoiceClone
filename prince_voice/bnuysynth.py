@@ -240,7 +240,8 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           hum_start: float = 1.5, hum_end: float = 3.2, per_sound_hum: bool = True,
           w_join: float = 1.0, smooth_warp: bool = True, fill_pitch: bool = True,
           wave_max_shift_st: float = 1.0, pitch_life: float = 0.0, pitch_life_hp_ms: float = 25.0,
-          pitch_loud: float = 0.0,
+          pitch_loud: float = 0.0, edge_ms: float = 40.0, hum_smooth_ms: float = 40.0,
+          w_pitch: float = 2.0,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -254,6 +255,8 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     hold_cons   hold fraction for steady consonants (n, m, ɹ, ɕ): closures hold
     fade_*      his fades are two-stage: a quick drop (fade_drop_db within
                 fade_drop_ms), then a quiet humming tail dying by fade_tail_db
+    edge_ms     at joins between pieces, spread their mismatch over this much of
+                each side so they meet halfway instead of stepping
     pitch_loud  dB of extra loudness per semitone above the phrase's middle pitch
                 (0 for the rebuild, whose loudness is already his; ~0.8 for new)
     pitch_life  add each recording's own pitch micro-movement (0 for the rebuild,
@@ -294,6 +297,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     bursts = []           # (sample offset, waveform, gain)
     lifes = []            # (start frame, residual trajectory)
     trajs = []            # (start frame, log-sp trajectory, ap trajectory)
+    traj_src = {}         # start frame -> (left-half recording, right-half recording, has tail)
     plife = []            # (start frame, recorded pitch micro-movement, semitones)
     picks = []            # (sound, left-half recording, right-half recording) for diagnostics
     owner_f0 = []
@@ -367,10 +371,11 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
             # when it fades; a mid-phrase fade leads into silence ("_")
             rctx = "#" if ui + 1 >= len(units) else ("_" if u.fade_ms else units[ui + 1].ph)
             iL = cat.pick_half(u.ph, "L", lctx, med(fr[: n // 2 + 1]), u.stress, ui == 0, u.avoid,
-                               w_ctx=w_ctx, avoid_penalty=avoid_penalty, prefer=u.prefer) if sub_phonemes else None
+                               w_ctx=w_ctx, avoid_penalty=avoid_penalty, prefer=u.prefer,
+                               w_pitch=w_pitch) if sub_phonemes else None
             iR = cat.pick_half(u.ph, "R", rctx, med(fr[n // 2:]), u.stress, ui == len(units) - 1, u.avoid,
                                w_ctx=w_ctx, avoid_penalty=avoid_penalty,
-                               same_as=iL, w_join=w_join, prefer=u.prefer) if sub_phonemes else None
+                               same_as=iL, w_join=w_join, prefer=u.prefer, w_pitch=w_pitch) if sub_phonemes else None
             picks.append((u.ph, iL["span"] if iL else None, iR["span"] if iR else None))
             if iL is not None and iR is not None:
                 tL, tR, aL, aR = iL["L"], iR["R"], iL["aL"], iR["aR"]
@@ -402,6 +407,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                     tv = tinst["tailvm"].astype(float)
                     vm = np.concatenate([vm[:nv], warp(tv, nf).reshape(-1) > 0.5])
                 trajs.append((pos, np.vstack(tr), np.vstack(ta)))
+                traj_src[pos] = (tuple(iL["span"]), tuple(iR["span"]), bool(nf))
                 if pitch_life > 0 and "PL" in iL and "PR" in iR:
                     pl = np.concatenate([warp(iL["PL"], nl), warp(iR["PR"], nr), np.zeros(nf)]).reshape(-1)
                     if pitch_life_hp_ms > 0 and len(pl) > 3:   # keep fine detail only, not
@@ -496,6 +502,31 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
         for p0, tr, ta in trajs:
             sp[p0:p0 + len(tr)] = tr
             ap[p0:p0 + len(ta)] = ta
+        # edge matching: where two pieces meet, spread their mismatch over the
+        # last/first edge_ms of each so they meet halfway (his sounds melt into
+        # each other; glued pieces otherwise step). Each keeps its own movement.
+        if edge_ms > 0:
+            ke = max(1, int(edge_ms / FRAME_MS))
+            starts = {p0: len(tr) for p0, tr, _ in trajs}
+            for p0, tr, _ in trajs:
+                b = p0 + len(tr)
+                if b not in starts or b < 2 or b + 2 > len(sp):
+                    continue
+                # a join that was real in his recording (pieces were neighbours)
+                # is already his: leave it exactly as it was
+                a_src, b_src = traj_src.get(p0), traj_src.get(b)
+                if a_src and b_src and not a_src[2] and abs(a_src[1][1] - b_src[0][0]) < 0.012:
+                    continue
+                dL = sp[b:b + 2].mean(0) - sp[b - 2:b].mean(0)
+                dA = ap[b:b + 2].mean(0) - ap[b - 2:b].mean(0)
+                ka = min(ke, len(tr)); kb = min(ke, starts[b])
+                ra = np.linspace(0, 1, ka + 1)[1:][:, None]          # 0 -> 1 toward the join
+                rb = np.linspace(1, 0, kb + 1)[:-1][:, None]         # 1 -> 0 away from it
+                sp[b - ka:b] += 0.5 * dL[None, :] * ra
+                sp[b:b + kb] -= 0.5 * dL[None, :] * rb
+                ap[b - ka:b] += 0.5 * dA[None, :] * ra
+                ap[b:b + kb] -= 0.5 * dA[None, :] * rb
+            ap = np.clip(ap, 0, 1)
         for p0, tr, ta in trajs:
             for b in (p0, p0 + len(tr)):
                 lo, hi = max(0, b - wj), min(len(sp), b + wj)
@@ -533,8 +564,19 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     owner_f0 = np.array(owner_f0, dtype=float)
     if hum_mode == "source":   # source x mouth: move only the hum cliff with pitch
         sel = (owner_f0 > 0) & (f0 > 0)
+        oh = np.array(owner_hum, dtype=float)
+        if hum_smooth_ms > 0 and len(owner_f0) > 3:   # no abrupt hum switch at joins
+            kk = max(3, int(hum_smooth_ms / FRAME_MS) | 1)
+            pos_ = owner_f0 > 0
+            lg = np.where(pos_, np.log(np.maximum(owner_f0, 1.0)), np.nan)
+            ii = np.arange(len(lg))
+            if pos_.any():
+                lg = np.interp(ii, ii[pos_], lg[pos_])
+                lg = np.convolve(np.pad(lg, kk // 2, mode="edge"), np.ones(kk) / kk, "valid")
+                owner_f0 = np.where(pos_, np.exp(lg), owner_f0)
+                oh = np.convolve(np.pad(oh, kk // 2, mode="edge"), np.ones(kk) / kk, "valid")
         if sel.any():
-            depth = np.array(owner_hum, dtype=float)[sel] if per_sound_hum else hum_depth
+            depth = oh[sel] if per_sound_hum else hum_depth
             sp[sel] = _source_refit(sp[sel], owner_f0[sel], f0[sel], depth, hum_start, hum_end)
     for f_from in (np.unique(owner_f0[owner_f0 > 0]) if hum_fix > 0 and hum_mode == "warp" else []):
         sel = (owner_f0 == f_from) & (f0 > 0)
@@ -542,7 +584,9 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
             fixed = _hum_correct(sp[sel], f_from, f0[sel])
             sp[sel] = np.exp((1 - hum_fix) * np.log(sp[sel] + 1e-20) + hum_fix * np.log(fixed + 1e-20))
 
-    synth.last = dict(f0=f0.copy(), owner_f0=owner_f0.copy(), picks=picks)  # for diagnostics
+    edges_ = np.cumsum([0] + [max(1, int(round(u.ms / FRAME_MS))) for u in units])
+    synth.last = dict(f0=f0.copy(), owner_f0=owner_f0.copy(), picks=picks,
+                      bounds=[(int(b), units[k].ph, units[k + 1].ph) for k, b in enumerate(edges_[1:-1])])
     end_fade_ms = 15.0
     y = pw.synthesize(f0, np.ascontiguousarray(sp), np.ascontiguousarray(ap), SR, FRAME_MS)
     for off, w, g in bursts:   # splice his real bursts

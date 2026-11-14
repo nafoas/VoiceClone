@@ -37,6 +37,9 @@ FINAL_STRETCH = 1.7
 TAIL_MS = 100
 CLOSURE_MS = 25
 
+# where a phrase may sit (Hz of its first syllable) for each mood
+REGISTER = {"calm": (200.0, 285.0), "curious": (205.0, 290.0), "excited": (320.0, 410.0)}
+
 MOODS = {
     #           start Hz  per-syll  per-word  stressed  main stress  final
     "calm":    dict(L0=CALM, decl=0.35, decl_word=0.0, acc=0.3, nuc=4.2, final=0.0),
@@ -46,7 +49,7 @@ MOODS = {
 
 
 def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None,
-         vary: float = 1.0, cat=None, natural: float = 0.7):
+         vary: float = 1.0, cat=None, natural: float = 0.7, register_follow: float = 1.0):
     """Returns (units, levels_hz, pitch_kwargs). See module docstring."""
     m = MOODS.get(mood, MOODS["calm"])
     rng = np.random.default_rng(seed)
@@ -95,7 +98,23 @@ def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None
                 units.append(Unit(ph, ms / speed, stress=stressed))
             levels.append(lv)
     if cat is not None and natural > 0:
-        _natural_timing(units, cat, natural)
+        # place the phrase where his chosen recordings naturally sit: keep the
+        # shape (relative levels), move only the register, so recordings are
+        # shifted as little as possible (the gold standard shifts ~0.1 st)
+        lo, hi = REGISTER.get(mood, REGISTER["calm"])
+        timing = [u.ms for u in units]
+        for _ in range(2):
+            for u, ms in zip(units, timing):
+                u.ms = ms
+            _natural_timing(units, cat, natural, levels)
+            d = [12 * np.log2(u.rec_f0 / lv) for u, lv in zip(units, levels)
+                 if getattr(u, "rec_f0", 0) > 0 and u.ph in VOWELS]
+            if not d:
+                break
+            off = float(np.median(d)) * register_follow
+            first = levels[0] * 2 ** (off / 12)
+            off += 12 * np.log2(np.clip(first, lo, hi) / first)   # stay in his range for this mood
+            levels = [lv * 2 ** (off / 12) for lv in levels]
     first = units[0].ph if units else ""
     onset = 1.0 if first in ("n", "m", "ɹ") else 0.0   # his hummed fall into a nasal start
     if levels and onset > 0:   # his hummed start peaks ~344 Hz: never start above ~360
@@ -104,15 +123,18 @@ def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None
     return units, levels, kw
 
 
-def _natural_timing(units, cat, natural):
-    """Choose each steady sound's recording by context; blend in its real length."""
+def _natural_timing(units, cat, natural, levels=None, w_pitch=4.0):
+    """Choose each steady sound's recording by context and planned pitch; blend
+    in its real recorded length."""
     for i, u in enumerate(units):
         if u.ph == "_" or cat.dynamic.get(u.ph, False) or not cat.inst.get(u.ph):
             continue
         left = units[i - 1].ph if i > 0 else "#"
         right = "#" if i + 1 >= len(units) else ("_" if u.fade_ms else units[i + 1].ph)
-        c = cat.pick_half(u.ph, "L", left, float("nan"), u.stress, i == 0)
-        cr = cat.pick_half(u.ph, "R", right, float("nan"), u.stress, i == len(units) - 1, same_as=c, w_join=1.0)
+        hz = float(levels[i]) if levels is not None else float("nan")
+        c = cat.pick_half(u.ph, "L", left, hz, u.stress, i == 0, w_pitch=w_pitch)
+        cr = cat.pick_half(u.ph, "R", right, hz, u.stress, i == len(units) - 1, same_as=c, w_join=1.0,
+                           w_pitch=w_pitch)
         if c is None:
             continue
         rec = 1000 * (c["span"][1] - c["span"][0])
@@ -122,6 +144,7 @@ def _natural_timing(units, cat, natural):
         u.ms = u.fade_ms + (1 - natural) * body + natural * rec * (body / max(body, 1e-3)) ** 0
         if c is cr:
             u.prefer = tuple(c["span"])
+        u.rec_f0 = float(c.get("f0", 0.0))
 
 
 def phrase_pitch(phrase, mood="calm", seed=None, vary=1.0, cat=None, natural=0.7):
