@@ -46,6 +46,7 @@ _F = {
 }
 
 
+RHOTIC = {"ɹ", "ɐ˞"}
 PLACE = {"m": "lab", "p": "lab", "b": "lab", "n": "cor", "tʰ": "cor", "t": "cor", "d": "cor",
          "ɹ": "cor", "s": "cor", "ɕ": "pal"}
 
@@ -254,8 +255,13 @@ def _lip_edge(steady: np.ndarray, k: int, depth: float, toward_start: bool) -> n
     for j in range(k):
         x = (j + 1) / (k + 1) if toward_start else (k - j) / (k + 1)   # 0 at the lips -> 1 in the vowel
         x = x * x * (3 - 2 * x)
-        alpha = 1.0 - depth * (1.0 - x)          # < 1 near the lips
-        out[j] = np.interp(bins / alpha, bins, steady, right=steady[-1])
+        d = depth * (1.0 - x)
+        # lips lower the low resonances (F1, F2); F3 and above stay put (an F3
+        # drop would be heard as "r"): the warp fades out between 1.8 and 2.8 kHz
+        hz = bins / (nb - 1) * (SR / 2)
+        w = np.clip((2800.0 - hz) / 1000.0, 0, 1)
+        src = bins / (1.0 - d * w)
+        out[j] = np.interp(src, bins, steady, right=steady[-1])
     return out
 
 
@@ -277,7 +283,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           w_pitch: float = 2.0, hum_boost_db: float = 0.0, hum_steady: float = 0.0,
           breath_support: float = 0.0, breath_ms: float = 200.0,
           attack_ms: float = 0.0, release_ms: float = 0.0, recolor: float = 0.0,
-          lip_depth: float = 0.35,
+          lip_depth: float = 0.35, derhotic: bool = False,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -483,7 +489,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                 trajs.append((pos, np.vstack(tr), np.vstack(ta)))
                 traj_src[pos] = (tuple(iL["span"]), tuple(iR["span"]), bool(nf))
                 traj_ctx[pos] = dict(rec_left=iL.get("left"), want_left=lctx, rec_right=iR.get("right"),
-                                     want_right=rctx, nl=nl, nr=nr, nf=nf)
+                                     want_right=rctx, nl=nl, nr=nr, nf=nf, ph=u.ph)
                 if pitch_life > 0 and "PL" in iL and "PR" in iR:
                     pl = np.concatenate([warp(iL["PL"], nl), warp(iR["PR"], nr), np.zeros(nf)]).reshape(-1)
                     if pitch_life_hp_ms > 0 and len(pl) > 3:   # keep fine detail only, not
@@ -583,7 +589,18 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
         for k, tj in enumerate(trajs):
             p0, tr, ta = tj
             c = traj_ctx.get(p0)
-            if not c or u_is_cons(tr, p0):
+            if not c:
+                continue
+            if derhotic and c["ph"] in ("m", "n") and c["nl"] > 1 and c["nr"] > 1:
+                # a nasal recorded after "r" carries the r in its first half (his
+                # only m follows the r of "nannar"); if the real neighbour isn't
+                # rhotic, use its clean other half, mirrored. Same on the right.
+                if c["rec_left"] in RHOTIC and c["want_left"] not in RHOTIC:
+                    src = tr[c["nl"]:c["nl"] + c["nr"]][::-1]
+                    tr[:c["nl"]] = src[np.linspace(0, len(src) - 1, c["nl"]).round().astype(int)]
+                if c["rec_right"] in RHOTIC and c["want_right"] not in RHOTIC:
+                    src = tr[:c["nl"]][::-1]
+                    tr[c["nl"]:c["nl"] + c["nr"]] = src[np.linspace(0, len(src) - 1, c["nr"]).round().astype(int)]
                 continue
             if place_differs(c["rec_left"], c["want_left"]) and k > 0 and trajs[k - 1][0] + len(trajs[k - 1][1]) == p0:
                 kk = max(2, int(round(recolor * c["nl"])))
