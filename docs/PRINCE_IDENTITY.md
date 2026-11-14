@@ -79,6 +79,54 @@ he only simplifies (vowels shorter/higher/further back, never harder), stressed
 key vowels keep their identity ("Boss" keeps its O), cute words with a sincere
 voice. See VOICE_SPEC.md.
 
+## Objective fingerprint (standard voice measures)
+
+`python analysis/fingerprint.py && python analysis/plot_fingerprint.py`
+-> `analysis/fingerprint_*.csv / *.png`. "Ordinary adult" = English TTS (adult
+female) saying the same words, measured the same way. Women/children vocal
+tract lengths from Hillenbrand et al. (1995) vowel averages.
+
+| Measure | Prince | Ordinary adult | What it means |
+|---|---|---|---|
+| Vocal tract length (from formant spacing) | **12.2 cm** | 14.7 (women); children 13.4 | he sounds *smaller than a child*: size is not what keeps him from sounding like one |
+| Pitch (median) | 265 Hz | 218 Hz | +3.3 st |
+| H1–H2 | **12.6 dB** (sounds: 3–32) | 6.1 | his fundamental dominates: the hum |
+| H1–A3 | **33.8 dB** (sounds: 23–71) | 23.6 | the cliff above his low harmonics |
+| H1–A1 | **0 on closed sounds** | 2.2 | the harmonic nearest F1 *is* H1: his mouth is tuned onto his pitch |
+| Jitter | **0.7 %** (sounds 0.1–0.5) | 2.9 % | 4x steadier pitch |
+| Shimmer | 0.6 dB | 0.7 dB | similar |
+| CPPS | 7.4 dB | 6.0 | clearer, more periodic |
+| HNR 0–500 Hz | **32.4 dB** | 21.9 | very pure where the hum lives |
+| HNR 1.5–2.5 kHz | 12.7 dB | 11.2 | similar higher up |
+| Voiced | **65 %** of the clip | 36 % | he hums most of the time |
+| Loudness per semitone | **−0.2 dB** | +0.6 | his loudness does *not* follow pitch |
+| Formant transitions | slow glides, 1–6 Hz/ms (one fast n→iː, 80) | — | sounds melt into each other |
+
+What separates him from a small human, ranked by size of difference:
+1. steadiness (jitter ÷4), 2. the hum (H1–H2 x2, H1–A3 +10 dB, H1–A1 = 0),
+3. purity in the low band (+10 dB), 4. how much he voices (x1.8),
+5. loudness independent of pitch, 6. slow, gliding transitions.
+Being small (short tract, higher pitch) is shared with children; these six
+are not.
+
+### Target ranges for a new phoneme (pass = "in his voice")
+
+Measured from his recorded sounds of each class. A derived sound should land
+inside its class's ranges (and its join into neighbours should glide ~2.6 dB).
+
+| Class (his examples) | H1–H2 | H1–A3 | HNR <500 | jitter | shimmer | B1 | other |
+|---|---|---|---|---|---|---|---|
+| Closed vowels (iː, ũ) | 10–32 dB | 24–43 dB | ≥ 35 dB | ≤ 0.4 % | ≤ 0.3 dB | 14–100 Hz (ũ 256) | F1 ≈ his pitch (F1/f0 ≈ 1–1.5) |
+| Open vowels (ã, ɐ˞) | ~5–6 dB | 23–26 dB | 29–32 dB | ≤ 0.5 % | ≤ 0.9 dB | 126–369 Hz | F1 800–1180 (jaw wide) |
+| Nasals (n, m) | 3–18 dB | 44–71 dB | 26–38 dB | ≤ 0.5 % (start 1.4) | ≤ 0.6 dB | 70–165 Hz | F1 310–400; loudness ≈ vowel |
+| r (ɹ) | ~0.6 dB | ~58 dB | ~28 dB | 0.4 % | 0.4 dB | ~98 Hz | F2 ~1780, F3 ~3540 |
+| Sibilant (ɕ) | — | — | — | — | — | — | centroid ~3.9 kHz, peak ~4.1 kHz, ~16 dB under vowels, hum underneath |
+| Tip burst (tʰ) | — | — | — | — | — | — | centroid ~4.3–4.4 kHz, 40–60 ms |
+| Lip burst (p) | — | — | — | — | — | — | centroid ~0.7 kHz (weak), mostly voiced |
+
+Figures: `fingerprint_overview.png` (him vs ordinary), `fingerprint_sounds.png`
+(every sound x every measure), `fingerprint_size.png`, `fingerprint_transitions.png`.
+
 ## Coverage: which sounds exist in his voice
 
 | Status | Sounds |
