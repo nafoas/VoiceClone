@@ -26,3 +26,8 @@ placement (those layers made things worse, v12-v16).
 - Remaining gap: his only m sits between r and a rounded u, so it is coloured
   on both sides. Not solvable by edge tricks alone; it is a "phoneme in his
   voice" problem (see docs/PRINCE_IDENTITY.md).
+
+## Update: pinned again with the derived phonemes
+"mama" (all variants), "ninny"/"minny" paused with the derived phonemes
+(docs/PRINCE_SPEC.md, "Pinned: derived phonemes"). "munis... nannar" and
+"nanni" remain the reference successes.

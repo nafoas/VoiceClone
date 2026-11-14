@@ -122,3 +122,20 @@ so derivations are calibrated by measuring the result in a real word.
   before a closed one ~0 dB (his m->ũ loudness change: 3.7 dB).
 - His joins briefly roughen (HNR 7–16) while mine stay clean (22–26); adding
   noise did not reproduce it (and lowered the voice score), so it is left open.
+
+## Pinned: derived phonemes (Da Boss, after the diagnostic round)
+
+Paused. Conclusion: with the current inventory (one 2.5 s clip: n, m, ɹ, ã,
+ɐ˞, ũ, iː, ɕ, p, tʰ), sounds he never said cannot be made convincingly by
+bending the ones he did. What worked: anything built from pieces he actually
+said. What fought us: mama (strained, no hum), ih (heard as ee), m before front
+vowels (heard as n).
+
+Kept for when we return:
+- Diagnostic sets awaiting picks: out/fresh/diag_mama.wav (M1-M4),
+  diag_ninny_continuum.wav (ee + 5 steps), diag_minny.wav (3 lip strengths).
+- Findings: his initial nasal is +3.6 dB over an open vowel (hum first); lip
+  edges must lower F1/F2 but never F3, and for his small tract the protection
+  starts ~3.0 kHz; a clean, gradual jaw opening avoids "choking".
+- The checkers pass sounds the ear rejects: they verify voice quality and rough
+  resonances, not his perceptual word boundaries.
