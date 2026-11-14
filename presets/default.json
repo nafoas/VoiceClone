@@ -33,7 +33,7 @@
   "lengthen_before_s": true,
   "de_ess_db": 6.0,
   "full_vowels": true,
-  "round_uh": "u",
+  "round_uh": "off",
   "final_t": true,
   "gap_s": 0.06,
   "sentence_gap_s": 0.22,

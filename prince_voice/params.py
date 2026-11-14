@@ -70,7 +70,7 @@ class Params:
     lengthen_before_s: bool = True  # stressed vowel before word-final s/z gets weight
     de_ess_db: float = 6.0       # extra attenuation on remaining hiss
     full_vowels: bool = True     # unstressed -er stays full: nanner -> nannar
-    round_uh: str = "u"          # stressed ʌ -> "u" | "ʊ" | "off"
+    round_uh: str = "off"        # global ʌ -> "u"|"ʊ"|"off". Prefer per-word entries in lexicon.json (moneys -> munis)
     final_t: bool = True         # final t fades before consonants; peet peet -> pee teet
 
     # --- timing ------------------------------------------------------------
