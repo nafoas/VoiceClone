@@ -1,8 +1,11 @@
 """Build Prince's phoneme catalogue from the labelled reference clip.
 
-Segment times come from analysis/IPA_TRANSCRIPTION.md. Steady sounds keep the
-median frame of the middle half of every instance (all instances pooled);
-dynamic sounds (bursts) keep their full frame sequence.
+Segment times come from analysis/IPA_TRANSCRIPTION.md, as one ordered sequence
+per phrase, so every instance knows its sub-phoneme context: left and right
+neighbour, pitch, stress, and position in the phrase. Steady sounds are stored
+per instance as two halves (the first half is coloured by the left neighbour,
+the second by the right) plus their natural micro-movement. Dynamic sounds
+(bursts) keep their full frame sequence and real audio.
 
     python scripts/build_catalogue.py   -> models/catalogue.npz
 """
@@ -18,19 +21,30 @@ from scipy.signal import resample_poly
 ROOT = Path(__file__).resolve().parents[1]
 SR, FRAME_MS = 24000, 5.0
 
-# label: list of (start, end) in the reference clip; "dyn" = keep whole sequence
-SEGMENTS = {
-    "n":  [(0.05, 0.155), (0.30, 0.375), (0.73, 0.79)],
-    "ã":  [(0.155, 0.30)],
-    "ɐ˞": [(0.375, 0.47)],
-    "ɹ":  [(0.47, 0.52)],
-    "m":  [(0.52, 0.61)],
-    "ũ":  [(0.61, 0.73)],
-    "iː": [(0.79, 0.99), (1.52, 1.60), (1.77, 1.90), (2.09, 2.30)],
-    "ɕ":  [(1.02, 1.11)],
-    "p":  [(1.455, 1.525)],   # dyn: weak lip release + rising transition
-    "tʰ": [(1.712, 1.772)],   # dyn: crisp burst + aspiration
-}
+# The clip as ordered sounds: (label, start, end, stressed syllable?)
+# "_" = closure silence. Phrase edges count as "#".
+PHRASES = [
+    [("n", 0.05, 0.155, True), ("ã", 0.155, 0.30, True), ("n", 0.30, 0.375, False),
+     ("ɐ˞", 0.375, 0.47, False), ("ɹ", 0.47, 0.52, False), ("m", 0.52, 0.61, True),
+     ("ũ", 0.61, 0.73, True), ("n", 0.73, 0.79, False), ("iː", 0.79, 0.99, False),
+     ("ɕ", 1.02, 1.11, False)],
+    [("p", 1.455, 1.525, True), ("iː", 1.52, 1.60, True), ("_", 1.70, 1.715, False),
+     ("tʰ", 1.712, 1.772, True), ("iː", 1.77, 1.90, True), ("_", 2.00, 2.04, False),
+     ("tʰ", 2.04, 2.08, True), ("iː", 2.09, 2.30, True)],
+]
+SEGMENTS = {}
+CONTEXT = {}   # (label, start) -> context
+for ph in PHRASES:
+    for k, (lab, s0, e0, st) in enumerate(ph):
+        if lab == "_":
+            continue
+        SEGMENTS.setdefault(lab, []).append((s0, e0))
+        CONTEXT[(lab, s0)] = dict(
+            left=ph[k - 1][0] if k > 0 else "#", right=ph[k + 1][0] if k + 1 < len(ph) else "#",
+            stress=st, initial=k == 0, final=k == len(ph) - 1)
+# bursts: keep just one recorded example as the dynamic unit
+SEGMENTS["p"] = [(1.455, 1.525)]    # weak lip release + rising transition
+SEGMENTS["tʰ"] = [(1.712, 1.772)]   # crisp burst + aspiration
 DYNAMIC = {"p", "tʰ"}
 VOICED = {"n", "ã", "ɐ˞", "ɹ", "m", "ũ", "iː", "p", "tʰ"}
 
@@ -66,7 +80,16 @@ def main():
                 store[f"isp_{i}_{k}"] = snap
                 store[f"iap_{i}_{k}"] = np.median(ap[m], 0)
                 store[f"ires_{i}_{k}"] = (Lm - Lm.mean(0)).astype(np.float32)
-                inst.append(dict(span=[s, e], f0=float(np.median(fv)) if len(fv) else 0.0))
+                # halves: first coloured by the left neighbour, second by the right
+                halves = {}
+                for side, (a0, a1) in (("L", (s + d * 0.1, s + d * 0.5)), ("R", (s + d * 0.5, e - d * 0.1))):
+                    mh = (t >= a0) & (t < a1)
+                    store[f"i{side}_{i}_{k}"] = np.median(np.log(sp[mh] + 1e-20), 0)
+                    store[f"ia{side}_{i}_{k}"] = np.median(ap[mh], 0)
+                    fh = f0[mh][f0[mh] > 0]
+                    halves[f"f0{side}"] = float(np.median(fh)) if len(fh) else 0.0
+                inst.append(dict(span=[s, e], f0=float(np.median(fv)) if len(fv) else 0.0,
+                                 **halves, **CONTEXT[(lab, s)]))
             instances[lab] = inst
             S = np.exp(np.median(np.vstack(S_all), 0))
             A = np.median(np.vstack(A_all), 0)

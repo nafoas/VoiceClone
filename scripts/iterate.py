@@ -122,8 +122,8 @@ def main():
           + " ".join(f"{x:4.0f}" for x in h[1:]))
     configs = {"default": {}}
     if a.sweep:
-        configs = {f"hum_fix {h}": dict(hold=0.35, hold_cons=0.35, burst_wave=True, life=1.0, hum_fix=h)
-                   for h in (0.3, 0.4, 0.5, 0.6)}
+        configs = {f"sub {sp} w_ctx {w}": dict(sub_phonemes=sp, w_ctx=w)
+                   for sp, w in ((False, 1.0), (True, 0.5), (True, 1.0), (True, 2.0))}
     for name, kw in configs.items():
         ph = render(cat, **kw)
         print(row(name, score(ph, ref)))
