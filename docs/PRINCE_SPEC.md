@@ -68,14 +68,16 @@ tested.)
 - **Class targets:** closed vowels, open vowels, nasals, r, sibilant, bursts
   (spec.json `classes`). Example: closed vowels need H1–H2 10–32 dB, low-band
   purity ≥ 35 dB, jitter ≤ 0.4 %, and F1 within ~1–1.6× his pitch (hum tuning).
-- **Transitions:** after a lip consonant F2 must **rise** into the vowel (his
-  real p→iː: +126 Hz); after a tongue-tip consonant it **falls** from high (his
-  n→ã: −173 Hz); F3 must never dip toward ~2.7 kHz (that is "r").
+- **Transitions:** a vowel's onset must never move clearly **away** from its
+  consonant's F2 locus (his lips ~1200 Hz, his tongue tip ~2700 Hz). Onset =
+  F2 over 15–40 ms after the release (tracker spikes on the nasal release frame
+  rejected), compared with the vowel's middle. F3 must not dip toward ~2.7 kHz
+  ("r"). Small movements are normal (tip -> "ee" barely moves).
 
-**Validated:** "nana" fails identity (measures as /ã/) and transition (falls).
-"mama" F **passes identity** (measures as /ɑ/) but **still fails the
-transition** (F2 falls 289 Hz into the vowel): the measured reason it still
-doesn't sound like a word-starting M. That is the next thing to fix there.
+**Validated:** all 7 real transitions in his clip pass. "nana" fails (onset
+moves away from the lips). "mama" F passes identity but its onset still leans
+toward n (+90 Hz): the measured reason it doesn't sound like a word-starting
+M. With the lip edge rebuilt over its first ~45 ms (G, H) it passes.
 
 ## Layer 4: prosody
 - Pitch is steady on vowels (0.02–0.04 st/frame) and **moves only in consonants**.
@@ -97,3 +99,14 @@ doesn't sound like a word-starting M. That is the next thing to fix there.
    real neighbours), then **layer 1** on a phrase using it.
 4. Listen. Your verdict goes back into the spec as a new positive or negative,
    and the ranges get sharper with every sound.
+
+## Phoneme log
+
+| Phoneme | Built from | How | Identity | Class | Transition | Voice | Da Boss |
+|---|---|---|---|---|---|---|---|
+| ɑ ("ah", mama) | ã | F2 2160 -> 1700 | pass | pass (B1 wide) | F: +90 lean to n; G/H: pass | 94–100 % | F best so far; G/H to hear |
+| **ɪ ("ih")** | iː | `[(375,520),(3240,2300),(3900,3700)]`, calibrated in context to F1 ~435, F2 ~2700 | **pass** (ninny, minny) | pass | pass | 94–100 % | **to hear** |
+
+Calibration note: a derivation only moves the measured formants ~40% of the
+requested shift in a short vowel between consonants (neighbours pull it back),
+so derivations are calibrated by measuring the result in a real word.

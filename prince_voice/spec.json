@@ -318,6 +318,31 @@
         1000
       ],
       "mostly_voiced": true
+    },
+    "near_closed_vowel": {
+      "examples": [
+        "ɪ"
+      ],
+      "H1H2": [
+        6,
+        30
+      ],
+      "H1A3": [
+        22,
+        45
+      ],
+      "HNR_0_500_min": 30,
+      "jitter_max": 0.5,
+      "shimmer_max": 0.5,
+      "B1": [
+        14,
+        260
+      ],
+      "F1_over_f0": [
+        1.3,
+        2.3
+      ],
+      "note": "interpolated between his closed and open vowels; to be confirmed"
     }
   },
   "phonemes": {
@@ -360,6 +385,12 @@
       "F1": 401,
       "F2": 2137,
       "source": "recorded; vowel after m: F2 rises from low (lips lower F1/F2, never F3)"
+    },
+    "ɪ": {
+      "F1": 440,
+      "F2": 2740,
+      "F3": 3700,
+      "source": "derived from iː: derive_vowel(cat,'ɪ','iː',[(375,520),(3240,2300),(3900,3700)]), calibrated by measurement in context (ninny 436/2721, minny 429/2685); NOT YET APPROVED"
     }
   },
   "prosody": {

@@ -317,7 +317,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           breath_support: float = 0.0, breath_ms: float = 200.0,
           attack_ms: float = 0.0, release_ms: float = 0.0, recolor: float = 0.0,
           lip_depth: float = 0.35, derhotic: bool = False, crisp_release: bool = False,
-          crisp_ms: float = 8.0,
+          crisp_ms: float = 8.0, lip_full_half: bool = False, lip_rise_ms: float = 45.0,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -643,17 +643,29 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                     src = tr[:c["nl"]][::-1]
                     tr[c["nl"]:c["nl"] + c["nr"]] = src[np.linspace(0, len(src) - 1, c["nr"]).round().astype(int)]
                 continue
-            if place_differs(c["rec_left"], c["want_left"]) and k > 0 and trajs[k - 1][0] + len(trajs[k - 1][1]) == p0:
+            lip_diff = lip_full_half and PLACE.get(c["want_left"]) == "lab" and c["rec_left"] != c["want_left"]
+            if (place_differs(c["rec_left"], c["want_left"]) or lip_diff) and k > 0 \
+                    and trajs[k - 1][0] + len(trajs[k - 1][1]) == p0:
                 kk = max(2, int(round(recolor * c["nl"])))
                 b_sp, b_ap = tr[min(kk, len(tr) - 1)].copy(), ta[min(kk, len(ta) - 1)].copy()
                 if PLACE.get(c["want_left"]) == "lab":
-                    tr[:kk] = _lip_edge(b_sp, kk, lip_depth, toward_start=True)
+                    if lip_full_half:
+                        # the whole recorded first half carries the old neighbour, so rebuild
+                        # it: a ~45 ms rise from the lips onto the vowel's middle, then the vowel
+                        nl_ = c["nl"]; kr = max(2, min(nl_, int(lip_rise_ms / FRAME_MS)))
+                        mid_sp, mid_ap = tr[nl_ - 1].copy(), ta[nl_ - 1].copy()
+                        tr[:kr] = _lip_edge(mid_sp, kr, lip_depth, toward_start=True)
+                        tr[kr:nl_] = mid_sp; ta[:nl_] = mid_ap
+                        kk = 0
+                    if kk:
+                        tr[:kk] = _lip_edge(b_sp, kk, lip_depth, toward_start=True)
                 else:
                     a_sp = trajs[k - 1][1][-1]
                     for j in range(kk):
                         x = (j + 1) / (kk + 1); x = x * x * (3 - 2 * x)
                         tr[j] = (1 - x) * a_sp + x * b_sp
-                ta[:kk] = b_ap
+                if kk:
+                    ta[:kk] = b_ap
             nv_end = c["nl"] + c["nr"]
             if place_differs(c["rec_right"], c["want_right"]) and k + 1 < len(trajs) and p0 + len(tr) == trajs[k + 1][0]:
                 kk = max(2, int(round(recolor * c["nr"])))

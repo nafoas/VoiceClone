@@ -22,9 +22,10 @@ sys.path.insert(0, str(ROOT / "analysis"))
 from fingerprint import source_measures  # noqa: E402
 
 SPEC = json.loads((ROOT / "prince_voice/spec.json").read_text())
-CLASS_OF = {"iː": "closed_vowel", "ũ": "closed_vowel", "ã": "open_vowel", "ɐ˞": "open_vowel", "ɑ": "open_vowel",
+CLASS_OF = {"ɪ": "near_closed_vowel", "iː": "closed_vowel", "ũ": "closed_vowel", "ã": "open_vowel", "ɐ˞": "open_vowel", "ɑ": "open_vowel",
             "n": "nasal", "m": "nasal"}
 LIP, TIP = {"m", "p", "b"}, {"n", "tʰ", "t", "d"}
+LOCUS = {c: 1200.0 for c in LIP} | {c: 2700.0 for c in TIP}   # his F2 loci (Hz)
 
 
 def bark(f):
@@ -63,12 +64,25 @@ def check(path, s, e, ph, after=None):
     out["class"] = checks
     # transition into the vowel
     if after:
-        on = [F.get_value_at_time(2, s + q) for q in (0.005, 0.015)]
-        later = F.get_value_at_time(2, s + min(0.06, 0.5 * d))
-        f3on = np.nanmin([F.get_value_at_time(3, s + q) for q in (0.005, 0.015, 0.025)])
-        rise = later - np.nanmean(on)
-        want = "rise" if after in LIP else ("fall" if after in TIP else None)
-        ok = (rise > 80) if want == "rise" else ((rise < -80) if want == "fall" else True)
+        # locus rule: the vowel's onset points toward the consonant's locus (his
+        # tongue tip ~2700 Hz, his lips ~1200 Hz). Onset = F2 at 10-25 ms (after
+        # the release frame, where a nasal murmur fools formant tracking).
+        vals = np.array([F.get_value_at_time(2, s + q) for q in np.arange(0.015, 0.0401, 0.005)])
+        vals = vals[np.isfinite(vals)]
+        vals = vals[np.abs(vals - np.median(vals)) < 400] if len(vals) else vals   # drop tracker spikes
+        on = float(np.median(vals)) if len(vals) else np.nan
+        mid2 = f2
+        locus = LOCUS.get(after)
+        if locus is None:
+            ok, want = True, None
+        else:
+            want = f"not away from {locus:.0f} Hz"
+            # validated on his clip: the onset never moves clearly AWAY from the
+            # consonant's locus (small movements are normal, e.g. tip -> ee)
+            moved = on - mid2
+            ok = not (abs(moved) > 80 and np.sign(moved) != np.sign(locus - mid2))
+        rise = on - mid2
+        f3on = np.nanmin([F.get_value_at_time(3, s + q) for q in (0.010, 0.020, 0.030)])
         out["transition"] = (ok, want, rise, f3on, f3on >= 2750)
     return out
 
@@ -83,7 +97,7 @@ def report(path, s, e, ph, after=None):
         print(f"  class:      {'PASS' if ok else 'FAIL'} {k:9} {v:7.1f}  (target {rng})")
     if "transition" in r:
         ok, want, rise, f3, f3ok = r["transition"]
-        print(f"  transition: {'PASS' if ok else 'FAIL'}: F2 {'+' if rise >= 0 else ''}{rise:.0f} Hz into the vowel (want {want})"
+        print(f"  transition: {'PASS' if ok else 'FAIL'}: onset F2 is {rise:+.0f} Hz from the vowel's middle (want {want})"
               f"; lowest F3 at onset {f3:.0f} Hz {'ok' if f3ok else '(r-like!)'}")
     return r
 
