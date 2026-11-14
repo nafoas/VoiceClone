@@ -29,13 +29,14 @@ VOWELS = {"ã", "ɐ˞", "ũ", "iː", "a", "i", "u", "o", "e", "ɔ", "ɪ", "ʊ", 
 def pitch_plan(units, levels_hz, onset: float = 1.0, step_ms: float = 75.0,
                step_lead: float = 0.65, wobble_st: float = 0.1, burst_dip_st: float = 2.5,
                burst_rise_ms: float = 30.0, seed: int = 7, drift_st: list | None = None,
-               end_st: float = 0.0, end_ms: float = 80.0):
+               end_st: float = 0.0, end_ms: float = 80.0, declination_st: float = 0.0):
     """units: bnuysynth Units; levels_hz: target plateau per unit (Hz).
 
     onset      scale of the measured phrase-onset fall (0 = none)
     drift_st   per unit: slow pitch drift across that unit (semitones), so
                plateaus needn't be dead flat
     end_st     gesture over the last end_ms of the phrase (+ flick up, - fall)
+    declination_st  gentle change across the whole phrase (negative = sinking)
     step_ms    duration of the S-shaped step between different levels
     step_lead  fraction of the step that happens before the unit boundary
     """
@@ -91,6 +92,8 @@ def pitch_plan(units, levels_hz, onset: float = 1.0, step_ms: float = 75.0,
             st += d * ((t - edges[i]) / max(1e-3, edges[i + 1] - edges[i]) - 0.5)
         if end_st:
             st += end_st * np.clip((t - (total - end_ms / 1000)) / (end_ms / 1000), 0, 1)
+        if declination_st:
+            st += declination_st * np.clip(t / max(total, 1e-3), 0, 1)
         st += float(np.interp(t, tt, w))
         return float(2 ** (st / 12))
     return f

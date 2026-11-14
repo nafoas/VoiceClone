@@ -47,19 +47,43 @@ def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None
     rng = np.random.default_rng(seed)
     r = (lambda lo, hi, mid: mid + vary * (rng.uniform(lo, hi) - mid)) if seed is not None else \
         (lambda lo, hi, mid: mid)
-    base = CALM * 2 ** (r(-0.5, 0.5, 0.0) / 12)
-    step = r(1.0, 2.8, 2.0)    # smaller than the clip's one big step: not every word steps
-    if seed is not None and vary > 0:
-        u = rng.uniform()
-        step = -0.5 * step if u < 0.15 * vary else (0.0 if u < 0.45 * vary else step)
+    n_words = len(phrase)
+    # register: a sensible middle, never "really low"; single words sit higher
+    base = CALM * 2 ** (r(0.3, 2.0, 0.0 if n_words > 1 else 1.0) / 12)
+    # tune: one of a few phrase shapes, each varied (seedless = the clip's shape)
+    tunes = ["step_up", "level_sink", "high_settle", "lift"]
+    tune = "step_up" if seed is None else rng.choice(tunes, p=[0.3, 0.3, 0.25, 0.15])
+    if n_words == 1 and tune == "step_up":
+        tune = "level_sink"
+    step = r(2.0, 3.5, 3.6)
+    word_st = []
+    for wi in range(n_words):
+        if tune == "step_up":
+            word_st.append(0.0 if wi == 0 else step - 0.7 * (wi - 1))
+        elif tune == "high_settle":
+            word_st.append(r(1.5, 3.0, 2.0) if wi == 0 else 0.0)
+        else:
+            word_st.append(0.0)
+    declination = r(-2.5, -1.0, 0.0) if tune == "level_sink" else r(-0.8, 0.0, 0.0)
+    if tune == "lift":
+        end = r(1.5, 3.0, 2.0)
+    else:
+        end = 0.0 if (seed is None or rng.uniform() < 0.5) else r(-1.5, -0.5, 0.0)
     final_stretch = r(1.4, 1.9, FINAL_STRETCH)
+    first = phrase[0][0][0].split()[0] if phrase and phrase[0] else ""
+    if first in ("n", "m", "ɹ"):
+        onset = r(0.5, 1.0, 1.0)      # a falling hum into a nasal start, like his "nnn"
+    elif first in VOWELS:
+        onset = r(0.0, 0.3, 0.45)
+    else:
+        onset = 0.0                   # bursts: the rise out of the burst instead
     units, levels = [], []
     n_words = len(phrase)
     for wi, word in enumerate(phrase):
         if mood == "excited":
             level = EXCITED[min(wi, len(EXCITED) - 1)] * 2 ** (r(-1.0, 1.0, 0.0) / 12)
         else:
-            level = base if wi == 0 else base * 2 ** ((step - 0.8 * max(0, wi - 1)) / 12)
+            level = base * 2 ** (word_st[wi] / 12)
         for si, (phs, stressed) in enumerate(word):
             phs = phs.split()
             last_syll = wi == n_words - 1 and si == len(word) - 1
@@ -84,9 +108,12 @@ def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None
                 levels.append(level)
     if cat is not None and natural > 0:
         _natural_timing(units, cat, natural)
-    end = r(-1.0, 1.2, 0.0) if (seed is None or rng.uniform() < 0.5) else 0.0
-    kw = dict(onset=r(0.3, 1.0, 1.0), end_st=end, seed=seed if seed is not None else 7,
-              step_ms=r(70.0, 110.0, 75.0))
+    if levels and onset > 0:   # his hummed start peaks ~344 Hz: never start above ~360
+        room = 12 * np.log2(360.0 / levels[0])
+        onset = float(np.clip(onset, 0.0, max(0.0, room / 8.6)))
+    kw = dict(onset=onset, end_st=end, seed=seed if seed is not None else 7,
+              step_ms=r(70.0, 110.0, 75.0), declination_st=declination if mood != "excited" else 0.0)
+    plan.last_tune = tune
     return units, levels, kw
 
 
@@ -96,7 +123,7 @@ def _natural_timing(units, cat, natural):
         if u.ph == "_" or cat.dynamic.get(u.ph, False) or not cat.inst.get(u.ph):
             continue
         left = units[i - 1].ph if i > 0 else "#"
-        right = "_" if u.fade_ms else (units[i + 1].ph if i + 1 < len(units) else "#")
+        right = "#" if i + 1 >= len(units) else ("_" if u.fade_ms else units[i + 1].ph)
         c = cat.pick_half(u.ph, "L", left, float("nan"), u.stress, i == 0)
         cr = cat.pick_half(u.ph, "R", right, float("nan"), u.stress, i == len(units) - 1, same_as=c, w_join=1.0)
         if c is None:

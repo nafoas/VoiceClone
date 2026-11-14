@@ -45,7 +45,7 @@ P1 = _avoiding([U("n", 105), U("ã", 145), U("n", 75), U("ɐ˞", 95), U("ɹ", 50
                 U("ũ", 120), U("n", 60), U("iː", 210), U("ɕ", 150)], T1)
 # peets, with the closure silences before each t (1.70-1.715, 2.00-2.04)
 P2 = _avoiding([U("p", 65), U("iː", 180, fade_ms=100), U("_", 15), U("tʰ", 45),
-                U("iː", 240, fade_ms=100), U("_", 40), U("tʰ", 40), U("iː", 380, fade_ms=170)], T2)
+                U("iː", 240, fade_ms=100), U("_", 35), U("tʰ", 55), U("iː", 370, fade_ms=170)], T2)
 
 
 def world(x):

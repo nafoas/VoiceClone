@@ -292,6 +292,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     lifes = []            # (start frame, residual trajectory)
     trajs = []            # (start frame, log-sp trajectory, ap trajectory)
     plife = []            # (start frame, recorded pitch micro-movement, semitones)
+    picks = []            # (sound, left-half recording, right-half recording) for diagnostics
     owner_f0 = []
     owner_hum = []        # each frame's recorded hum depth (dB), for re-pitching
     prev_burst = False
@@ -359,12 +360,15 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                 a = a[np.isfinite(a)]
                 return float(np.median(a)) if len(a) else np.nan
             lctx = units[ui - 1].ph if ui > 0 else "#"
-            rctx = "_" if u.fade_ms else (units[ui + 1].ph if ui + 1 < len(units) else "#")
+            # a phrase-final sound looks for a phrase-final recording ("#"), even
+            # when it fades; a mid-phrase fade leads into silence ("_")
+            rctx = "#" if ui + 1 >= len(units) else ("_" if u.fade_ms else units[ui + 1].ph)
             iL = cat.pick_half(u.ph, "L", lctx, med(fr[: n // 2 + 1]), u.stress, ui == 0, u.avoid,
                                w_ctx=w_ctx, avoid_penalty=avoid_penalty, prefer=u.prefer) if sub_phonemes else None
             iR = cat.pick_half(u.ph, "R", rctx, med(fr[n // 2:]), u.stress, ui == len(units) - 1, u.avoid,
                                w_ctx=w_ctx, avoid_penalty=avoid_penalty,
                                same_as=iL, w_join=w_join, prefer=u.prefer) if sub_phonemes else None
+            picks.append((u.ph, iL["span"] if iL else None, iR["span"] if iR else None))
             if iL is not None and iR is not None:
                 tL, tR, aL, aR = iL["L"], iR["R"], iL["aL"], iR["aR"]
                 inst = iL
@@ -527,7 +531,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
             fixed = _hum_correct(sp[sel], f_from, f0[sel])
             sp[sel] = np.exp((1 - hum_fix) * np.log(sp[sel] + 1e-20) + hum_fix * np.log(fixed + 1e-20))
 
-    synth.last = dict(f0=f0.copy(), owner_f0=owner_f0.copy())  # for diagnostics
+    synth.last = dict(f0=f0.copy(), owner_f0=owner_f0.copy(), picks=picks)  # for diagnostics
     end_fade_ms = 15.0
     y = pw.synthesize(f0, np.ascontiguousarray(sp), np.ascontiguousarray(ap), SR, FRAME_MS)
     for off, w, g in bursts:   # splice his real bursts
