@@ -1,0 +1,387 @@
+{
+  "_about": "Prince's voice, objectively. 'accept' ranges come from Da Boss-approved versions (clip, gold rebuild, fresh munis-nannar, nanni, mama F) widened by a tolerance; the 'not' list from rejected versions and standard failures (analysis/negative_space.py). Small sample: refine as more approved material arrives.",
+  "voice_quality": {
+    "pitch_change_st": {
+      "accept": [
+        0.015,
+        0.05
+      ],
+      "his": [
+        0.02,
+        0.04
+      ],
+      "why": "frame-to-frame pitch steadiness; above = synthetic/child/chipmunk wobble, ~0 = robotic"
+    },
+    "jitter_pct": {
+      "accept": [
+        0.3,
+        1.0
+      ],
+      "his": [
+        0.54,
+        0.92
+      ],
+      "why": "pitch roughness; above = synthetic, child-like, breathy"
+    },
+    "shimmer_dB": {
+      "accept": [
+        0.3,
+        0.65
+      ],
+      "his": [
+        0.37,
+        0.6
+      ],
+      "why": "loudness roughness; above = synthetic/child, below = robotic/choppy"
+    },
+    "H1A3": {
+      "accept": [
+        31.0,
+        38.5
+      ],
+      "his": [
+        32.8,
+        37.1
+      ],
+      "why": "the hum cliff; below = ordinary/synthetic/chipmunk, ABOVE = overdone hum, heard as a child"
+    },
+    "HNR_0_500": {
+      "accept": [
+        28.0,
+        37.0
+      ],
+      "his": [
+        29.1,
+        35.7
+      ],
+      "why": "purity where the hum lives; below = breathy/ordinary, above = robotic"
+    },
+    "HNR_1500_2500": {
+      "accept": [
+        12.0,
+        20.0
+      ],
+      "his": [
+        12.7,
+        19.1
+      ],
+      "why": "purity higher up; above = robotic"
+    },
+    "flux_p95": {
+      "accept": [
+        5.8,
+        7.6
+      ],
+      "his": [
+        6.2,
+        7.3
+      ],
+      "why": "biggest frame-to-frame spectral jumps; above = choppy/chipmunk, below = slurred"
+    },
+    "flux": {
+      "accept": [
+        3.0,
+        4.0
+      ],
+      "his": [
+        3.2,
+        3.85
+      ],
+      "why": "how much the sound keeps moving; below = frozen/robotic/choppy, above = breathy"
+    },
+    "voiced_pct": {
+      "accept": [
+        82.0,
+        100.0
+      ],
+      "his": [
+        84.3,
+        98.1
+      ],
+      "why": "he hums through his phrases; below = ordinary/synthetic"
+    },
+    "CPPS": {
+      "accept": [
+        7.0,
+        15.0
+      ],
+      "his": [
+        7.4,
+        14.8
+      ],
+      "why": "clarity"
+    },
+    "VTL_cm": {
+      "accept": [
+        11.5,
+        13.2
+      ],
+      "his": [
+        11.8,
+        12.8
+      ],
+      "why": "size from formant spacing; below = chipmunk, above = adult"
+    },
+    "F3_low": {
+      "accept": [
+        2750,
+        4000
+      ],
+      "his": [
+        2836,
+        3446
+      ],
+      "why": "lowest F3 (5th pct); below = r-colour or rounding where there shouldn't be"
+    },
+    "H1H2": {
+      "accept": [
+        4.5,
+        13.0
+      ],
+      "his": [
+        4.9,
+        12.6
+      ],
+      "why": "fundamental over 2nd harmonic (depends on sounds used)"
+    },
+    "loud_per_st": {
+      "accept": [
+        -0.6,
+        0.9
+      ],
+      "his": [
+        -0.48,
+        0.77
+      ],
+      "why": "his loudness does not follow his pitch"
+    },
+    "loud_flutter": {
+      "accept": [
+        2.0,
+        7.0
+      ],
+      "his": [
+        2.3,
+        6.6
+      ],
+      "why": "loudness flutter inside hums"
+    },
+    "pitch_Hz": {
+      "accept": [
+        200,
+        410
+      ],
+      "his": [
+        214,
+        265
+      ],
+      "why": "calm 215, raised 265, excited 330-390"
+    }
+  },
+  "not": {
+    "ordinary adult": "pitch wobble x5-8, jitter x3, shallow hum cliff (H1-A3 ~24-28), less voicing, impure low band",
+    "synthetic (TTS)": "pitch wobble x3-5, shallow hum cliff, jitter/shimmer high",
+    "a child": "OVERDONE hum cliff (H1-A3 42-46), pitch wobble x2, short tract or low F3",
+    "chipmunk": "pitch and resonances up together: wobble x10, tract < 11 cm, huge spectral jumps, shallow cliff",
+    "breathy": "jitter up, low-band purity down (HNR<500 ~22), sound moving too much",
+    "robotic / frozen": "pitch wobble ~0, purity too high (HNR<500 ~50), spectral movement too low, loudness tied to pitch",
+    "choppy": "spectral movement too low inside sounds, shimmer too low",
+    "slurred": "joins melt more than his (~2.6 dB spectral change at a join)",
+    "nana / rarra": "phoneme identity, not voice quality: vowel edges carry the wrong consonant (n: F2 falling from ~2360; r: F3 dropping)",
+    "formulaic prosody": "prosody, not voice quality: variation without a reason, pitch moving inside vowels, fades mid-utterance"
+  },
+  "classes": {
+    "closed_vowel": {
+      "examples": [
+        "iː",
+        "ũ"
+      ],
+      "H1H2": [
+        10,
+        32
+      ],
+      "H1A3": [
+        22,
+        45
+      ],
+      "HNR_0_500_min": 35,
+      "jitter_max": 0.4,
+      "shimmer_max": 0.3,
+      "B1": [
+        14,
+        260
+      ],
+      "F1_over_f0": [
+        0.9,
+        1.6
+      ]
+    },
+    "open_vowel": {
+      "examples": [
+        "ã",
+        "ɐ˞",
+        "ɑ"
+      ],
+      "H1H2": [
+        4,
+        7
+      ],
+      "H1A3": [
+        22,
+        27
+      ],
+      "HNR_0_500_min": 28,
+      "jitter_max": 0.5,
+      "shimmer_max": 0.9,
+      "B1": [
+        110,
+        420
+      ],
+      "F1": [
+        800,
+        1200
+      ]
+    },
+    "nasal": {
+      "examples": [
+        "n",
+        "m"
+      ],
+      "H1H2": [
+        3,
+        18
+      ],
+      "H1A3": [
+        44,
+        71
+      ],
+      "HNR_0_500_min": 26,
+      "jitter_max": 0.5,
+      "shimmer_max": 0.6,
+      "B1": [
+        70,
+        170
+      ],
+      "F1": [
+        310,
+        410
+      ],
+      "loudness_vs_vowel_dB": [
+        -4.5,
+        3
+      ]
+    },
+    "rhotic": {
+      "examples": [
+        "ɹ"
+      ],
+      "F2": 1780,
+      "F3": 3540
+    },
+    "sibilant": {
+      "examples": [
+        "ɕ"
+      ],
+      "centroid_Hz": [
+        3600,
+        4300
+      ],
+      "peak_Hz": [
+        3800,
+        4500
+      ],
+      "under_vowel_dB": [
+        12,
+        20
+      ],
+      "voiced_underneath": true
+    },
+    "tip_burst": {
+      "examples": [
+        "tʰ"
+      ],
+      "centroid_Hz": [
+        4000,
+        4600
+      ],
+      "ms": [
+        40,
+        60
+      ]
+    },
+    "lip_burst": {
+      "examples": [
+        "p"
+      ],
+      "centroid_Hz": [
+        500,
+        1000
+      ],
+      "mostly_voiced": true
+    }
+  },
+  "phonemes": {
+    "iː": {
+      "F1": 375,
+      "F2": 3240,
+      "F3": 3900,
+      "source": "recorded"
+    },
+    "ũ": {
+      "F1": 388,
+      "F2": 1325,
+      "F3": 3914,
+      "source": "recorded (the hummy u)"
+    },
+    "ã": {
+      "F1": 1178,
+      "F2": 2138,
+      "F3": 3679,
+      "source": "recorded (the a of nannar)"
+    },
+    "ɐ˞": {
+      "F1": 813,
+      "F2": 1954,
+      "F3": 3082,
+      "source": "recorded"
+    },
+    "ɑ": {
+      "F1": 1178,
+      "F2": 1700,
+      "F3": 3600,
+      "source": "derived from ã (Da Boss: mama version F)"
+    },
+    "n": {
+      "F1": 320,
+      "F2": 2390,
+      "source": "recorded; vowel after n: F2 falls into the vowel"
+    },
+    "m": {
+      "F1": 401,
+      "F2": 2137,
+      "source": "recorded; vowel after m: F2 rises from low (lips lower F1/F2, never F3)"
+    }
+  },
+  "prosody": {
+    "plateau_pitch_change_st": [
+      0.02,
+      0.04
+    ],
+    "pitch_moves_in": "consonants, never sliding inside a vowel",
+    "main_stress_step_st": 3.6,
+    "onset_fall_st": 8.3,
+    "onset_fall_ms": 150,
+    "levels_Hz": {
+      "calm": 215,
+      "raised": 265,
+      "excited": [
+        330,
+        390
+      ]
+    },
+    "loudness_follows_pitch": false,
+    "fade": "only at the end of what he is saying: ~20 dB drop in 20 ms, then a humming tail 80-150 ms",
+    "variation": "only with a reason (intent), never random"
+  },
+  "_tolerance_note": "class ranges widened ~10% beyond his measured values (his own clip sat on the edges)"
+}
