@@ -2,7 +2,7 @@
 
     python -m prince_voice "OH!! what dis??" -o oh.wav
     python -m prince_voice -f lines.txt -o out/          # one wav per line
-    python -m prince_voice "is round." --preset presets/default.json --set formant_shift=1.3
+    python -m prince_voice "is round." --preset presets/default.json --set formant_high=1.5
     python -m prince_voice "Da Boss!!" --phonemes        # show phonemes only
 """
 

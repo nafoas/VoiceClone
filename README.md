@@ -42,7 +42,7 @@ First run downloads the Kokoro model (~330 MB) and an English language model.
 ```bash
 python -m prince_voice "OH!! what dis??" -o out/oh.wav
 python -m prince_voice -f reference/test_lines.txt -o out/test/
-python -m prince_voice "is round." --set formant_shift=1.3 --set pitch_st=2
+python -m prince_voice "is round." --set formant_high=1.5 --set pitch_st=2
 python -m prince_voice "Da Boss!!" --phonemes      # inspect, no audio
 python scripts/audition.py                          # compare base voices
 ```
