@@ -41,6 +41,7 @@ _F = {
     "ɐ˞": [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, .5, 0, 1, 0],
     "ũ":  [0, 0, 0, .5, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0],
     "iː": [0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0],
+    "ɑ":  [0, 0, 0, .3, 0, 0, 0, 1, 0, .6, 0, 1, 0, 0, 0],
     "_":  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
     "#":  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
 }
@@ -56,6 +57,38 @@ def place_differs(recorded: str | None, wanted: str | None) -> bool:
     tongue tip vs palate)? Vowels, silence and phrase edges don't count."""
     a, b = PLACE.get(recorded or ""), PLACE.get(wanted or "")
     return a is not None and b is not None and a != b
+
+
+def derive_vowel(cat: "Catalogue", new: str, base: str, fmap: list[tuple[float, float]]) -> None:
+    """Extrapolate a vowel he never said from one he did (his texture, hum and
+    movement kept): every instance of `base` is copied with its spectral
+    envelopes remapped along frequency, so resonance at Hz a moves to Hz b for
+    each (a, b) in fmap (monotonic; 0 and Nyquist stay fixed)."""
+    if base not in cat.inst or new in cat.inst:
+        return
+    xs = [0.0] + [a for a, _ in fmap] + [SR / 2]
+    ys = [0.0] + [b for _, b in fmap] + [SR / 2]
+
+    def remap(env):
+        env = np.asarray(env, dtype=float)
+        nb = env.shape[-1]
+        hz = np.linspace(0, SR / 2, nb)
+        src = np.interp(hz, ys, xs)            # output Hz <- source Hz
+        if env.ndim == 1:
+            return np.interp(src, hz, env)
+        return np.stack([np.interp(src, hz, e) for e in env])
+    insts = []
+    for c in cat.inst[base]:
+        d = dict(c)
+        for key in ("sp", "L", "R", "TL", "TR", "tail"):
+            if key in d:
+                d[key] = remap(d[key])
+        insts.append(d)
+    cat.inst[new] = insts
+    for table in (cat.sp, cat.ap, cat.voiced, cat.dynamic, cat.f0_ref):
+        if base in table:
+            table[new] = remap(table[base]) if table is cat.sp else table[base]
+    _F.setdefault(new, _F.get(base, [0] * 15))
 
 
 def ctx_dist(a: str, b: str) -> float:
@@ -283,7 +316,8 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           w_pitch: float = 2.0, hum_boost_db: float = 0.0, hum_steady: float = 0.0,
           breath_support: float = 0.0, breath_ms: float = 200.0,
           attack_ms: float = 0.0, release_ms: float = 0.0, recolor: float = 0.0,
-          lip_depth: float = 0.35, derhotic: bool = False,
+          lip_depth: float = 0.35, derhotic: bool = False, crisp_release: bool = False,
+          crisp_ms: float = 8.0,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -560,6 +594,13 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
         pos += n
         t += n * FRAME_MS / 1000
 
+    crisp_at = set()
+    if crisp_release:
+        e_ = np.cumsum([0] + [max(1, int(round(x.ms / FRAME_MS))) for x in units])
+        for k_ in range(len(units) - 1):
+            if units[k_].ph in ("m", "n") and units[k_ + 1].stress and units[k_ + 1].ph not in ("m", "n", "_"):
+                crisp_at.add(int(e_[k_ + 1]))
+
     # glide between anchors
     T = pos
     nb = anchors[0][1].shape[-1]
@@ -648,6 +689,8 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                 a_src, b_src = traj_src.get(p0), traj_src.get(b)
                 if a_src and b_src and not a_src[2] and abs(a_src[1][1] - b_src[0][0]) < 0.012:
                     continue
+                if b in crisp_at:          # a word-starting nasal opening into its vowel
+                    continue
                 dL = sp[b:b + 2].mean(0) - sp[b - 2:b].mean(0)
                 dA = ap[b:b + 2].mean(0) - ap[b - 2:b].mean(0)
                 ka = min(ke, len(tr)); kb = min(ke, starts[b])
@@ -660,7 +703,8 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
             ap = np.clip(ap, 0, 1)
         for p0, tr, ta in trajs:
             for b in (p0, p0 + len(tr)):
-                lo, hi = max(0, b - wj), min(len(sp), b + wj)
+                w_here = max(1, int(crisp_ms / FRAME_MS / 2)) if b in crisp_at else wj
+                lo, hi = max(0, b - w_here), min(len(sp), b + w_here)
                 if hi - lo < 2 or b <= 0 or b >= len(sp):
                     continue
                 L, R = sp[lo].copy(), sp[hi - 1].copy()
