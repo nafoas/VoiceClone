@@ -4,3 +4,6 @@ pyworld
 soundfile
 numpy
 scipy
+praat-parselmouth
+# his mouth (tube model on VocalTractLab's articulators; CPU only, no torchaudio needed)
+vocaltractlab-cython

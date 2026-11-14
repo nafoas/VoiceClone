@@ -30,3 +30,41 @@ github.com/dsuedholt/vocal-tract-grad).
    tract, and correct it with the same fit that maps human shapes to his
    recorded ones.
 4. **Validate** every new sound with the spec layers and your ear.
+
+## Built (first pass)
+
+- **VocalTractLab runs on CPU.** The high-level `vocaltractlab` package pulls in
+  a GPU torchaudio; its native engine `vocaltractlab-cython` needs nothing else.
+  We use the engine directly: articulators -> area function (40 tubes).
+- **`prince_voice/mouth.py`**: our chain-matrix tube model with losses and a
+  nasal branch. On VocalTractLab's own vowels it agrees with VTL's transfer
+  functions within ~5% (a, i, u, schwa).
+- **His size**: formant dispersion says the human model is 17.3 cm and he is
+  12.5 cm -> scale 0.72.
+- **Fitted to him** (`scripts/fit_mouth.py` -> `models/mouth_fit.json`): every
+  recorded vowel is reproduced by an ordinary articulation (error 0.15-0.43
+  Bark). The fits share a pattern: larynx raised (short throat), lips pulled
+  back, jaw a little closed.
+
+  | his vowel | his F1/F2/F3 | scaled human | fitted mouth |
+  |---|---|---|---|
+  | iː | 362 / 3323 / 4119 | 330 / 3085 / 4365 | 355 / 3280 / 4275 |
+  | ũ | 388 / 1325 / 3914 | 375 / 1085 / 3580 | 390 / 1325 / 3780 |
+  | ã | 1178 / 2138 / 3679 | 970 / 1750 / 3440 | 1155 / 2135 / 3650 |
+  | ɐ˞ | 813 / 1954 / 3082 | 610 / 2225 / 3520 | 820 / 1955 / 3105 |
+
+- **Limits (measured, not assumed)**: human moves do NOT transfer between his
+  vowels that are far apart (predicting his ũ from his ã via the human a->u
+  move is worse than guessing). His recorded n/m do not look like textbook
+  nasal murmurs either (they behave like hummy closed vowels), so his real n/m
+  are kept. The mouth is used for SMALL physical changes to his real sounds.
+- **How it makes sound** (`prince_voice/mouthderive.py`): new = his real sound
+  x |H(new shape)|^2 / |H(shape fitted to that sound)|^2. The model's own error
+  cancels; his source, hum and movement stay. Gain capped at +-24 dB, his
+  recording untouched above 5-7 kHz.
+- **First uses**: ɑ = his nannar ã with the tongue moved back 0.6 cm (and the
+  blade 1.4 cm) -> 1100 / 1785 / 3685 (`scripts/mouth_vowels.py`); lips
+  opening into a vowel after m (`synth(..., mouth_edges=True)`).
+  check_phoneme on "mama": the old warp makes the 2nd syllable measure as the
+  r-vowel ɐ˞ ("rarra"); both mouth versions measure as ɑ in both syllables.
+  Open issue: the mouth's lip opening into iː (minny) gives almost no F2 dip.

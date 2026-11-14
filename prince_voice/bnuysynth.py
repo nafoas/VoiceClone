@@ -306,6 +306,14 @@ def _lip_edge(steady: np.ndarray, k: int, depth: float, toward_start: bool,
     return out
 
 
+def _mouth_shape(ph):
+    try:
+        from .mouthderive import shape
+        return shape(ph)
+    except Exception:
+        return None
+
+
 def u_is_cons(tr, p0) -> bool:   # placeholder hook: all trajectory units are re-coloured by context
     return False
 
@@ -327,6 +335,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           lip_depth: float = 0.35, derhotic: bool = False, crisp_release: bool = False,
           crisp_ms: float = 8.0, lip_full_half: bool = False, lip_rise_ms: float = 45.0,
           jaw_open: float = 0.0, join_texture: float = 0.0, join_texture_ms: float = 20.0,
+          mouth_edges: bool = False, mouth_open: float = 0.15,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -663,7 +672,12 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                         # it: a ~45 ms rise from the lips onto the vowel's middle, then the vowel
                         nl_ = c["nl"]; kr = max(2, min(nl_, int(lip_rise_ms / FRAME_MS)))
                         mid_sp, mid_ap = tr[nl_ - 1].copy(), ta[nl_ - 1].copy()
-                        tr[:kr] = _lip_edge(mid_sp, kr, lip_depth, toward_start=True, jaw=jaw_open)
+                        if mouth_edges and _mouth_shape(c["ph"]) is not None:
+                            # his mouth: lips really opening into this vowel (tube model)
+                            from .mouthderive import mouth_edge
+                            tr[:kr] = mouth_edge(mid_sp, kr, c["ph"], "lab", True, mouth_open)
+                        else:
+                            tr[:kr] = _lip_edge(mid_sp, kr, lip_depth, toward_start=True, jaw=jaw_open)
                         tr[kr:nl_] = mid_sp; ta[:nl_] = mid_ap
                         kk = 0
                     if kk:
@@ -681,7 +695,11 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                 st_ = nv_end - kk
                 a_sp, a_ap = tr[max(0, st_ - 1)].copy(), ta[max(0, st_ - 1)].copy()
                 if PLACE.get(c["want_right"]) == "lab":
-                    tr[st_:st_ + kk] = _lip_edge(a_sp, kk, lip_depth, toward_start=False)
+                    if mouth_edges and _mouth_shape(c["ph"]) is not None:
+                        from .mouthderive import mouth_edge
+                        tr[st_:st_ + kk] = mouth_edge(a_sp, kk, c["ph"], "lab", False, mouth_open)
+                    else:
+                        tr[st_:st_ + kk] = _lip_edge(a_sp, kk, lip_depth, toward_start=False)
                 else:
                     b_sp = trajs[k + 1][1][0]
                     for j in range(kk):
