@@ -240,6 +240,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           hum_start: float = 1.5, hum_end: float = 3.2, per_sound_hum: bool = True,
           w_join: float = 1.0, smooth_warp: bool = True, fill_pitch: bool = True,
           wave_max_shift_st: float = 1.0, pitch_life: float = 0.0, pitch_life_hp_ms: float = 25.0,
+          pitch_loud: float = 0.0,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -253,6 +254,8 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     hold_cons   hold fraction for steady consonants (n, m, ɹ, ɕ): closures hold
     fade_*      his fades are two-stage: a quick drop (fade_drop_db within
                 fade_drop_ms), then a quiet humming tail dying by fade_tail_db
+    pitch_loud  dB of extra loudness per semitone above the phrase's middle pitch
+                (0 for the rebuild, whose loudness is already his; ~0.8 for new)
     pitch_life  add each recording's own pitch micro-movement (0 for the rebuild,
                 whose pitch already is his; ~1 for new phrases)
     w_join      cost of taking a sound's two halves from different recordings
@@ -511,6 +514,14 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
         sp[p0:p0 + len(res)] += life * res * taper
 
     f0 = np.array(f0s)
+    if pitch_loud:   # effort: a higher syllable is a little louder (his ~1 dB per semitone)
+        v = f0 > 0
+        if v.any():
+            stv = 12 * np.log2(np.where(v, f0, 1.0))
+            ref_st = np.median(stv[v])
+            g = np.array(gains, dtype=float)
+            g[v] += pitch_loud * np.clip(stv[v] - ref_st, -6, 6)
+            gains = list(g)
     for p0, pl in plife:   # his real pitch micro-movement on top of the plan
         seg = f0[p0:p0 + len(pl)]
         f0[p0:p0 + len(pl)] = np.where(seg > 0, seg * 2 ** (pl[: len(seg)] / 12), 0.0)

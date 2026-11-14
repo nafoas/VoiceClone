@@ -62,6 +62,7 @@ def main():
         "munis_nannar": [([[("m ũ", S), ("n iː ɕ", W)]], "calm"),
                          ([[("n ã", S), ("n ɐ˞ ɹ", W)]], "calm")],
         "mama_nanni":   [([[("m ã", S), ("m ã", W)], [("n ã", S), ("n iː", W)]], "calm")],
+        "nanni_curious": [([[("n ã", S), ("n iː", W)]], "curious")],
         "tee_pee_meeni": [([[("tʰ iː", S)], [("p iː", S)]], "excited"),
                           ([[("m iː", S), ("n iː", W)]], "calm")],
     }
@@ -70,7 +71,7 @@ def main():
             parts = []
             for k, (phrase, mood) in enumerate(phrases):
                 units, f = phrase_pitch(phrase, mood, seed=100 * take + 10 * k + len(name), cat=novel)
-                parts.append(synth(units, f, novel, pitch_life=0.75))
+                parts.append(synth(units, f, novel, pitch_life=0.75, pitch_loud=0.8))
                 if k + 1 < len(phrases):
                     parts.append(pause[: int(0.3 * SR)])
             y = np.concatenate(parts)
