@@ -241,7 +241,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           w_join: float = 1.0, smooth_warp: bool = True, fill_pitch: bool = True,
           wave_max_shift_st: float = 1.0, pitch_life: float = 0.0, pitch_life_hp_ms: float = 25.0,
           pitch_loud: float = 0.0, edge_ms: float = 40.0, hum_smooth_ms: float = 40.0,
-          w_pitch: float = 2.0,
+          w_pitch: float = 2.0, hum_boost_db: float = 0.0, hum_steady: float = 0.0,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -257,6 +257,10 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                 fade_drop_ms), then a quiet humming tail dying by fade_tail_db
     edge_ms     at joins between pieces, spread their mismatch over this much of
                 each side so they meet halfway instead of stepping
+    hum_steady  0..1: steady his hum's loudness within continuous voiced
+                stretches (keeps slow rises/falls, evens out fast wobble)
+    hum_boost_db  extra pitch-locked hum cliff (dB) for new phrases, whose hum
+                otherwise comes out softer than in his real speech
     pitch_loud  dB of extra loudness per semitone above the phrase's middle pitch
                 (0 for the rebuild, whose loudness is already his; ~0.8 for new)
     pitch_life  add each recording's own pitch micro-movement (0 for the rebuild,
@@ -562,6 +566,27 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
 
     # keep his hum when the pitch differs from where the sound was recorded
     owner_f0 = np.array(owner_f0, dtype=float)
+    if hum_steady > 0:   # breath support: even out fast loudness wobble inside a hum
+        v = f0 > 0
+        le = np.log(sp.sum(1) + 1e-30)
+        kk = max(3, int(60 / FRAME_MS) | 1)
+        i = 0
+        while i < len(v):
+            if not v[i]:
+                i += 1; continue
+            j = i
+            while j < len(v) and v[j]:
+                j += 1
+            if j - i >= kk:
+                seg = le[i:j]
+                sm = np.convolve(np.pad(seg, kk // 2, mode="edge"), np.ones(kk) / kk, "valid")
+                sp[i:j] *= np.exp(hum_steady * (sm - seg))[:, None]
+            i = j
+    if hum_boost_db > 0:   # firm up his hum: harmonics above the 2nd pulled down a bit more
+        vb = f0 > 0
+        if vb.any():
+            fqb = np.linspace(0, SR / 2, sp.shape[1])
+            sp[vb] = sp[vb] * 10 ** (_cliff_db(fqb, f0[vb], hum_boost_db, hum_start, hum_end) / 10)
     if hum_mode == "source":   # source x mouth: move only the hum cliff with pitch
         sel = (owner_f0 > 0) & (f0 > 0)
         oh = np.array(owner_hum, dtype=float)
