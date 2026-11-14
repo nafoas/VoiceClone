@@ -71,16 +71,11 @@ def main():
         "tee_pee_meeni": [([[("tʰ iː", S)], [("p iː", S)]], "excited"),
                           ([[("m iː", S), ("n iː", W)]], "calm")],
     }
+    from prince_voice.bnuyspeak import speak
     for name, phrases in new.items():
         for take in range(3):
-            parts = []
-            for k, (phrase, mood) in enumerate(phrases):
-                units, f = phrase_pitch(phrase, mood, seed=100 * take + 10 * k + len(name), cat=novel)
-                parts.append(synth(units, f, novel, **NEW_PHRASE))
-                if k + 1 < len(phrases):
-                    parts.append(pause[: int(0.3 * SR)])
-            y = np.concatenate(parts)
-            sf.write(out / f"new_{name}_take{take + 1}.wav", y / np.abs(y).max() * 0.8, SR)
+            y = speak(phrases, seed=100 * take + len(name), cat=novel)
+            sf.write(out / f"new_{name}_take{take + 1}.wav", y, SR)
     print("written to", out)
 
 

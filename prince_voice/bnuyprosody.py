@@ -49,11 +49,18 @@ MOODS = {
 
 
 def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None,
-         vary: float = 1.0, cat=None, natural: float = 0.7, register_follow: float = 1.0):
+         vary: float = 1.0, cat=None, natural: float = 0.7, register_follow: float = 1.0,
+         follow_from: float | None = None):
     """Returns (units, levels_hz, pitch_kwargs). See module docstring."""
-    m = MOODS.get(mood, MOODS["calm"])
+    m = dict(MOODS.get(mood, MOODS["calm"]))
     rng = np.random.default_rng(seed)
     jit = (lambda sd: vary * float(rng.normal(0, sd))) if seed is not None else (lambda sd: 0.0)
+    # one coherent "state" per take (how he happens to say it this time):
+    # a little faster/slower, a little more/less energy, a stronger/softer lift
+    tempo = 2 ** jit(0.08)
+    energy_st = jit(0.6)
+    m["nuc"] *= 2 ** jit(0.15)
+    take_tempo = tempo   # applied after recordings bring their natural lengths
 
     sylls = [(wi, si, phs.split(), st) for wi, word in enumerate(phrase) for si, (phs, st) in enumerate(word)]
     stressed_idx = [i for i, (_, _, _, st) in enumerate(sylls) if st]
@@ -70,7 +77,7 @@ def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None
             x += m["acc"]
         if i == len(sylls) - 1:
             x += m["final"]
-        return m["L0"] * 2 ** ((x + jit(0.25)) / 12)
+        return m["L0"] * 2 ** ((x + jit(0.15)) / 12)
 
     units, levels = [], []
     for i, (wi, si, phs, stressed) in enumerate(sylls):
@@ -106,7 +113,7 @@ def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None
         for _ in range(2):
             for u, ms in zip(units, timing):
                 u.ms = ms
-            _natural_timing(units, cat, natural, levels)
+            _natural_timing(units, cat, natural, levels, noise=choice_noise(seed))
             d = [12 * np.log2(u.rec_f0 / lv) for u, lv in zip(units, levels)
                  if getattr(u, "rec_f0", 0) > 0 and u.ph in VOWELS]
             if not d:
@@ -115,15 +122,40 @@ def plan(phrase, mood: str = "calm", speed: float = 1.0, seed: int | None = None
             first = levels[0] * 2 ** (off / 12)
             off += 12 * np.log2(np.clip(first, lo, hi) / first)   # stay in his range for this mood
             levels = [lv * 2 ** (off / 12) for lv in levels]
+    if seed is not None:
+        levels = [lv * 2 ** (energy_st / 12) for lv in levels]
+    if follow_from is not None and levels:
+        # a follow-on phrase starts near where his voice was, not from a reset
+        lo_c, hi_c = follow_from * 2 ** (-1.5 / 12), follow_from * 2 ** (1.0 / 12)
+        if mood == "excited":
+            hi_c = max(hi_c, levels[0])
+        sh = 12 * np.log2(np.clip(levels[0], lo_c, hi_c) / levels[0])
+        levels = [lv * 2 ** (sh / 12) for lv in levels]
+    for u in units:   # this take's pace (fades keep their natural length)
+        u.ms = u.fade_ms + (u.ms - u.fade_ms) / take_tempo
     first = units[0].ph if units else ""
     onset = 1.0 if first in ("n", "m", "ɹ") else 0.0   # his hummed fall into a nasal start
+    if follow_from is not None:
+        onset *= 0.4   # a follow-on phrase: a gentler restart
     if levels and onset > 0:   # his hummed start peaks ~344 Hz: never start above ~360
         onset = float(np.clip(12 * np.log2(360.0 / levels[0]) / 8.6, 0.0, 1.0))
     kw = dict(onset=onset, seed=seed if seed is not None else 7, step_ms=55.0)
     return units, levels, kw
 
 
-def _natural_timing(units, cat, natural, levels=None, w_pitch=4.0):
+def choice_noise(seed, sd: float = 0.35):
+    """Per-take, per-recording cost noise: he doesn't make exactly the same mouth
+    shape every time, so different takes may pick different recordings."""
+    if seed is None:
+        return None
+
+    def f(c, _s=seed):
+        h = hash((_s, round(c["span"][0], 3), round(c["span"][1], 3))) & 0xFFFFFFFF
+        return float(np.random.default_rng(h).normal(0, sd))
+    return f
+
+
+def _natural_timing(units, cat, natural, levels=None, w_pitch=4.0, noise=None):
     """Choose each steady sound's recording by context and planned pitch; blend
     in its real recorded length."""
     for i, u in enumerate(units):
@@ -132,9 +164,9 @@ def _natural_timing(units, cat, natural, levels=None, w_pitch=4.0):
         left = units[i - 1].ph if i > 0 else "#"
         right = "#" if i + 1 >= len(units) else ("_" if u.fade_ms else units[i + 1].ph)
         hz = float(levels[i]) if levels is not None else float("nan")
-        c = cat.pick_half(u.ph, "L", left, hz, u.stress, i == 0, w_pitch=w_pitch)
+        c = cat.pick_half(u.ph, "L", left, hz, u.stress, i == 0, w_pitch=w_pitch, noise=noise)
         cr = cat.pick_half(u.ph, "R", right, hz, u.stress, i == len(units) - 1, same_as=c, w_join=1.0,
-                           w_pitch=w_pitch)
+                           w_pitch=w_pitch, noise=noise)
         if c is None:
             continue
         rec = 1000 * (c["span"][1] - c["span"][0])
@@ -147,7 +179,9 @@ def _natural_timing(units, cat, natural, levels=None, w_pitch=4.0):
         u.rec_f0 = float(c.get("f0", 0.0))
 
 
-def phrase_pitch(phrase, mood="calm", seed=None, vary=1.0, cat=None, natural=0.7):
+def phrase_pitch(phrase, mood="calm", seed=None, vary=1.0, cat=None, natural=0.7, follow_from=None):
     """Convenience: (units, f0_fn) for a phrase."""
-    units, levels, kw = plan(phrase, mood, seed=seed, vary=vary, cat=cat, natural=natural)
+    units, levels, kw = plan(phrase, mood, seed=seed, vary=vary, cat=cat, natural=natural,
+                             follow_from=follow_from)
+    phrase_pitch.last_levels = levels
     return units, pitch_plan(units, levels, **kw)

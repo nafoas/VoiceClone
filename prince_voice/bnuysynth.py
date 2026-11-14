@@ -145,7 +145,8 @@ class Catalogue:
 
     def pick_half(self, ph: str, side: str, ctx: str, f0_target: float, stress=None,
                   edge: bool = False, avoid=None, w_ctx=1.0, w_pitch=2.0, w_stress=0.3, w_edge=0.2,
-                  avoid_penalty: float = 0.0, same_as=None, w_join: float = 0.0, prefer=None):
+                  avoid_penalty: float = 0.0, same_as=None, w_join: float = 0.0, prefer=None,
+                  noise=None):
         """Sub-phoneme selection: the instance whose `side` half ("L" or "R")
         best matches the wanted neighbour, pitch, stress and phrase position."""
         cands = [c for c in self.inst.get(ph, []) if "L" in c]
@@ -173,6 +174,8 @@ class Catalogue:
                 k += w_join   # switching instance mid-sound changes the hum audibly
             if prefer is not None and tuple(c["span"]) != tuple(prefer):
                 k += 3.0      # the planner already chose this recording (and its timing)
+            if noise is not None:
+                k += noise(c)  # natural variety: not always the same mouth shape
             return k
         return min(cands, key=cost)
 
@@ -363,13 +366,36 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                 if len(tgt) and abs(12 * np.log2(np.median(tgt) / dinst["rec_f0"])) > wave_max_shift_st:
                     use_wave = False
                     vm = dinst["vf"][idx].astype(bool)
+            partial = None
+            if use_wave and u.ph not in HUMMY_WAVE and dinst is not None and dinst.get("f0", 0) > 0:
+                # the recording also holds the start of the next vowel at ITS pitch; if the
+                # phrase wants another pitch, splice only the unvoiced pop/puff and let the
+                # hum come out of it at the phrase's own pitch
+                tgt = f0_fn(t + (n + 2) * FRAME_MS / 1000)
+                if np.isfinite(tgt) and tgt > 0 and abs(12 * np.log2(tgt / dinst["f0"])) > wave_max_shift_st:
+                    rv = ~dinst["vm"][idx].astype(bool)
+                    if rv.any():
+                        a0 = int(np.argmax(rv)); a1 = a0
+                        while a1 < n and rv[a1]:
+                            a1 += 1
+                        partial = (a0, a1)
             if use_wave:
                 w = dwav[: int(n * FRAME_MS / 1000 * SR)]
+                if partial is not None:
+                    a0, a1 = partial
+                    w = w.copy()
+                    w[: int(a0 * FRAME_MS / 1000 * SR)] = 0.0
+                    w[int((a1 + 1) * FRAME_MS / 1000 * SR):] = 0.0
                 bursts.append((int(round(t * SR)), w, u.gain_db))
-                vm[:] = False
+                if partial is not None:
+                    vm[:] = True
+                    vm[partial[0]:partial[1]] = False
+                else:
+                    vm[:] = False
                 quiet = np.log(sp[idx] + 1e-20) - 9.0   # vocoder stays near-silent here
                 for j in range(n):
-                    anchors.append((pos + j, quiet[j], ap[idx][j]))
+                    in_splice = partial is None or (partial[0] <= j < partial[1])
+                    anchors.append((pos + j, quiet[j] if in_splice else np.log(sp[idx][j] + 1e-20), ap[idx][j]))
             else:
                 for j in range(n):
                     anchors.append((pos + j, np.log(sp[idx][j] + 1e-20), ap[idx][j]))
