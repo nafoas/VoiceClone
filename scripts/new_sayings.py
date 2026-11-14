@@ -31,14 +31,17 @@ SAYINGS = {
     "nannar": (
         [U("n", 105), U("ã", 145), U("n", 75), U("ɐ˞", 95), U("ɹ", 50)],
         [216, 216, 215, 215, 214], 1.0),
+    # mama: version F (Da Boss's pick): derived back "ah" (F2 1700), word-starting m
     "mama": (
-        [U("m", 100), U("ã", 145), U("m", 85), U("ã", 200, fade_ms=100)],
+        [U("m", 115, gain_db=-6, stress=True), U("ɑ", 145, stress=True), U("m", 85, gain_db=-5),
+         U("ɑ", 200, fade_ms=100)],
         [218, 218, 216, 215], 1.0),
     "nanni": (
         [U("n", 105), U("ã", 145), U("n", 70), U("iː", 300, fade_ms=100)],
         [216, 216, 214, 213], 1.0),
     "mama_nanni": (
-        [U("m", 100), U("ã", 145), U("m", 85), U("ã", 100), U("n", 75), U("ã", 140),
+        [U("m", 115, gain_db=-6, stress=True), U("ɑ", 145, stress=True), U("m", 85, gain_db=-5), U("ɑ", 100),
+         U("n", 75), U("ã", 140),
          U("n", 65), U("iː", 300, fade_ms=100)],
         [218, 218, 216, 216, 262, 265, 263, 262], 1.0),
     "meeni": (
@@ -64,7 +67,7 @@ UTTERANCES = {
 # than the one it was recorded beside gets that consonant's edge (lips closing
 # for m/p), so "mama" isn't heard as "nana". Sounds next to their recorded
 # neighbours are untouched.
-FRESH = dict(recolor=0.7, lip_depth=0.3)
+FRESH = dict(recolor=0.6, lip_depth=0.28, crisp_release=True)
 
 
 def say(name, cat):
@@ -74,6 +77,8 @@ def say(name, cat):
 
 def main():
     cat = Catalogue()   # gold settings: each recording keeps its own loudness
+    from prince_voice.bnuysynth import derive_vowel
+    derive_vowel(cat, "ɑ", "ã", [(1200, 1200), (2160, 1700), (3700, 3600)])   # his "ah" (mama, version F)
     out = ROOT / "out" / "fresh"
     out.mkdir(parents=True, exist_ok=True)
     pause = np.zeros(int(0.3 * SR), np.float32)
