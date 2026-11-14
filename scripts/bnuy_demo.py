@@ -53,10 +53,10 @@ def main():
     y = np.concatenate([synth(P1, ref_f0(T1), cat), pause, synth(P2, ref_f0(T2), cat)])
     sf.write(out / "rebuilt_reference.wav", y / np.abs(y).max() * 0.8, SR)
 
-    # 2. new things he never said in the clip, planned by his prosody rules
-    #    (stress -> duration, new word -> pitch step, pitch moves in consonants)
-    from prince_voice.bnuypitch import pitch_plan
-    from prince_voice.bnuyprosody import plan
+    # 2. new things he never said in the clip: his prosody tendencies, with
+    #    natural variation (three different takes of each phrase)
+    from prince_voice.bnuyprosody import phrase_pitch
+    novel = Catalogue(level_match=0.5)   # borrowed sounds: soften loudness jumps
     S, W = True, False
     new = {
         "munis_nannar": [([[("m ũ", S), ("n iː ɕ", W)]], "calm"),
@@ -66,14 +66,15 @@ def main():
                           ([[("m iː", S), ("n iː", W)]], "calm")],
     }
     for name, phrases in new.items():
-        parts = []
-        for k, (phrase, mood) in enumerate(phrases):
-            units, lv = plan(phrase, mood)
-            parts.append(synth(units, pitch_plan(units, lv), cat))
-            if k + 1 < len(phrases):
-                parts.append(pause[: int(0.3 * SR)])
-        y = np.concatenate(parts)
-        sf.write(out / f"new_{name}.wav", y / np.abs(y).max() * 0.8, SR)
+        for take in range(3):
+            parts = []
+            for k, (phrase, mood) in enumerate(phrases):
+                units, f = phrase_pitch(phrase, mood, seed=100 * take + 10 * k + len(name))
+                parts.append(synth(units, f, novel))
+                if k + 1 < len(phrases):
+                    parts.append(pause[: int(0.3 * SR)])
+            y = np.concatenate(parts)
+            sf.write(out / f"new_{name}_take{take + 1}.wav", y / np.abs(y).max() * 0.8, SR)
     print("written to", out)
 
 

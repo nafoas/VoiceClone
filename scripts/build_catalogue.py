@@ -45,10 +45,13 @@ for ph in PHRASES:
 # bursts: recorded examples kept whole (audio + frames)
 SEGMENTS["p"] = [(1.455, 1.525)]                    # weak lip release + rising transition
 SEGMENTS["tʰ"] = [(1.712, 1.772), (2.035, 2.09)]    # crisp burst + aspiration (both t's)
+# his hummy S: partly voiced (the hum continues under the hiss) and ending in a
+# tiny voiced puff; kept as real audio, from the vowel's fade into it to the puff
+SEGMENTS["ɕ"] = [(1.00, 1.15)]
 # fade tails: the quiet humming decay after a vowel whose final t never closes,
 # keyed by the vowel instance it follows
 TAILS = {1.52: (1.60, 1.70), 1.77: (1.90, 2.00), 2.09: (2.30, 2.40)}
-DYNAMIC = {"p", "tʰ"}
+DYNAMIC = {"p", "tʰ", "ɕ"}
 VOICED = {"n", "ã", "ɐ˞", "ɹ", "m", "ũ", "iː", "p", "tʰ"}
 
 
@@ -68,12 +71,15 @@ def main():
                 store[f"dsp_{i}_{k}"], store[f"dap_{i}_{k}"] = sp[m], ap[m]
                 store[f"dwav_{i}_{k}"] = x[int(s * SR): int(e * SR)].astype(np.float32)
                 store[f"dvm_{i}_{k}"] = ((f0[m] > 0) & (ap[m][:, band].mean(1) < 0.5)).astype(np.int8)
+                store[f"dvf_{i}_{k}"] = (f0[m] > 0).astype(np.int8)   # any voicing (hum under a hiss)
+                fv_ = f0[m][f0[m] > 0]
+                rec_f0 = float(np.median(fv_)) if len(fv_) else 0.0
                 after = (t >= e) & (t < e + 0.05) & (f0 > 0)
                 # does this burst lead into the phrase's last syllable?
                 nxt_final = any(ph[-1][1] >= e - 0.03 and any(abs(sg[1] - s) < 0.02 for sg in ph) for ph in PHRASES
                                 if ph[-1][0] != "_" and ph[-1][1] - e < 0.05)
                 dyn_inst.append(dict(span=[s, e], f0=float(np.median(f0[after])) if after.any() else 0.0,
-                                     next_final=bool(nxt_final)))
+                                     next_final=bool(nxt_final), rec_f0=rec_f0))
             instances[lab] = dyn_inst
             s, e = spans[0]
             m = (t >= s) & (t < e)

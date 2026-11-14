@@ -28,10 +28,14 @@ VOWELS = {"ã", "ɐ˞", "ũ", "iː", "a", "i", "u", "o", "e", "ɔ", "ɪ", "ʊ", 
 
 def pitch_plan(units, levels_hz, onset: float = 1.0, step_ms: float = 75.0,
                step_lead: float = 0.65, wobble_st: float = 0.1, burst_dip_st: float = 2.5,
-               burst_rise_ms: float = 30.0, seed: int = 7):
+               burst_rise_ms: float = 30.0, seed: int = 7, drift_st: list | None = None,
+               end_st: float = 0.0, end_ms: float = 80.0):
     """units: bnuysynth Units; levels_hz: target plateau per unit (Hz).
 
     onset      scale of the measured phrase-onset fall (0 = none)
+    drift_st   per unit: slow pitch drift across that unit (semitones), so
+               plateaus needn't be dead flat
+    end_st     gesture over the last end_ms of the phrase (+ flick up, - fall)
     step_ms    duration of the S-shaped step between different levels
     step_lead  fraction of the step that happens before the unit boundary
     """
@@ -61,21 +65,32 @@ def pitch_plan(units, levels_hz, onset: float = 1.0, step_ms: float = 75.0,
             v = next((k for k in range(b, len(units)) if units[k].ph in VOWELS), b)
             step_end[b] = edges[v] + 0.015
 
+    steps = sorted((end, lv[b - 1], lv[b]) for b, end in step_end.items())
+
     def f(t: float) -> float:
-        i = int(np.clip(np.searchsorted(edges, t, side="right") - 1, 0, len(units) - 1))
-        st = lv[i]
-        # S-shaped steps, timed to end as the new syllable's vowel starts
-        for b, end in step_end.items():
+        # level follows the steps only: it changes during a step and nowhere else
+        st = lv[0]
+        for end, a, b in steps:
             start = end - step_ms / 1000
-            if start <= t < end + 0.001 or (t >= end and i < b):
-                x = np.clip((t - start) / (step_ms / 1000), 0, 1)
-                x = 0.5 - 0.5 * np.cos(np.pi * x)
-                st = lv[b - 1] + (lv[b] - lv[b - 1]) * x
+            if t >= end:
+                st = b
+            elif t >= start:
+                x = (t - start) / (step_ms / 1000)
+                st = a + (b - a) * (0.5 - 0.5 * np.cos(np.pi * x))
+                break
+            else:
+                break
+        i = int(np.clip(np.searchsorted(edges, t, side="right") - 1, 0, len(units) - 1))
         st += onset_amt * np.interp((t - first_voiced) / onset_scale, _ONSET[:, 0], _ONSET[:, 1],
                                     left=_ONSET[0, 1], right=0.0)
         for be in burst_ends:
             if 0 <= t - be < burst_rise_ms / 1000:
                 st -= burst_dip_st * (1 - (t - be) / (burst_rise_ms / 1000))
+        if drift_st is not None:
+            d = drift_st[i]
+            st += d * ((t - edges[i]) / max(1e-3, edges[i + 1] - edges[i]) - 0.5)
+        if end_st:
+            st += end_st * np.clip((t - (total - end_ms / 1000)) / (end_ms / 1000), 0, 1)
         st += float(np.interp(t, tt, w))
         return float(2 ** (st / 12))
     return f

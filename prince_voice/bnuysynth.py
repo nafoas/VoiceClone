@@ -24,6 +24,7 @@ import pyworld as pw
 
 SR = 24000
 FRAME_MS = 5.0
+HUMMY_WAVE = {"ɕ"}   # recorded-audio units that carry his hum (pitch-sensitive)
 CAT_PATH = Path(__file__).resolve().parents[1] / "models" / "catalogue.npz"
 
 
@@ -66,7 +67,7 @@ class Unit:
 
 
 class Catalogue:
-    def __init__(self, path: Path = CAT_PATH):
+    def __init__(self, path: Path = CAT_PATH, level_match: float = 0.0):
         z = np.load(path, allow_pickle=False)
         self.meta = json.loads(str(z["meta"]))
         self.sp = {k: z[f"sp_{i}"] for i, k in enumerate(self.meta["labels"])}
@@ -82,7 +83,8 @@ class Catalogue:
                 if f"dsp_{i}_{j}" in z:
                     self.dyn.setdefault(k, []).append(dict(
                         sp=z[f"dsp_{i}_{j}"], ap=z[f"dap_{i}_{j}"], wav=z[f"dwav_{i}_{j}"],
-                        vm=z[f"dvm_{i}_{j}"].astype(bool), **info))
+                        vm=z[f"dvm_{i}_{j}"].astype(bool),
+                        vf=z[f"dvf_{i}_{j}"].astype(bool) if f"dvf_{i}_{j}" in z else None, **info))
                     continue
                 d = dict(sp=z[f"isp_{i}_{j}"], ap=z[f"iap_{i}_{j}"], res=z[f"ires_{i}_{j}"], **info)
                 if f"iL_{i}_{j}" in z:
@@ -99,15 +101,16 @@ class Catalogue:
                     d.update(TL=z[f"iTL_{i}_{j}"].astype(float), TR=z[f"iTR_{i}_{j}"].astype(float),
                              TaL=z[f"iTaL_{i}_{j}"].astype(float), TaR=z[f"iTaR_{i}_{j}"].astype(float))
                 self.inst.setdefault(k, []).append(d)
-        # level-match instances of a sound: borrowing one shouldn't bring its
-        # loudness (both halves shift together, keeping their own shape)
+        # level-match instances of a sound (level_match 0..1): 0 keeps each
+        # recording's own loudness (his natural stress); 1 makes all instances
+        # of a sound equally loud (both halves shift together)
         for k, insts in self.inst.items():
             lv = [np.log(np.exp(c["sp"]).sum()) for c in insts]
             ref = float(np.median(lv))
             for c, l in zip(insts, lv):
                 for key in ("sp", "L", "R", "TL", "TR", "tail"):
                     if key in c:
-                        c[key] = c[key] + (ref - l)
+                        c[key] = c[key] + level_match * (ref - l)
 
     def pick_dyn(self, ph: str, f0_next: float, next_final: bool | None = None):
         """Recorded burst best matching where it sits (does it lead into the
@@ -139,7 +142,7 @@ class Catalogue:
 
     def pick_half(self, ph: str, side: str, ctx: str, f0_target: float, stress=None,
                   edge: bool = False, avoid=None, w_ctx=1.0, w_pitch=2.0, w_stress=0.3, w_edge=0.2,
-                  avoid_penalty: float = 0.0):
+                  avoid_penalty: float = 0.0, same_as=None, w_join: float = 0.0):
         """Sub-phoneme selection: the instance whose `side` half ("L" or "R")
         best matches the wanted neighbour, pitch, stress and phrase position."""
         cands = [c for c in self.inst.get(ph, []) if "L" in c]
@@ -163,6 +166,8 @@ class Catalogue:
                 k += w_edge
             if np.isfinite(avoid_penalty) and overlaps(c):
                 k += avoid_penalty
+            if same_as is not None and c is not same_as:
+                k += w_join   # switching instance mid-sound changes the hum audibly
             return k
         return min(cands, key=cost)
 
@@ -228,6 +233,8 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           avoid_penalty: float = 0.0, trajectories: bool = True, join_ms: float = 20.0,
           real_tails: bool = True, hum_mode: str = "source", hum_depth: float = 25.0,
           hum_start: float = 1.5, hum_end: float = 3.2, per_sound_hum: bool = True,
+          w_join: float = 1.0, smooth_warp: bool = True, fill_pitch: bool = True,
+          wave_max_shift_st: float = 1.0,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -241,6 +248,9 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     hold_cons   hold fraction for steady consonants (n, m, ɹ, ɕ): closures hold
     fade_*      his fades are two-stage: a quick drop (fade_drop_db within
                 fade_drop_ms), then a quiet humming tail dying by fade_tail_db
+    w_join      cost of taking a sound's two halves from different recordings
+    smooth_warp stretch recorded movement by interpolating frames (no repeats)
+    fill_pitch  inside a voiced sound, bridge brief gaps in f0_fn (tracker dropouts)
     hum_mode    "source": treat his sound as humming source x mouth shape and move
                 only the source cliff with pitch (formants stay put); "warp": old
                 partial frequency warp
@@ -256,6 +266,19 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     burst_onset_ms  a vowel right after a spliced burst comes in this fast
     """
     cat = cat or Catalogue()
+    if fill_pitch:
+        raw_fn = f0_fn
+
+        def f0_fn(t, _r=raw_fn):   # bridge brief tracker dropouts (<= 40 ms)
+            v = _r(t)
+            if np.isfinite(v) and v > 0:
+                return v
+            for d in (0.005, 0.01, 0.02, 0.03, 0.04):
+                a, b = _r(t - d), _r(t + d)
+                ok = [x for x in (a, b) if np.isfinite(x) and x > 0]
+                if ok:
+                    return float(np.mean(ok))
+            return v
     sp_rows, ap_rows, f0s, gains, breath = [], [], [], [], []
     anchors = []          # (frame index, log sp, ap)
     bursts = []           # (sample offset, waveform, gain)
@@ -300,7 +323,18 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                 vm = dinst["vm"][idx].astype(bool)
             elif u.ph in cat.vmask:
                 vm = cat.vmask[u.ph][idx].astype(bool)
-            if burst_wave and dwav is not None:
+            # a voiced recording (his hummy S) is spliced as real audio only if the
+            # phrase pitch is close to where it was recorded; otherwise it is
+            # rebuilt from its frames at the phrase's pitch (hum under the hiss)
+            use_wave = burst_wave and dwav is not None
+            if use_wave and dinst is not None and dinst.get("vf") is not None and dinst.get("rec_f0", 0) > 0 \
+                    and u.ph in HUMMY_WAVE:
+                tgt = np.array([f0_fn(t + j * FRAME_MS / 1000) for j in range(n)], dtype=float)
+                tgt = tgt[np.isfinite(tgt) & (tgt > 0)]
+                if len(tgt) and abs(12 * np.log2(np.median(tgt) / dinst["rec_f0"])) > wave_max_shift_st:
+                    use_wave = False
+                    vm = dinst["vf"][idx].astype(bool)
+            if use_wave:
                 w = dwav[: int(n * FRAME_MS / 1000 * SR)]
                 bursts.append((int(round(t * SR)), w, u.gain_db))
                 vm[:] = False
@@ -321,7 +355,8 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
             iL = cat.pick_half(u.ph, "L", lctx, med(fr[: n // 2 + 1]), u.stress, ui == 0, u.avoid,
                                w_ctx=w_ctx, avoid_penalty=avoid_penalty) if sub_phonemes else None
             iR = cat.pick_half(u.ph, "R", rctx, med(fr[n // 2:]), u.stress, ui == len(units) - 1, u.avoid,
-                               w_ctx=w_ctx, avoid_penalty=avoid_penalty) if sub_phonemes else None
+                               w_ctx=w_ctx, avoid_penalty=avoid_penalty,
+                               same_as=iL, w_join=w_join) if sub_phonemes else None
             if iL is not None and iR is not None:
                 tL, tR, aL, aR = iL["L"], iR["R"], iL["aL"], iR["aR"]
                 inst = iL
@@ -334,8 +369,13 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
             hh = (hold_cons if u.ph in CONS else hold)
             if trajectories and iL is not None and iR is not None and "TL" in iL and "TR" in iR:
                 def warp(seq, m):
-                    ix = np.linspace(0, len(seq) - 1, max(1, m)).round().astype(int)
-                    return seq[ix]
+                    pos_ = np.linspace(0, len(seq) - 1, max(1, m))
+                    if not smooth_warp or len(seq) < 2:
+                        return seq[pos_.round().astype(int)]
+                    i0 = np.floor(pos_).astype(int); i1 = np.minimum(i0 + 1, len(seq) - 1)
+                    fr_ = (pos_ - i0)[:, None]
+                    out_ = seq[i0] * (1 - fr_) + seq[i1] * fr_
+                    return out_.astype(seq.dtype) if seq.dtype == bool else out_
                 tinst = cat.pick_tail(fR, iR) if (u.fade_ms and real_tails) else None
                 nf = min(n - 2, int(round(u.fade_ms / FRAME_MS))) if tinst is not None else 0
                 nv = n - nf
@@ -344,13 +384,14 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                 ta = [warp(iL["TaL"], nl), warp(iR["TaR"], nr)]
                 if nf:   # his real humming decay instead of a stretched vowel + fade
                     tr.append(warp(tinst["tail"], nf)); ta.append(warp(tinst["taila"], nf))
-                    vm = np.concatenate([vm[:nv], warp(tinst["tailvm"], nf)])
+                    tv = tinst["tailvm"].astype(float)
+                    vm = np.concatenate([vm[:nv], warp(tv, nf).reshape(-1) > 0.5])
                 trajs.append((pos, np.vstack(tr), np.vstack(ta)))
                 pts = [(pos, None, None), (pos + n - 1, None, None)]  # placeholders, filled below
                 for j, tt_, aa in pts:
                     anchors.append((j, trajs[-1][1][0 if j == pos else -1], trajs[-1][2][0 if j == pos else -1]))
                 half_f0 = [fL] * nl + [fR] * (n - nl)
-                prev_burst = cat.dynamic[u.ph] and burst_wave and u.ph in cat.wav
+                prev_burst = cat.dynamic[u.ph] and burst_wave and u.ph in cat.wav and u.ph not in HUMMY_WAVE
                 owner_f0 += half_f0
                 owner_hum += [iL.get("hum_db", hum_depth)] * nl + [iR.get("hum_db", hum_depth)] * (n - nl)
                 for j in range(n):
@@ -387,7 +428,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                 ridx = np.linspace(0, len(inst["res"]) - 1, n).round().astype(int)
                 lifes.append((pos, inst["res"][ridx]))
             half_f0 = [fL] * (n // 2) + [fR] * (n - n // 2)
-        prev_burst = cat.dynamic[u.ph] and burst_wave and u.ph in cat.wav
+        prev_burst = cat.dynamic[u.ph] and burst_wave and u.ph in cat.wav and u.ph not in HUMMY_WAVE
         if cat.dynamic[u.ph] or not cat.inst.get(u.ph):
             owner_f0 += [cat.f0_ref[u.ph]] * n
             owner_hum += [0.0 if cat.dynamic[u.ph] else hum_depth] * n
