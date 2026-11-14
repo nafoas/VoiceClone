@@ -56,7 +56,7 @@ def main():
     # 2. new things he never said in the clip: his prosody tendencies, with
     #    natural variation (three different takes of each phrase)
     from prince_voice.bnuyprosody import phrase_pitch
-    novel = Catalogue(level_match=0.25)   # borrowed sounds: soften loudness jumps a little
+    novel = Catalogue(level_match=0.5)   # borrowed sounds: soften loudness jumps
     S, W = True, False
     new = {
         "munis_nannar": [([[("m ũ", S), ("n iː ɕ", W)]], "calm"),
@@ -71,8 +71,7 @@ def main():
             parts = []
             for k, (phrase, mood) in enumerate(phrases):
                 units, f = phrase_pitch(phrase, mood, seed=100 * take + 10 * k + len(name), cat=novel)
-                parts.append(synth(units, f, novel, pitch_source="recorded", follow=0.3, pitch_loud=0.8,
-                                   w_pitch=5.0))
+                parts.append(synth(units, f, novel, pitch_life=0.75, pitch_loud=0.8))
                 if k + 1 < len(phrases):
                     parts.append(pause[: int(0.3 * SR)])
             y = np.concatenate(parts)
