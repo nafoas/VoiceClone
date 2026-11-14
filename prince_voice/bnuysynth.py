@@ -46,6 +46,17 @@ _F = {
 }
 
 
+PLACE = {"m": "lab", "p": "lab", "b": "lab", "n": "cor", "tʰ": "cor", "t": "cor", "d": "cor",
+         "ɹ": "cor", "s": "cor", "ɕ": "pal"}
+
+
+def place_differs(recorded: str | None, wanted: str | None) -> bool:
+    """Do two consonant neighbours differ in place of articulation (lips vs
+    tongue tip vs palate)? Vowels, silence and phrase edges don't count."""
+    a, b = PLACE.get(recorded or ""), PLACE.get(wanted or "")
+    return a is not None and b is not None and a != b
+
+
 def ctx_dist(a: str, b: str) -> float:
     if a == b:
         return 0.0
@@ -233,6 +244,25 @@ def _source_refit(sp: np.ndarray, f_from: np.ndarray, f_to: np.ndarray, depth,
     return sp * 10 ** (gain / 10)
 
 
+def _lip_edge(steady: np.ndarray, k: int, depth: float, toward_start: bool) -> np.ndarray:
+    """k frames of a vowel edge next to a lip consonant: the steady vowel shape
+    with all resonances pulled down (lips closing lowers them), easing back up
+    into the vowel. toward_start: the lips are at frame 0 (else at frame k-1)."""
+    nb = steady.shape[-1]
+    bins = np.arange(nb, dtype=float)
+    out = np.empty((k, nb))
+    for j in range(k):
+        x = (j + 1) / (k + 1) if toward_start else (k - j) / (k + 1)   # 0 at the lips -> 1 in the vowel
+        x = x * x * (3 - 2 * x)
+        alpha = 1.0 - depth * (1.0 - x)          # < 1 near the lips
+        out[j] = np.interp(bins / alpha, bins, steady, right=steady[-1])
+    return out
+
+
+def u_is_cons(tr, p0) -> bool:   # placeholder hook: all trajectory units are re-coloured by context
+    return False
+
+
 def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           hold: float = 0.35, burst_wave: bool = True, fade_breath: float = 0.6,
           life: float = 1.0, burst_onset_ms: float = 15.0, hold_cons: float = 0.35,
@@ -246,7 +276,8 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           pitch_loud: float = 0.0, edge_ms: float = 40.0, hum_smooth_ms: float = 40.0,
           w_pitch: float = 2.0, hum_boost_db: float = 0.0, hum_steady: float = 0.0,
           breath_support: float = 0.0, breath_ms: float = 200.0,
-          attack_ms: float = 0.0, release_ms: float = 0.0,
+          attack_ms: float = 0.0, release_ms: float = 0.0, recolor: float = 0.0,
+          lip_depth: float = 0.35,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -262,6 +293,9 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                 fade_drop_ms), then a quiet humming tail dying by fade_tail_db
     edge_ms     at joins between pieces, spread their mismatch over this much of
                 each side so they meet halfway instead of stepping
+    recolor     0..1: where a sound's recorded neighbour differs in place of
+                articulation from its real one, this fraction of its edge half is
+                rebuilt as a glide from/to the real neighbour
     attack_ms   a phrase swells in over this long (his: ~40 ms from silence),
                 instead of starting at full volume
     release_ms  a phrase that doesn't end on one of his natural fades eases out
@@ -314,6 +348,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     lifes = []            # (start frame, residual trajectory)
     trajs = []            # (start frame, log-sp trajectory, ap trajectory)
     traj_src = {}         # start frame -> (left-half recording, right-half recording, has tail)
+    traj_ctx = {}         # start frame -> recorded vs wanted neighbours (for edge re-colouring)
     plife = []            # (start frame, recorded pitch micro-movement, semitones)
     picks = []            # (sound, left-half recording, right-half recording) for diagnostics
     owner_f0 = []
@@ -447,6 +482,8 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
                     vm = np.concatenate([vm[:nv], warp(tv, nf).reshape(-1) > 0.5])
                 trajs.append((pos, np.vstack(tr), np.vstack(ta)))
                 traj_src[pos] = (tuple(iL["span"]), tuple(iR["span"]), bool(nf))
+                traj_ctx[pos] = dict(rec_left=iL.get("left"), want_left=lctx, rec_right=iR.get("right"),
+                                     want_right=rctx, nl=nl, nr=nr, nf=nf)
                 if pitch_life > 0 and "PL" in iL and "PR" in iR:
                     pl = np.concatenate([warp(iL["PL"], nl), warp(iR["PR"], nr), np.zeros(nf)]).reshape(-1)
                     if pitch_life_hp_ms > 0 and len(pl) > 3:   # keep fine detail only, not
@@ -535,6 +572,44 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     sp[: idxs[0]], ap[: idxs[0]] = anchors[0][1], anchors[0][2]
 
     # real recorded movement: paste trajectories, then blend each join over join_ms
+    if trajs and recolor > 0:
+        # a vowel's edges carry the shape of the neighbour it was RECORDED next to
+        # (his only "a" sits between n's, so its edges say "n"). Where that
+        # neighbour's place of articulation differs from the actual one, keep the
+        # steady middle and replace the coloured edge with a glide from/to the
+        # real neighbour, so "mama" isn't heard as "nana".
+        order = sorted(range(len(trajs)), key=lambda k: trajs[k][0])
+        trajs = [list(trajs[k]) for k in order]
+        for k, tj in enumerate(trajs):
+            p0, tr, ta = tj
+            c = traj_ctx.get(p0)
+            if not c or u_is_cons(tr, p0):
+                continue
+            if place_differs(c["rec_left"], c["want_left"]) and k > 0 and trajs[k - 1][0] + len(trajs[k - 1][1]) == p0:
+                kk = max(2, int(round(recolor * c["nl"])))
+                b_sp, b_ap = tr[min(kk, len(tr) - 1)].copy(), ta[min(kk, len(ta) - 1)].copy()
+                if PLACE.get(c["want_left"]) == "lab":
+                    tr[:kk] = _lip_edge(b_sp, kk, lip_depth, toward_start=True)
+                else:
+                    a_sp = trajs[k - 1][1][-1]
+                    for j in range(kk):
+                        x = (j + 1) / (kk + 1); x = x * x * (3 - 2 * x)
+                        tr[j] = (1 - x) * a_sp + x * b_sp
+                ta[:kk] = b_ap
+            nv_end = c["nl"] + c["nr"]
+            if place_differs(c["rec_right"], c["want_right"]) and k + 1 < len(trajs) and p0 + len(tr) == trajs[k + 1][0]:
+                kk = max(2, int(round(recolor * c["nr"])))
+                st_ = nv_end - kk
+                a_sp, a_ap = tr[max(0, st_ - 1)].copy(), ta[max(0, st_ - 1)].copy()
+                if PLACE.get(c["want_right"]) == "lab":
+                    tr[st_:st_ + kk] = _lip_edge(a_sp, kk, lip_depth, toward_start=False)
+                else:
+                    b_sp = trajs[k + 1][1][0]
+                    for j in range(kk):
+                        x = (j + 1) / (kk + 1); x = x * x * (3 - 2 * x)
+                        tr[st_ + j] = (1 - x) * a_sp + x * b_sp
+                ta[st_:st_ + kk] = a_ap
+        trajs = [tuple(t_) for t_ in trajs]
     if trajs:
         glide_sp, glide_ap = sp.copy(), ap.copy()
         wj = max(1, int(join_ms / FRAME_MS / 2))

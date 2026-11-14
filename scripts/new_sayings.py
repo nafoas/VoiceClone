@@ -60,9 +60,16 @@ UTTERANCES = {
 }
 
 
+# the one addition to the gold settings: a vowel next to a different consonant
+# than the one it was recorded beside gets that consonant's edge (lips closing
+# for m/p), so "mama" isn't heard as "nana". Sounds next to their recorded
+# neighbours are untouched.
+FRESH = dict(recolor=0.7, lip_depth=0.3)
+
+
 def say(name, cat):
     units, levels, onset = SAYINGS[name]
-    return synth(units, pitch_plan(units, levels, onset=onset, step_ms=60.0), cat)
+    return synth(units, pitch_plan(units, levels, onset=onset, step_ms=60.0), cat, **FRESH)
 
 
 def main():
