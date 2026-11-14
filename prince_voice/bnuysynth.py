@@ -618,9 +618,15 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
         T_ = len(f0)
         g_ = np.zeros(T_)
         if attack_ms > 0:
-            ka = min(T_, max(1, int(attack_ms / FRAME_MS)))
+            # the swell starts where his voice starts (after any opening burst,
+            # which keeps its own natural level)
+            vf = np.where(f0 > 0)[0]
+            a0 = int(vf[0]) if len(vf) else 0
+            ka = min(T_ - a0, max(1, int(attack_ms / FRAME_MS)))
             x_ = np.linspace(0, 1, ka)
-            g_[:ka] += -40.0 * (1 - x_ * x_ * (3 - 2 * x_))          # from -40 dB, S-shaped swell
+            g_[a0:a0 + ka] += -40.0 * (1 - x_ * x_ * (3 - 2 * x_))   # from -40 dB, S-shaped swell
+            if a0 > 0:
+                g_[:a0] += 0.0
         if release_ms > 0 and not units[-1].fade_ms and not cat.dynamic.get(units[-1].ph, False):
             kr = min(T_, max(1, int(release_ms / FRAME_MS)))
             x_ = np.linspace(0, 1, kr)
