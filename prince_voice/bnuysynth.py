@@ -76,12 +76,28 @@ class Catalogue:
         self.f0_ref = dict(zip(self.meta["labels"], self.meta["f0"]))
         self.vmask = {k: z[f"vm_{i}"] for i, k in enumerate(self.meta["labels"]) if f"vm_{i}" in z}
         self.wav = {k: z[f"wav_{i}"] for i, k in enumerate(self.meta["labels"]) if f"wav_{i}" in z}
-        self.inst = {}
+        self.inst, self.dyn = {}, {}
         for i, k in enumerate(self.meta["labels"]):
             for j, info in enumerate(self.meta.get("instances", {}).get(k, [])):
+                if f"dsp_{i}_{j}" in z:
+                    self.dyn.setdefault(k, []).append(dict(
+                        sp=z[f"dsp_{i}_{j}"], ap=z[f"dap_{i}_{j}"], wav=z[f"dwav_{i}_{j}"],
+                        vm=z[f"dvm_{i}_{j}"].astype(bool), **info))
+                    continue
                 d = dict(sp=z[f"isp_{i}_{j}"], ap=z[f"iap_{i}_{j}"], res=z[f"ires_{i}_{j}"], **info)
                 if f"iL_{i}_{j}" in z:
                     d.update(L=z[f"iL_{i}_{j}"], R=z[f"iR_{i}_{j}"], aL=z[f"iaL_{i}_{j}"], aR=z[f"iaR_{i}_{j}"])
+                if f"itail_{i}_{j}" in z:
+                    d.update(tail=z[f"itail_{i}_{j}"].astype(float), taila=z[f"itaila_{i}_{j}"].astype(float),
+                             tailvm=z[f"itailvm_{i}_{j}"].astype(bool))
+                if f"dsp_{i}_{j}" in z:
+                    d = dict(sp=z[f"dsp_{i}_{j}"], ap=z[f"dap_{i}_{j}"], wav=z[f"dwav_{i}_{j}"],
+                             vm=z[f"dvm_{i}_{j}"].astype(bool), **info)
+                    self.dyn.setdefault(k, []).append(d)
+                    continue
+                if f"iTL_{i}_{j}" in z:
+                    d.update(TL=z[f"iTL_{i}_{j}"].astype(float), TR=z[f"iTR_{i}_{j}"].astype(float),
+                             TaL=z[f"iTaL_{i}_{j}"].astype(float), TaR=z[f"iTaR_{i}_{j}"].astype(float))
                 self.inst.setdefault(k, []).append(d)
         # level-match instances of a sound: borrowing one shouldn't bring its
         # loudness (both halves shift together, keeping their own shape)
@@ -89,20 +105,51 @@ class Catalogue:
             lv = [np.log(np.exp(c["sp"]).sum()) for c in insts]
             ref = float(np.median(lv))
             for c, l in zip(insts, lv):
-                for key in ("sp", "L", "R"):
+                for key in ("sp", "L", "R", "TL", "TR", "tail"):
                     if key in c:
                         c[key] = c[key] + (ref - l)
 
+    def pick_dyn(self, ph: str, f0_next: float, next_final: bool | None = None):
+        """Recorded burst best matching where it sits (does it lead into the
+        phrase's last syllable?) and the pitch of the vowel after it."""
+        c = self.dyn.get(ph, [])
+        if not c:
+            return None
+
+        def cost(d):
+            k = 0.0
+            if np.isfinite(f0_next) and f0_next > 0:
+                k += 2.0 * abs(np.log2(max(d["f0"], 1.0) / f0_next))
+            if next_final is not None and d.get("next_final") is not None and d["next_final"] != next_final:
+                k += 0.5
+            return k
+        return min(c, key=cost)
+
+    def pick_tail(self, f0_target: float, prefer=None):
+        """A recorded fade tail: the chosen vowel's own if it has one, else
+        the one recorded closest in pitch."""
+        if prefer is not None and "tail" in prefer:
+            return prefer
+        c = [d for d in self.inst.get("iː", []) if "tail" in d]
+        if not c:
+            return None
+        if not np.isfinite(f0_target):
+            return c[0]
+        return min(c, key=lambda d: abs(np.log(max(d["f0"], 1.0) / f0_target)))
+
     def pick_half(self, ph: str, side: str, ctx: str, f0_target: float, stress=None,
-                  edge: bool = False, avoid=None, w_ctx=1.0, w_pitch=2.0, w_stress=0.3, w_edge=0.2):
+                  edge: bool = False, avoid=None, w_ctx=1.0, w_pitch=2.0, w_stress=0.3, w_edge=0.2,
+                  avoid_penalty: float = 0.0):
         """Sub-phoneme selection: the instance whose `side` half ("L" or "R")
         best matches the wanted neighbour, pitch, stress and phrase position."""
         cands = [c for c in self.inst.get(ph, []) if "L" in c]
-        if avoid is not None and len(cands) > 1:
-            free = [c for c in cands if c["span"][1] <= avoid[0] or c["span"][0] >= avoid[1]]
-            cands = free or cands
         if not cands:
             return None
+
+        def overlaps(c):
+            return avoid is not None and not (c["span"][1] <= avoid[0] or c["span"][0] >= avoid[1])
+        if np.isinf(avoid_penalty) and len(cands) > 1:   # strict: never the same moment
+            cands = [c for c in cands if not overlaps(c)] or cands
 
         def cost(c):
             nb = c["left"] if side == "L" else c["right"]
@@ -114,13 +161,15 @@ class Catalogue:
                 k += w_stress
             if (c["initial"] if side == "L" else c["final"]) != edge:
                 k += w_edge
+            if np.isfinite(avoid_penalty) and overlaps(c):
+                k += avoid_penalty
             return k
         return min(cands, key=cost)
 
-    def pick(self, ph: str, f0_target: float, avoid=None):
+    def pick(self, ph: str, f0_target: float, avoid=None, strict: bool = False):
         """Instance closest in pitch (unit selection); None if no instances."""
         cands = self.inst.get(ph, [])
-        if avoid is not None and len(cands) > 1:
+        if strict and avoid is not None and len(cands) > 1:
             free = [c for c in cands if c["span"][1] <= avoid[0] or c["span"][0] >= avoid[1]]
             cands = free or cands
         if not cands:
@@ -153,11 +202,30 @@ def _hum_correct(sp: np.ndarray, f0_from: float, f0_to: np.ndarray) -> np.ndarra
     return out
 
 
+def _cliff_db(freqs: np.ndarray, f0: np.ndarray, depth: float, start: float, end: float) -> np.ndarray:
+    """His humming source: harmonics 1-2 strong, everything above start*f0
+    falling by `depth` dB by end*f0 (frames x bins)."""
+    x = np.clip((freqs[None, :] / f0[:, None] - start) / (end - start), 0, 1)
+    return -depth * x * x * (3 - 2 * x)
+
+
+def _source_refit(sp: np.ndarray, f_from: np.ndarray, f_to: np.ndarray, depth: float,
+                  start: float, end: float) -> np.ndarray:
+    """Re-pitch his hum while keeping his mouth shape: remove the cliff where
+    it sat at the recorded pitch, put it back at the new pitch. Formants stay put."""
+    freqs = np.linspace(0, SR / 2, sp.shape[1])
+    gain = _cliff_db(freqs, f_to, depth, start, end) - _cliff_db(freqs, f_from, depth, start, end)
+    return sp * 10 ** (gain / 10)
+
+
 def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
           hold: float = 0.35, burst_wave: bool = True, fade_breath: float = 0.6,
           life: float = 1.0, burst_onset_ms: float = 15.0, hold_cons: float = 0.35,
           fade_drop_db: float = 20.0, fade_drop_ms: float = 20.0, fade_tail_db: float = 12.0,
           hum_fix: float = 0.5, sub_phonemes: bool = True, w_ctx: float = 1.0,
+          avoid_penalty: float = 0.0, trajectories: bool = True, join_ms: float = 20.0,
+          real_tails: bool = True, hum_mode: str = "source", hum_depth: float = 25.0,
+          hum_start: float = 1.5, hum_end: float = 3.2,
           trans_ms: float | None = None) -> np.ndarray:
     """units: sequence of catalogue sounds; f0_fn(t_seconds) -> Hz (or nan).
 
@@ -171,6 +239,14 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     hold_cons   hold fraction for steady consonants (n, m, ɹ, ɕ): closures hold
     fade_*      his fades are two-stage: a quick drop (fade_drop_db within
                 fade_drop_ms), then a quiet humming tail dying by fade_tail_db
+    hum_mode    "source": treat his sound as humming source x mouth shape and move
+                only the source cliff with pitch (formants stay put); "warp": old
+                partial frequency warp
+    real_tails  fades use his recorded humming decay (vowel isn't stretched over it)
+    trajectories  use each chosen half's real recorded movement (time-stretched),
+                joined smoothly over join_ms, instead of targets + glides
+    avoid_penalty how strongly to avoid a unit's own moment in the clip (u.avoid):
+                0 = free choice, inf = never (strict fairness test)
     sub_phonemes  pick each half of a sound by its context (neighbour, pitch,
                 stress, phrase position) instead of one snapshot per sound
     "_" units   silence (e.g. the closure before a t); bursts and silences are
@@ -182,6 +258,7 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     anchors = []          # (frame index, log sp, ap)
     bursts = []           # (sample offset, waveform, gain)
     lifes = []            # (start frame, residual trajectory)
+    trajs = []            # (start frame, log-sp trajectory, ap trajectory)
     owner_f0 = []
     prev_burst = False
     pos = 0
@@ -209,11 +286,18 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
         sp, ap = cat.sp[u.ph], cat.ap[u.ph]
         vm = np.ones(n, bool) if cat.voiced[u.ph] else np.zeros(n, bool)
         if cat.dynamic[u.ph]:
+            dinst = cat.pick_dyn(u.ph, f0_fn(t + (n + 4) * FRAME_MS / 1000),
+                                 next_final=(ui + 2 == len(units)))
+            dwav = cat.wav.get(u.ph)
+            if dinst is not None:
+                sp, ap, dwav = dinst["sp"], dinst["ap"], dinst["wav"]
             idx = np.linspace(0, len(sp) - 1, n).round().astype(int)
-            if u.ph in cat.vmask:
+            if dinst is not None:
+                vm = dinst["vm"][idx].astype(bool)
+            elif u.ph in cat.vmask:
                 vm = cat.vmask[u.ph][idx].astype(bool)
-            if burst_wave and u.ph in cat.wav:
-                w = cat.wav[u.ph][: int(n * FRAME_MS / 1000 * SR)]
+            if burst_wave and dwav is not None:
+                w = dwav[: int(n * FRAME_MS / 1000 * SR)]
                 bursts.append((int(round(t * SR)), w, u.gain_db))
                 vm[:] = False
                 quiet = np.log(sp[idx] + 1e-20) - 9.0   # vocoder stays near-silent here
@@ -231,19 +315,53 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
             lctx = units[ui - 1].ph if ui > 0 else "#"
             rctx = "_" if u.fade_ms else (units[ui + 1].ph if ui + 1 < len(units) else "#")
             iL = cat.pick_half(u.ph, "L", lctx, med(fr[: n // 2 + 1]), u.stress, ui == 0, u.avoid,
-                               w_ctx=w_ctx) if sub_phonemes else None
+                               w_ctx=w_ctx, avoid_penalty=avoid_penalty) if sub_phonemes else None
             iR = cat.pick_half(u.ph, "R", rctx, med(fr[n // 2:]), u.stress, ui == len(units) - 1, u.avoid,
-                               w_ctx=w_ctx) if sub_phonemes else None
+                               w_ctx=w_ctx, avoid_penalty=avoid_penalty) if sub_phonemes else None
             if iL is not None and iR is not None:
                 tL, tR, aL, aR = iL["L"], iR["R"], iL["aL"], iR["aR"]
                 inst = iL
                 fL, fR = iL["f0L"], iR["f0R"]
             else:
-                inst = cat.pick(u.ph, med(fr), u.avoid)
+                inst = cat.pick(u.ph, med(fr), u.avoid, strict=np.isinf(avoid_penalty))
                 tL = tR = np.log(sp + 1e-20) if inst is None else inst["sp"]
                 aL = aR = ap if inst is None else inst["ap"]
                 fL = fR = inst["f0"] if inst is not None else cat.f0_ref[u.ph]
             hh = (hold_cons if u.ph in CONS else hold)
+            if trajectories and iL is not None and iR is not None and "TL" in iL and "TR" in iR:
+                def warp(seq, m):
+                    ix = np.linspace(0, len(seq) - 1, max(1, m)).round().astype(int)
+                    return seq[ix]
+                tinst = cat.pick_tail(fR, iR) if (u.fade_ms and real_tails) else None
+                nf = min(n - 2, int(round(u.fade_ms / FRAME_MS))) if tinst is not None else 0
+                nv = n - nf
+                nl = nv // 2; nr = nv - nl
+                tr = [warp(iL["TL"], nl), warp(iR["TR"], nr)]
+                ta = [warp(iL["TaL"], nl), warp(iR["TaR"], nr)]
+                if nf:   # his real humming decay instead of a stretched vowel + fade
+                    tr.append(warp(tinst["tail"], nf)); ta.append(warp(tinst["taila"], nf))
+                    vm = np.concatenate([vm[:nv], warp(tinst["tailvm"], nf)])
+                trajs.append((pos, np.vstack(tr), np.vstack(ta)))
+                pts = [(pos, None, None), (pos + n - 1, None, None)]  # placeholders, filled below
+                for j, tt_, aa in pts:
+                    anchors.append((j, trajs[-1][1][0 if j == pos else -1], trajs[-1][2][0 if j == pos else -1]))
+                half_f0 = [fL] * nl + [fR] * (n - nl)
+                prev_burst = cat.dynamic[u.ph] and burst_wave and u.ph in cat.wav
+                owner_f0 += half_f0
+                for j in range(n):
+                    tt = t + j * FRAME_MS / 1000
+                    f = f0_fn(tt) if vm[j] else np.nan
+                    f0s.append(f if np.isfinite(f) else 0.0)
+                    g, b = u.gain_db, 0.0
+                    if u.fade_ms and not nf and (n - j) * FRAME_MS <= u.fade_ms:
+                        el = u.fade_ms - (n - j) * FRAME_MS
+                        g -= fade_drop_db * min(1.0, el / fade_drop_ms)
+                        g -= fade_tail_db * max(0.0, (el - fade_drop_ms) / max(1.0, u.fade_ms - fade_drop_ms))
+                        b = fade_breath * el / u.fade_ms
+                    gains.append(g); breath.append(b)
+                pos += n
+                t += n * FRAME_MS / 1000
+                continue
             if n < 6:   # too short for two targets: one blended target
                 h = max(1, int(round(hh * n)))
                 a0 = pos + (n - h) // 2
@@ -301,6 +419,26 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
     sp[i_last:], ap[i_last:] = s_last, p_last
     sp[: idxs[0]], ap[: idxs[0]] = anchors[0][1], anchors[0][2]
 
+    # real recorded movement: paste trajectories, then blend each join over join_ms
+    if trajs:
+        glide_sp, glide_ap = sp.copy(), ap.copy()
+        wj = max(1, int(join_ms / FRAME_MS / 2))
+        for p0, tr, ta in trajs:
+            sp[p0:p0 + len(tr)] = tr
+            ap[p0:p0 + len(ta)] = ta
+        for p0, tr, ta in trajs:
+            for b in (p0, p0 + len(tr)):
+                lo, hi = max(0, b - wj), min(len(sp), b + wj)
+                if hi - lo < 2 or b <= 0 or b >= len(sp):
+                    continue
+                L, R = sp[lo].copy(), sp[hi - 1].copy()
+                La, Ra = ap[lo].copy(), ap[hi - 1].copy()
+                for k in range(lo, hi):
+                    x = (k - lo) / (hi - 1 - lo)
+                    x = x * x * (3 - 2 * x)
+                    sp[k] = (1 - x) * L + x * R
+                    ap[k] = (1 - x) * La + x * Ra
+
     for p0, res in lifes:   # natural micro-movement, tapered at the edges
         taper = np.sin(np.linspace(0, np.pi, len(res)))[:, None] ** 0.5
         sp[p0:p0 + len(res)] += life * res * taper
@@ -312,7 +450,11 @@ def synth(units: list[Unit], f0_fn, cat: Catalogue | None = None,
 
     # keep his hum when the pitch differs from where the sound was recorded
     owner_f0 = np.array(owner_f0, dtype=float)
-    for f_from in (np.unique(owner_f0[owner_f0 > 0]) if hum_fix > 0 else []):
+    if hum_mode == "source":   # source x mouth: move only the hum cliff with pitch
+        sel = (owner_f0 > 0) & (f0 > 0)
+        if sel.any():
+            sp[sel] = _source_refit(sp[sel], owner_f0[sel], f0[sel], hum_depth, hum_start, hum_end)
+    for f_from in (np.unique(owner_f0[owner_f0 > 0]) if hum_fix > 0 and hum_mode == "warp" else []):
         sel = (owner_f0 == f_from) & (f0 > 0)
         if sel.any():   # partial: full correction over-deepens the cliff
             fixed = _hum_correct(sp[sel], f_from, f0[sel])

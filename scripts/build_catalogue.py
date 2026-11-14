@@ -42,9 +42,12 @@ for ph in PHRASES:
         CONTEXT[(lab, s0)] = dict(
             left=ph[k - 1][0] if k > 0 else "#", right=ph[k + 1][0] if k + 1 < len(ph) else "#",
             stress=st, initial=k == 0, final=k == len(ph) - 1)
-# bursts: keep just one recorded example as the dynamic unit
-SEGMENTS["p"] = [(1.455, 1.525)]    # weak lip release + rising transition
-SEGMENTS["tʰ"] = [(1.712, 1.772)]   # crisp burst + aspiration
+# bursts: recorded examples kept whole (audio + frames)
+SEGMENTS["p"] = [(1.455, 1.525)]                    # weak lip release + rising transition
+SEGMENTS["tʰ"] = [(1.712, 1.772), (2.035, 2.09)]    # crisp burst + aspiration (both t's)
+# fade tails: the quiet humming decay after a vowel whose final t never closes,
+# keyed by the vowel instance it follows
+TAILS = {1.52: (1.60, 1.70), 1.77: (1.90, 2.00), 2.09: (2.30, 2.40)}
 DYNAMIC = {"p", "tʰ"}
 VOICED = {"n", "ã", "ɐ˞", "ɹ", "m", "ũ", "iː", "p", "tʰ"}
 
@@ -58,10 +61,23 @@ def main():
     instances = {}
     for i, (lab, spans) in enumerate(SEGMENTS.items()):
         if lab in DYNAMIC:
+            fr = np.linspace(0, SR / 2, ap.shape[1]); band = (fr > 300) & (fr < 4000)
+            dyn_inst = []
+            for k, (s, e) in enumerate(spans):
+                m = (t >= s) & (t < e)
+                store[f"dsp_{i}_{k}"], store[f"dap_{i}_{k}"] = sp[m], ap[m]
+                store[f"dwav_{i}_{k}"] = x[int(s * SR): int(e * SR)].astype(np.float32)
+                store[f"dvm_{i}_{k}"] = ((f0[m] > 0) & (ap[m][:, band].mean(1) < 0.5)).astype(np.int8)
+                after = (t >= e) & (t < e + 0.05) & (f0 > 0)
+                # does this burst lead into the phrase's last syllable?
+                nxt_final = any(ph[-1][1] >= e - 0.03 and any(abs(sg[1] - s) < 0.02 for sg in ph) for ph in PHRASES
+                                if ph[-1][0] != "_" and ph[-1][1] - e < 0.05)
+                dyn_inst.append(dict(span=[s, e], f0=float(np.median(f0[after])) if after.any() else 0.0,
+                                     next_final=bool(nxt_final)))
+            instances[lab] = dyn_inst
             s, e = spans[0]
             m = (t >= s) & (t < e)
             S, A = sp[m], ap[m]
-            fr = np.linspace(0, SR / 2, ap.shape[1]); band = (fr > 300) & (fr < 4000)
             store[f"wav_{i}"] = x[int(s * SR): int(e * SR)].astype(np.float32)  # real burst audio
             store[f"vm_{i}"] = ((f0[m] > 0) & (A[:, band].mean(1) < 0.5)).astype(np.int8)  # tone, not noise
             f = float(np.median(f0[m][f0[m] > 0])) if (f0[m] > 0).any() else 0.0
@@ -88,8 +104,20 @@ def main():
                     store[f"ia{side}_{i}_{k}"] = np.median(ap[mh], 0)
                     fh = f0[mh][f0[mh] > 0]
                     halves[f"f0{side}"] = float(np.median(fh)) if len(fh) else 0.0
+                # full recorded trajectory of each half (real movement, for trajectory mode)
+                mid = s + d / 2
+                for side, (a0, a1) in (("L", (s, mid)), ("R", (mid, e))):
+                    mh = (t >= a0) & (t < a1)
+                    store[f"iT{side}_{i}_{k}"] = np.log(sp[mh] + 1e-20).astype(np.float32)
+                    store[f"iTa{side}_{i}_{k}"] = ap[mh].astype(np.float32)
+                tail = TAILS.get(round(s, 3)) if lab == "iː" else None
+                if tail:
+                    mt = (t >= tail[0]) & (t < tail[1])
+                    store[f"itail_{i}_{k}"] = np.log(sp[mt] + 1e-20).astype(np.float32)
+                    store[f"itaila_{i}_{k}"] = ap[mt].astype(np.float32)
+                    store[f"itailvm_{i}_{k}"] = (f0[mt] > 0).astype(np.int8)
                 inst.append(dict(span=[s, e], f0=float(np.median(fv)) if len(fv) else 0.0,
-                                 **halves, **CONTEXT[(lab, s)]))
+                                 has_tail=bool(tail), **halves, **CONTEXT[(lab, s)]))
             instances[lab] = inst
             S = np.exp(np.median(np.vstack(S_all), 0))
             A = np.median(np.vstack(A_all), 0)

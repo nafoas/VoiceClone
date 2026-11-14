@@ -53,25 +53,32 @@ def main():
     y = np.concatenate([synth(P1, ref_f0(T1), cat), pause, synth(P2, ref_f0(T2), cat)])
     sf.write(out / "rebuilt_reference.wav", y / np.abs(y).max() * 0.8, SR)
 
-    # 2. new things he never said in the clip
+    # 2. new things he never said in the clip, with his pitch model at his own
+    #    levels (calm 215, raised 265, excited 330-390)
+    from prince_voice.bnuypitch import CALM, RAISED, pitch_plan
+    C, R = CALM, RAISED
     new = {
-        "munis_nannar": ([U("m", 90), U("ũ", 120), U("n", 60), U("iː", 190), U("ɕ", 80)],
-                         [270, 270, 270, 270, 265],
-                         [U("n", 100), U("ã", 150), U("n", 75), U("ɐ˞", 110), U("ɹ", 60)],
-                         [230, 216, 216, 214, 214]),
-        "mama_nanni": ([U("m", 100), U("ã", 140), U("m", 80), U("ã", 200, fade_ms=80)],
-                       [330, 330, 300, 300],
-                       [U("n", 90), U("ã", 140), U("n", 70), U("iː", 240, fade_ms=100)],
-                       [300, 300, 340, 340]),
-        "tee_pee_meeni": ([U("tʰ", 45), U("iː", 160, fade_ms=80), U("_", 30), U("p", 55),
-                           U("iː", 160, fade_ms=80)],
-                          [380, 380, 0, 360, 360],
-                          [U("m", 80), U("iː", 140), U("n", 60), U("iː", 220, fade_ms=100)],
-                          [300, 300, 300, 330]),
+        "munis_nannar": [
+            ([U("m", 90), U("ũ", 120), U("n", 60), U("iː", 200), U("ɕ", 90)], [R, R, R, R, R]),
+            ([U("n", 105), U("ã", 145), U("n", 75), U("ɐ˞", 105), U("ɹ", 55)], [C, C, C, C, C]),
+        ],
+        "mama_nanni": [
+            ([U("m", 100), U("ã", 140), U("m", 90), U("ã", 220, fade_ms=100)], [C, C, R, R]),
+            ([U("n", 100), U("ã", 140), U("n", 70), U("iː", 240, fade_ms=100)], [C, C, R, R]),
+        ],
+        "tee_pee_meeni": [
+            ([U("tʰ", 45), U("iː", 200, fade_ms=100), U("_", 30), U("p", 60), U("iː", 220, fade_ms=100)],
+             [390, 390, 390, 350, 350]),
+            ([U("m", 90), U("iː", 150), U("n", 65), U("iː", 230, fade_ms=100)], [C, C, R, R]),
+        ],
     }
-    for name, (a, la, b, lb) in new.items():
-        y = np.concatenate([synth(a, plateaus(a, la), cat), pause[: int(0.25 * SR)],
-                            synth(b, plateaus(b, lb, onset_fall_st=2.0), cat)])
+    for name, phrases in new.items():
+        parts = []
+        for k, (units, lv) in enumerate(phrases):
+            parts.append(synth(units, pitch_plan(units, lv), cat))
+            if k + 1 < len(phrases):
+                parts.append(pause[: int(0.3 * SR)])
+        y = np.concatenate(parts)
         sf.write(out / f"new_{name}.wav", y / np.abs(y).max() * 0.8, SR)
     print("written to", out)
 

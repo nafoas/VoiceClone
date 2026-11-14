@@ -122,8 +122,7 @@ def main():
           + " ".join(f"{x:4.0f}" for x in h[1:]))
     configs = {"default": {}}
     if a.sweep:
-        configs = {f"sub {sp} w_ctx {w}": dict(sub_phonemes=sp, w_ctx=w)
-                   for sp, w in ((False, 1.0), (True, 0.5), (True, 1.0), (True, 2.0))}
+        configs = {f"real_tails {r}": dict(real_tails=r) for r in (False, True)}
     for name, kw in configs.items():
         ph = render(cat, **kw)
         print(row(name, score(ph, ref)))
