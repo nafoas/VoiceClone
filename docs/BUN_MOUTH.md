@@ -128,3 +128,38 @@ Nothing from the clip in the output; no stamped hum.
   have it (4.9 kHz), so it comes from the shape of the cavity. Fitting the
   voice box to all harmonics made it harsh to compensate (rejected). Fitting
   it to the hum region (<2.5 kHz) leaves the 3–5 kHz region weaker than his.
+
+### Step 1b: research on the upper resonances, and the "ee" rebuilt
+
+`analysis/physics/resonances.py` (A: which part of the mouth owns each
+resonance; B: rabbit side spaces swept) and the literature:
+- Human upper formants come from (1) the **laryngeal cavity** above the folds,
+  a Helmholtz resonator that makes its own extra formant (the 4th in adults,
+  ~3–3.7 kHz; Takemoto, Honda et al. 2006); (2) the **piriform fossae**, side
+  pockets that carve an anti-resonance at 4–5 kHz and pull neighbours down
+  (Dang & Honda 1997); (3) **side spaces in the mouth** (between the cheek
+  teeth and cheeks), which act as side branches for "ee"-type vowels (Honda,
+  Takano & Takemoto 2010). A rabbit has all of these, and its larynx is
+  relatively large (child-sized: airway ~8.6 mm at the arytenoids).
+- In his "ee": F1 belongs to the narrow front channel plus the cavity behind it
+  (the bottle that tunes F1 onto his pitch: the hum); F2 to the throat (so
+  larynx depth sets it); F3 to the front cavity; F4 needed the laryngeal cavity.
+- Side spaces swept with the "ee" refitted (F1..F4 error, Bark): none 1.66 (F4
+  7580); **laryngeal cavity 0.64 (F4 5160)**; + piriform 0.89 (worse); cheek
+  spaces 0.58 (F4 5380); both 0.66–0.72 (no better than one). Chosen: the
+  laryngeal cavity (one part, supported for all vowels by the human
+  literature): cavity ~5 mm, inlet ~3 mm narrowed to 15% of the throat.
+- Tissue damping barely changes anything (tested 0.25–1x).
+- **His bright 3–5 kHz cluster is lit partly by breath.** Gentle voice + a
+  little breath gives both the deep hum valley and the bright cluster. His
+  purity at 3–5 kHz is 8.6–14 dB (partly noisy); the model's is 6–8 dB.
+  Breath is modelled physically: glottal turbulence, rising toward high
+  frequencies, in puffs while the folds are open.
+- Result: all four "ee" resonances in place (340 / 2990 / 4360 / 5060 vs his
+  362 / 3323 / 4119 / 4963). Voice box: Oq ~0.44, gentle closure, a little
+  breath.
+- OPEN: (1) per-"ee" F1 differs in him (362–408 Hz); one shared shape gives
+  ~335–400 Hz, so the model hums too deeply at 330/350 Hz. Probably context
+  (what comes before each "ee"), for the dynamics step. (2) Measured jitter
+  is inflated by breath in the model (0.5–1.7% vs his 0.2%) even with near-
+  perfect fold steadiness: an analysis interaction, not settled.

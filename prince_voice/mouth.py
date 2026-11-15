@@ -33,11 +33,18 @@ def _vtl():
     return cy
 
 
+# tissue: scale factors on Sondhi & Schroeter's human values. wall_r: how much the
+# soft walls absorb (damping); wall_m: how much the walls yield (sets the closed-
+# tract floor resonance); visc: air friction at the walls. 1.0 = human.
+TISSUE = dict(wall_r=1.0, wall_m=1.0, visc=1.0)
+
+
 def _section_matrices(area, length, w):
     """Lossy chain matrices for every section at every frequency (Sondhi &
     Schroeter 1987 wall + viscous losses). Returns A, B, C, D of shape (S, F)."""
     jw = 1j * w[None, :]
-    a, b, w0sq, q = 130 * np.pi, (30 * np.pi) ** 2, (406 * np.pi) ** 2, 4.0
+    a, b, w0sq, q = (130 * np.pi * TISSUE["wall_r"], (30 * np.pi) ** 2, (406 * np.pi) ** 2 * TISSUE["wall_m"] ** 2,
+                     4.0 * TISSUE["visc"])
     alpha = np.sqrt(jw * q)
     beta = jw * w0sq / ((jw + a) * jw + b) + alpha
     gam = np.sqrt((alpha + jw) / (beta + jw))

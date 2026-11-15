@@ -98,9 +98,14 @@ def flow(f0_track, dur, Oq, am, Ta, jit, shim, asp, amp_track, rng):
     if Ta > 0:
         a = np.exp(-1.0 / (Ta * 1e-3 * SR)); u = lfilter([1 - a], [1, -a], u)
     if asp > 0:
-        nz = lfilter([1, -0.9], [1], rng.standard_normal(n))
+        # breath = turbulence at the glottis: strongest at high frequencies (made
+        # by the jet; ~2nd-order rise below ~1.5 kHz), and it comes in puffs, while
+        # the folds are open (gated by the flow)
+        from scipy.signal import butter
+        bb, ab = butter(2, 1500 / (SR / 2), "high")
+        nz = lfilter(bb, ab, rng.standard_normal(n))
         env = np.array([amp_track(i / SR) for i in range(0, n)])
-        u = u + asp * nz * env * (0.2 + u / (u.max() + 1e-12))
+        u = u + asp * nz * env * (0.05 + u / (u.max() + 1e-12))
     return u
 
 
@@ -188,21 +193,37 @@ def measure(y, f0):
 
 def main():
     his = his_ees()
-    m = BunMouth(SIZE, neck_mm=NECK)
+    import os
+    anat = os.environ.get("EE_ANAT", "")
+    kw = {"larcav": dict(larcav=(7, 1.0, 4, 0.15)), "buccal": dict(buccal=(20, 0.5, 44)), "": {}}[anat]
+    m = BunMouth(SIZE, neck_mm=NECK, **kw)
+    print("anatomy:", kw or "plain")
     (pose, src), err = fit(m, his)
     print(f"\nfit: mean harmonic error {err:.2f} dB; voice box Oq {src[0]:.2f}, am {src[1]:.2f}, Ta {src[2]:.2f} ms")
     print("     mouth:", {n: round(float(v), 2) for n, v in zip(NAMES, pose.vec()) if abs(v) > 0.01})
     print("     mouth resonances:", [round(x) for x in m.formants(pose)[:4] if x == x])
-    # steadiness: the small grid that matches his purity / jitter / shimmer best (measured on the model's audio)
-    tgt = {k: float(np.nanmedian([h["meas"][k] for h in his])) for k in ("HNR_0_500", "HNR_1500_2500", "jitter_pct", "shimmer_dB")}
+    # gentleness and breath, judged on the model's own audio (breath noise rings
+    # his upper resonances; the hum region stays pure), then steadiness
+    tgt = {k: float(np.nanmedian([h["meas"][k] for h in his])) for k in ("HNR_0_500", "jitter_pct", "shimmer_dB")}
     best = None
-    for jit in (0.001, 0.002, 0.004, 0.006):
+    for Ta in (0.6, 1.0, 1.5, 2.0, 3.0):
+        for asp in (0.05, 0.1, 0.15, 0.25, 0.4, 0.6):
+            e = 0.0
+            for h in his:
+                y = render(m, pose, (src[0], src[1], Ta), h["f0"], max(h["ms"], 150), (0.003, 0.01, asp), np.random.default_rng(1))
+                _, hm = measure(y, h["f0"])
+                d = (hm - hm[0]) - (h["harm"] - h["harm"][0]); e += np.sqrt(np.mean(d[1:] ** 2))
+            if best is None or e < best[0]:
+                best = (e, Ta, asp)
+    src = (src[0], src[1], best[1]); asp = best[2]
+    print(f"     gentleness Ta {best[1]} ms, breath {asp}: harmonic error on the model's audio {best[0] / len(his):.2f} dB")
+    best = None
+    for jit in (0.0005, 0.001, 0.002, 0.004):
         for shim in (0.005, 0.01, 0.02, 0.04):
-            for asp in (0.0, 0.01, 0.02, 0.04, 0.08):
-                r, _ = measure(render(m, pose, src, 300.0, 300, (jit, shim, asp), np.random.default_rng(0)), 300.0)
-                e = np.nansum([abs(r[k] - v) / s for (k, v), s in zip(tgt.items(), (3, 3, 0.3, 0.2))])
-                if best is None or e < best[0]:
-                    best = (e, (jit, shim, asp), r)
+            r, _ = measure(render(m, pose, src, 264.0, 300, (jit, shim, asp), np.random.default_rng(0)), 264.0)
+            e = np.nansum([abs(r[k] - v) / sc for (k, v), sc in zip(tgt.items(), (3, 0.1, 0.2))])
+            if best is None or e < best[0]:
+                best = (e, (jit, shim, asp), r)
     steady = best[1]
     print(f"     steadiness: jitter {steady[0]}, shimmer {steady[1]}, breath {steady[2]}  "
           f"(target {', '.join(f'{k} {v:.1f}' for k, v in tgt.items())})")
@@ -226,10 +247,10 @@ def main():
         real = resample_poly(x[int((s - 0.02) * sr): int((e + 0.03) * sr)], 1, 2)
         pieces += [real / np.abs(real).max() * 0.7, gap, resample_poly(y, 1, 2), gap, gap]
     import os
-    tag = "_band" if float(os.environ.get("EE_BAND_HZ", "0")) > 0 else ""
+    tag = ("_band" if float(os.environ.get("EE_BAND_HZ", "0")) > 0 else "") + (f"_{anat}" if anat else "")
     sf.write(OUT / f"ee_him_vs_model{tag}.wav", np.concatenate(pieces), 24000)
-    (ROOT / "models/build_ee.json").write_text(json.dumps(dict(
-        size=SIZE, neck=NECK, pose=pose.vec().tolist(), source=dict(Oq=src[0], am=src[1], Ta_ms=src[2]),
+    (ROOT / f"models/build_ee{('_' + anat) if anat else ''}.json").write_text(json.dumps(dict(
+        size=SIZE, neck=NECK, anatomy={k: list(v) for k, v in kw.items()}, pose=pose.vec().tolist(), source=dict(Oq=src[0], am=src[1], Ta_ms=src[2]),
         steady=dict(jitter=steady[0], shimmer=steady[1], breath=steady[2]), fit_err_db=err, rows=rows), indent=1, default=float))
     print("\n", OUT / "ee_him_vs_model.wav")
 

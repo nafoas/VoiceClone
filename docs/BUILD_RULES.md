@@ -138,7 +138,10 @@ Allowed, and encouraged:
 |---|---|---|
 | Split upper lip leak | ~0.03–0.04 cm² (to be fitted) | weak, voiced "p" (PRINCE_PHYSICS.md §7) |
 | Fold tension | relaxed (~4–13 kPa) | his pitch 215–390 Hz (§5) |
-| Fold closure | gentle (Ta ~0.4–1 ms) | adds to the hum (§1) |
+| Fold closure | gentle (Ta ~0.6 ms, open ~44% of the cycle) | the hum region of his "ee" (BUN_MOUTH.md, step 1) |
+| Breath | a little, as glottal turbulence (high-frequency, in puffs) | lights his 3–5 kHz cluster; low band stays pure |
+| Laryngeal cavity | ~5 mm cavity, ~3 mm inlet at 15% of the throat | his "ee" F4 (~5 kHz); every larynx has one (Takemoto et al.) |
+| Larynx depth | "ee" asks ~2.2 cm (not 3.8) | to be settled across all his sounds |
 
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip

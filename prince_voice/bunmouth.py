@@ -83,6 +83,31 @@ LO = np.array([0, -1, 0, 0, -1, 0, 0, 0, 0, 0], float)
 HI = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1], float)
 
 
+def _branch_admittance(L_cm, a_cm2, w, pair=True):
+    """Input admittance of a closed side pocket (length L, area a): a pair = x2."""
+    n = max(2, int(round(L_cm / 0.1)))
+    Kb = _chain(np.full(n, a_cm2), np.full(n, L_cm / n), w)
+    return (2.0 if pair else 1.0) * Kb[1, 0] / Kb[0, 0]
+
+
+def _chain_sh(area, length, w, shunts):
+    """Chain product with side pockets joining before the given sections."""
+    if not shunts:
+        return _chain(area, length, w)
+    from .mouth import _section_matrices
+    A, B, Cm, D = _section_matrices(area, length, w)
+    K = np.zeros((2, 2, len(w)), complex); K[0, 0] = K[1, 1] = 1
+    at = {}
+    for j, L, a in shunts:
+        at[j] = at.get(j, 0) + _branch_admittance(L, a, w)
+    for s_ in range(len(area)):
+        if s_ in at:
+            Y = at[s_]; one = np.ones_like(Y); zero = np.zeros_like(Y)
+            K = np.einsum("ijf,jkf->ikf", K, np.array([[one, zero], [Y, one]]))
+        K = np.einsum("ijf,jkf->ikf", K, np.array([[A[s_], B[s_]], [Cm[s_], D[s_]]]))
+    return K
+
+
 def _g(s, mu, sd):
     return np.exp(-0.5 * ((s - mu) / sd) ** 2)
 
@@ -94,6 +119,11 @@ class BunMouth:
     extras: bool = False                    # the rejected extra adaptations (cheeks, wider jaw/lips, mobile larynx)
     vestibule_mm: float = 0.0               # laryngeal vestibule (above the folds, below the epiglottis), ref mm
     vestibule_ratio: float = 1 / 6          # its area vs the throat above it (narrow, as in every mammal larynx)
+    # side spaces every rabbit has (None = not modelled). Lengths in reference mm,
+    # areas as a fraction of the main tube's area where they join it.
+    larcav: tuple | None = None             # laryngeal cavity: (cavity mm, cavity ratio, inlet mm, inlet ratio), in line
+    piriform: tuple | None = None           # piriform recesses (a pair): (length mm, area ratio each), at the laryngeal inlet
+    buccal: tuple | None = None             # cheek spaces beside the cheek teeth (a pair): (length mm, area ratio each, s mm)
     s: np.ndarray = field(default_factory=lambda: np.linspace(0, REF_LEN, N_SEC + 1))
 
     # ---- geometry ----------------------------------------------------------------
@@ -154,6 +184,25 @@ class BunMouth:
             area = np.concatenate([na, area])
             length = np.concatenate([np.full(n, neck / n / 10.0 * k), length])
             br += n
+        shunts = []
+        if self.buccal:
+            Lb, rb, sb = self.buccal
+            j = br + int(np.searchsorted(mid, sb)) - int(np.searchsorted(mid, S_PORT))   # oral index after prepends
+            shunts.append([j, Lb, rb])
+        if self.larcav:
+            # the larynx above the folds: a small cavity with a narrow inlet (Helmholtz-like)
+            Lc, rc, Li, ri = self.larcav
+            a0 = max(float(area[0]), 1e-3)
+            nc, ni = max(2, int(round(Lc / 1.0))), max(1, int(round(Li / 1.0)))
+            la = np.r_[np.full(nc, a0 * rc), np.full(ni, a0 * ri)]
+            ll = np.r_[np.full(nc, Lc / nc / 10.0 * k), np.full(ni, Li / ni / 10.0 * k)]
+            area = np.concatenate([la, area]); length = np.concatenate([ll, length]); br += nc + ni
+            for q in shunts:
+                q[0] += nc + ni
+            if self.piriform:
+                Lp, rp = self.piriform
+                shunts.append([nc + ni, Lp, rp])
+        self._shunts = [(j, Lb_ * 0.1 * k, rb_ * max(float(area[min(j, len(area) - 1)]), 1e-3)) for j, Lb_, rb_ in shunts]
         if self.vestibule_mm > 0:
             # the larynx's own short narrow tube just above the vocal folds; it
             # bunches the upper resonances together (cf. the singer's formant)
@@ -186,8 +235,9 @@ class BunMouth:
             Zl = _radiation(area[-1], w)
             H = 1.0 / (Kf[1, 0] * Zl + Kf[1, 1])
         else:
-            Kp = _chain(area[:br], length[:br], w)
-            Ko = _chain(area[br:], length[br:], w)
+            sh = getattr(self, "_shunts", [])
+            Kp = _chain_sh(area[:br], length[:br], w, [(j, L, a) for j, L, a in sh if j < br])
+            Ko = _chain_sh(area[br:], length[br:], w, [(j - br, L, a) for j, L, a in sh if j >= br])
             Zl = _radiation(area[-1], w)
             Ul = 1.0 / (Ko[0, 0] * Zl + Ko[0, 1])
             Ub = (Ko[1, 0] * Zl + Ko[1, 1]) * Ul
