@@ -104,3 +104,27 @@ nose open, vowels = mouth open and tip down, and so on.
   not the pipeline (the ceiling is 3.2). Next: calibrate his anatomy within
   rabbit ranges (wall losses, nasal cavity and turbinate damping, the torus's
   width, size) against the clip.
+
+## Build step 1: his "ee" from the model alone (`scripts/build/ee.py`)
+
+One shared "ee" mouth shape and one shared voice box for his four "ee"s (264,
+391, 350, 330 Hz). Per "ee", only the pitch level (a plateau) and loudness.
+Nothing from the clip in the output; no stamped hum.
+
+- **The hum emerges.** H1–H2 model vs him: 10.9 / 29.6 / 29.7 / 24.7 vs 9.6 /
+  31.8 / 18.5 / 12.2 dB. The cliff (H3, H4) is within ~5–10 dB. Harmonic error
+  over the hum region: 5.9 dB.
+- **Voice box:** gentle. Folds open ~46% of each cycle, opening slowly and
+  closing very gradually (Ta at the 3 ms limit). Steady (jitter ~0.4%).
+- **Larynx depth:** his "ee" asks for the larynx **~2.2 cm lower** (error
+  0.55), not 3.8 cm (2.44). Mouth size ±15% can't substitute. To be settled
+  with all his sounds (the open vowels and "oo" preferred deeper in the
+  vowel-only fit).
+- **OPEN, a structural gap:** his "ee" has an upper-resonance cluster (F2 3323,
+  F3 4119, F4 4963). The bun mouth gives F3 ~4.3–4.5 kHz but F4 ~7.2–7.6 kHz,
+  whatever the pose. Not fixed by: mouth size ±15%, nasal coupling, or a
+  laryngeal vestibule (added to the model, default off; a realistic length
+  only adds a resonance near 6.2 kHz). A human-shaped mouth at his size does
+  have it (4.9 kHz), so it comes from the shape of the cavity. Fitting the
+  voice box to all harmonics made it harsh to compensate (rejected). Fitting
+  it to the hum region (<2.5 kHz) leaves the 3–5 kHz region weaker than his.

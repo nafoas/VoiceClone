@@ -92,6 +92,8 @@ class BunMouth:
     size: float = 1.0                       # x the reference rabbit
     neck_mm: float = 0.0                    # larynx lower in the neck (reference mm): his ONE adaptation
     extras: bool = False                    # the rejected extra adaptations (cheeks, wider jaw/lips, mobile larynx)
+    vestibule_mm: float = 0.0               # laryngeal vestibule (above the folds, below the epiglottis), ref mm
+    vestibule_ratio: float = 1 / 6          # its area vs the throat above it (narrow, as in every mammal larynx)
     s: np.ndarray = field(default_factory=lambda: np.linspace(0, REF_LEN, N_SEC + 1))
 
     # ---- geometry ----------------------------------------------------------------
@@ -152,6 +154,14 @@ class BunMouth:
             area = np.concatenate([na, area])
             length = np.concatenate([np.full(n, neck / n / 10.0 * k), length])
             br += n
+        if self.vestibule_mm > 0:
+            # the larynx's own short narrow tube just above the vocal folds; it
+            # bunches the upper resonances together (cf. the singer's formant)
+            nv = max(2, int(round(self.vestibule_mm / 1.5)))
+            va = np.full(nv, max(float(area[0]), 1e-3) * self.vestibule_ratio)
+            area = np.concatenate([va, area])
+            length = np.concatenate([np.full(nv, self.vestibule_mm / nv / 10.0 * k), length])
+            br += nv
         return area, length, port, br
 
     def length_cm(self, p: Pose = Pose()):
