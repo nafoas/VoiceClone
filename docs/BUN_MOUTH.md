@@ -222,3 +222,22 @@ its pitch that drift swings its loudness more than his. These measures are
 noisy on short sounds. So four versions, each adding one factor at modest
 physiological amounts, go to Da Boss's ear: A frozen, B moving mouth,
 C + living mouth and folds, D + a whisper of turbulence.
+
+### Step 1d verdict and diagnosis
+
+Da Boss: "increasingly computery... very weird, stuttery, with odd pitch
+changes that range from 'he is very phlegmatic' to 'he sounds like he is
+dying'". Rejected: A–D.
+- The odd pitch was mine: an added onset scoop, a falling tail, random drift.
+  Never add pitch movement without his reason (BUILD_RULES §4).
+- The root cause is my renderer: pulses through a frame-switched filter, with
+  randomness layered on top. A living voice's variation comes from physics
+  interacting (airflow, folds and tract), which that renderer doesn't simulate.
+- VocalTractLab's time-domain physical simulation can be driven with our own
+  tube (`prince_voice/vtlsynth.py`, via its C API `vtlSynthesisAddTube`). With
+  an ordinary human "ee" tube it is steady, full and naturally variable on its
+  own (wobble 3.9/1.2 cents vs his 5.7/2.4; noise 28–51 dB down). With the bun
+  tube it fails (a near-sine, unstable pitch): its vocal folds are human-sized
+  and the bun airway is 10–50x smaller in cross-section. Next: give the
+  simulation a bun-sized larynx (a small animal has a small larynx; a rabbit's
+  is about child-sized).

@@ -148,7 +148,7 @@ Allowed, and encouraged:
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
 protrusion; 2.5 cm larynx travel; stamped hum; free per-frame poses; formant
 warping for new sounds; the intents prosody planner (v10–v16); ElevenLabs,
-Kokoro and Seed-VC as sources; breath to brighten his tone (1b: airy, shrill); random cycle-to-cycle jitter (rough).
+Kokoro and Seed-VC as sources; breath to brighten his tone (1b: airy, shrill); random cycle-to-cycle jitter (rough); hand-added pitch scoops, falling tails and random drift ('phlegmatic', 'dying'); random variation layered on a crude renderer ('stuttery', 'computery').
 
 ## 7. Before every change: checklist
 1. **Which property of him does it serve?** Name it (PRINCE_IDENTITY.md /
