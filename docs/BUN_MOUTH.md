@@ -185,3 +185,40 @@ almost shrill... needs to be a warm, pure, bnuy hum tone." Measured per band
   slow/fast 4–9 / 1–4 cents; top −29…−39 dB.
 - OPEN: at 350 and 330 Hz the model hums too deeply and its bright band is
   6–10 dB weak (his F1 is higher in those "ee"s: context, for the dynamics step).
+
+### Step 1d: why 1c sounded "very, very, very computery" (`analysis/physics/ee_props.py`)
+
+Every property of his four "ee"s, over time and cycle by cycle, vs the model:
+
+| inside one "ee" | him | 1c model |
+|---|---|---|
+| cycle-to-cycle period / loudness variation | 0.2–0.55% / 2–7% | 0.1–1.2% / 3–4.5% (fine) |
+| F1 / F2 / F3 wandering (sd) | 5–13 / 32–136 / 70–317 Hz | 0.1–0.5 / 1–5 / 2–6 Hz |
+| hum depth (H1–H2) / bright-band flicker | 0.6–1.1 / 1.3–2.1 dB | 0.1 / 0.1–0.3 dB |
+| loudness swell | 0.2–0.7 dB | 0.02–0.16 dB |
+| F2 trend across the "ee" | −131 to +310 Hz (after p: rising out of the lips) | ~0 |
+| phrase-final end | ~150 ms tail | 25 ms |
+| noise under the bright band | ~20 dB below the harmonics | 30–40 dB below |
+
+**The folds were already fine. The mouth and breath were frozen.** His
+fluctuations split into slow, purposeful movement (out of the consonant,
+toward what follows, settling into a tail) and fast timbre flicker
+(14–40 Hz). A tongue or jaw can't move that fast, so the flicker is the folds
+closing slightly differently every cycle; formant-tracker noise on his
+high-pitched clip, and the neural generator the clip came from, also add to it.
+
+Physical, ordinary-physiology ingredients (no new biology):
+1. a moving mouth: in from the consonant before, out into a phrase-final tail
+   (lips closing, the hum carrying on through the nose)
+2. a living mouth: small slow drift of tongue, jaw and lips (under 6 Hz)
+3. living folds: each cycle's closure slightly different
+4. breath pressure that swells gently
+5. a whisper of glottal turbulence (about a tenth of 1b's)
+
+`prince_voice/voicebox.py`: a renderer whose mouth can move (pose every 5 ms,
+overlap-add). An automatic calibration on the fluctuation measures chose no
+drift and no cycle variation, partly because the model's F1 sits so exactly on
+its pitch that drift swings its loudness more than his. These measures are
+noisy on short sounds. So four versions, each adding one factor at modest
+physiological amounts, go to Da Boss's ear: A frozen, B moving mouth,
+C + living mouth and folds, D + a whisper of turbulence.
