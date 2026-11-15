@@ -43,6 +43,36 @@ LAMBDA = 2.5                                       # smoothness: dB of fit trade
 N_CODE, TOPK = 4000, 50
 HUM = dict(depth=25.0, start=1.5, end=3.2)         # his hum cliff (bnuysynth defaults, validated on gold)
 
+# What each sound physically requires of a mouth (the transcription tells the
+# mouth what it must do; it fits everything else). (articulator, lo, hi)
+NEEDS = {
+    "m":  [("lips", 0, 0.03), ("velum", 0.4, 1)],
+    "n":  [("tip", 0.92, 1), ("velum", 0.4, 1), ("lips", 0.25, 1)],
+    "p":  [("lips", 0, 0.25), ("velum", 0, 0.1)],
+    "tʰ": [("tip", 0.6, 1), ("velum", 0, 0.1), ("lips", 0.25, 1)],
+    "ɕ":  [("tip", 0.3, 0.9), ("body", 0.3, 1), ("velum", 0, 0.1), ("lips", 0.2, 1)],
+    "ɹ":  [("tip", 0.2, 0.8), ("velum", 0, 0.2), ("lips", 0.25, 1)],
+    "ã":  [("tip", 0, 0.3), ("lips", 0.45, 1), ("jaw", 0.4, 1), ("round", 0, 0.4)],   # nasal vowel: velum free
+    "ɐ˞": [("tip", 0, 0.6), ("lips", 0.35, 1), ("jaw", 0.3, 1), ("velum", 0, 0.3)],
+    "ũ":  [("tip", 0, 0.3), ("lips", 0.1, 0.6), ("round", 0.4, 1)],                      # nasal, rounded
+    "iː": [("tip", 0, 0.35), ("lips", 0.3, 1), ("round", 0, 0.5), ("body", 0.3, 1), ("velum", 0, 0.3)],
+}
+EDGE_S = 0.012                                     # constraints relax near each boundary (transitions)
+
+
+def label_bounds(times):
+    """Per-frame articulator bounds from the transcription (scripts/build_catalogue.PHRASES)."""
+    from build_catalogue import PHRASES
+    lo = np.tile(LO, (len(times), 1)); hi = np.tile(HI, (len(times), 1)); lab = [""] * len(times)
+    for ph in PHRASES:
+        for name, a, b, _ in ph:
+            k = (times >= a + EDGE_S) & (times < b - EDGE_S)
+            for i in np.where(k)[0]:
+                lab[i] = name
+            for art, l, h in NEEDS.get(name, []):
+                j = NAMES.index(art); lo[k, j] = l; hi[k, j] = h
+    return lo, hi, lab
+
 
 def analyse(x):
     x = np.ascontiguousarray(x, np.float64)
@@ -75,19 +105,21 @@ def fit_gain_tilt(R):
     """Weighted least squares of residual(s) R (..., F) on [1, TILT]: the voice
     box's loudness and brightness. Returns (gain, tilt, rms error)."""
     X = np.stack([np.ones_like(FQ), TILT], 1); Wd = WF[:, None] * X
-    beta = np.linalg.solve(X.T @ Wd, (R * WF) @ X)            # (..., 2)
+    beta = ((R * WF) @ X) @ np.linalg.inv(X.T @ Wd).T          # (..., 2)
     beta[..., 1] = np.clip(beta[..., 1], -18.0, 6.0)
     fit = beta @ X.T
     err = np.sqrt(np.average((R - fit) ** 2, weights=WF, axis=-1))
     return beta[..., 0], beta[..., 1], err
 
 
-def codebook(m, seed=0):
+def codebook(m, seed=0, lo=LO, hi=HI, n=N_CODE):
     rng = np.random.default_rng(seed)
-    Z = LO + (HI - LO) * rng.random((N_CODE, len(LO)))
-    Z[:, NAMES.index("velum")] *= rng.random(N_CODE) < 0.35      # most poses: velum sealed
-    Z[rng.random(N_CODE) < 0.15, NAMES.index("lips")] = 0.0       # some lip closures
-    Z[rng.random(N_CODE) < 0.15, NAMES.index("tip")] = 1.0        # some tip closures
+    Z = lo + (hi - lo) * rng.random((n, len(LO)))
+    Z[:, NAMES.index("velum")] *= rng.random(n) < 0.35           # most poses: velum sealed
+    Z[:, NAMES.index("velum")] = np.maximum(Z[:, NAMES.index("velum")], lo[NAMES.index("velum")])
+    Z[rng.random(n) < 0.15, NAMES.index("lips")] = lo[NAMES.index("lips")]   # some lip closures
+    Z[rng.random(n) < 0.15, NAMES.index("tip")] = hi[NAMES.index("tip")]     # some tip closures
+    Z = np.clip(Z, lo, hi)
     Mv = np.stack([model_db(m, Pose.from_vec(z), True) for z in Z])
     Mn = np.stack([model_db(m, Pose.from_vec(z), False) for z in Z])
     return Z, Mv, Mn
@@ -113,28 +145,28 @@ def viterbi(costs, Zc):
     return Zc[np.arange(n), path]
 
 
-def fit_track(m, Tm, voiced, code, Z_prev=None, fev=120):
-    Zcode, Mv, Mn = code
+def fit_track(m, Tm, voiced, codes, labs, lo, hi, Z_prev=None, fev=120):
     n = len(Tm); Zc = np.zeros((n, TOPK, len(NAMES))); costs = np.zeros((n, TOPK))
     for k in range(n):
+        Zcode, Mv, Mn = codes[labs[k]]
         M = Mv if voiced[k] else Mn
         _, _, err = fit_gain_tilt(Tm[k][None, :] - M)
         top = np.argsort(err)[:TOPK]
         Zc[k], costs[k] = Zcode[top], err[top]
         if Z_prev is not None:                       # keep last pass's answer in the running
-            Zc[k, -1] = Z_prev[k]
-            costs[k, -1] = fit_gain_tilt(Tm[k] - model_db(m, Pose.from_vec(Z_prev[k]), voiced[k]))[2]
+            Zc[k, -1] = np.clip(Z_prev[k], lo[k], hi[k])
+            costs[k, -1] = fit_gain_tilt(Tm[k] - model_db(m, Pose.from_vec(Zc[k, -1]), voiced[k]))[2]
     Z = viterbi(costs, Zc)
     # local refinement, staying near the neighbours on the path
     for k in range(n):
         nb = [Z[j] for j in (k - 1, k + 1) if 0 <= j < n]
 
         def cost(z):
-            z = np.clip(z, LO, HI)
+            z = np.clip(z, lo[k], hi[k])
             e = fit_gain_tilt(Tm[k] - model_db(m, Pose.from_vec(z), voiced[k]))[2]
             return e + 0.5 * LAMBDA * sum(np.linalg.norm(z - q) for q in nb)
-        r = minimize(cost, Z[k], method="Powell", options=dict(maxfev=fev, xtol=2e-3, ftol=1e-3))
-        Z[k] = np.clip(r.x, LO, HI)
+        r = minimize(cost, np.clip(Z[k], lo[k], hi[k]), method="Powell", options=dict(maxfev=fev, xtol=2e-3, ftol=1e-3))
+        Z[k] = np.clip(r.x, lo[k], hi[k])
     return Z
 
 
@@ -156,19 +188,28 @@ def main():
     a = ap_.parse_args()
     m = BunMouth(a.size)
     ref = I.reference()
-    t0 = time.time(); code = codebook(m); print(f"codebook {N_CODE} poses ({time.time() - t0:.0f}s)", flush=True)
+    t0 = time.time()
+    codes = {"": codebook(m)}
+    for i, (lab, needs) in enumerate(NEEDS.items()):
+        lo_, hi_ = LO.copy(), HI.copy()
+        for art, l, h in needs:
+            lo_[NAMES.index(art)], hi_[NAMES.index(art)] = l, h
+        codes[lab] = codebook(m, seed=i + 1, lo=lo_, hi=hi_, n=1500)
+    print(f"codebooks for {len(codes)} sounds ({time.time() - t0:.0f}s)", flush=True)
     data = []
     for s, e in SPANS:
         x = ref[int(s * SR): int(e * SR)]
         f0, t, sp, ap = analyse(x)
         en = 10 * np.log10(sp.sum(1) + 1e-20)
-        data.append(dict(s=s, f0=f0, sp=sp, ap=ap, T=on_grid(sp), en=en, voiced=f0 > 0, act=en > en.max() - 30))
+        lo_, hi_, labs = label_bounds(s + t)
+        data.append(dict(s=s, f0=f0, sp=sp, ap=ap, T=on_grid(sp), en=en, voiced=f0 > 0, act=en > en.max() - 30,
+                         lo=lo_, hi=hi_, labs=[l if l in codes else "" for l in labs]))
     S_v = np.zeros(len(FQ)); S_n = np.zeros(len(FQ)); Zs = [None] * len(data)
     for ps in range(a.passes):
         t0 = time.time()
         for i, d in enumerate(data):
             Tm = frame_targets(d["T"], d["f0"], d["voiced"], S_v, S_n)
-            Zs[i] = fit_track(m, Tm, d["voiced"], code, Zs[i])
+            Zs[i] = fit_track(m, Tm, d["voiced"], codes, d["labs"], d["lo"], d["hi"], Zs[i])
         # re-estimate the voice box from what the mouth leaves over
         Rv, Rn, errs = [], [], []
         for i, d in enumerate(data):

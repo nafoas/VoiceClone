@@ -32,3 +32,33 @@ a bun-*shaped* mouth about twice the size of a real small bun's.
 
 The model keeps rabbit **proportions** fixed, and `size` is one number. Every
 drawing has a 1 cm bar, so this is always visible rather than hidden.
+
+## Rebuilding the gold clip with only the mouth (`scripts/bun_rebuild.py`)
+
+From the clip the rebuild takes only the voice box's controls: pitch, loudness,
+brightness and how voiced each frame is. Every resonance and movement comes
+from the mouth. One fixed voice-box spectrum is shared by the whole clip, plus
+his hum cliff, which follows his pitch.
+
+The fit is a codebook of mouth poses, then the smoothest good path through
+them (Viterbi), then a local refinement. The transcription sets what each sound
+physically requires: m = lips shut and nose open, n = tongue tip sealed and
+nose open, vowels = mouth open and tip down, and so on.
+
+| version | LSD | LSDshape | flux | p95 | H2 / H3 / H4 |
+|---|---|---|---|---|---|
+| clip | - | - | 3.85 | 7.44 | -12 / -32 / -46 |
+| gold v9 (catalogue) | 3.4 | 3.0 | 3.42 | 7.13 | -10 / -30 / -48 |
+| ceiling (his own envelope through this pipeline) | 3.2 | 2.9 | 3.63 | 7.08 | -10 / -30 / -48 |
+| mouth v1 (fixed source, frame-by-frame search) | 9.6 | 8.8 | 3.22 | 7.21 | -9 / -25 / -34 |
+| mouth v2 (codebook + Viterbi, tilt, pitch-following hum) | 7.9 | 7.3 | 3.44 | 8.42 | -10 / -34 / -44 |
+| mouth v3 (+ the physical needs of each sound) | 8.0 | 7.3 | 3.28 | 7.61 | -10 / -35 / -42 |
+
+- The hum is now right: the harmonic profile matches the clip.
+- Without the physical needs, the fit "cheated": it never opened the velum
+  (not even for n/m) and made "a" with nearly shut lips and the tip up. Adding
+  the needs cost nothing in score.
+- The remaining gap (fit error about 5.7 dB per frame) is the mouth's anatomy,
+  not the pipeline (the ceiling is 3.2). Next: calibrate his anatomy within
+  rabbit ranges (wall losses, nasal cavity and turbinate damping, the torus's
+  width, size) against the clip.
