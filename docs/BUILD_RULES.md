@@ -138,16 +138,17 @@ Allowed, and encouraged:
 |---|---|---|
 | Split upper lip leak | ~0.03–0.04 cm² (to be fitted) | weak, voiced "p" (PRINCE_PHYSICS.md §7) |
 | Fold tension | relaxed (~4–13 kPa) | his pitch 215–390 Hz (§5) |
-| Fold closure | gentle (Ta ~0.6 ms, open ~44% of the cycle) | the hum region of his "ee" (BUN_MOUTH.md, step 1) |
-| Breath | a little, as glottal turbulence (high-frequency, in puffs) | lights his 3–5 kHz cluster; low band stays pure |
+| Fold closure | clean, relaxed (Oq ~0.6, Ta ~0) | his band balance and hum (step 1c); "gentle" + breath was rejected: airy, jittery |
+| Breath | none in his tone (his bright band is harmonic) | step 1c; breath sounded airy/shrill |
+| Pitch micro-movement | slow smooth drift ~6 cents (<6 Hz), tiny cycle variation | his measured wobble; random jitter sounded rough |
 | Laryngeal cavity | ~5 mm cavity, ~3 mm inlet at 15% of the throat | his "ee" F4 (~5 kHz); every larynx has one (Takemoto et al.) |
-| Larynx depth | "ee" asks ~2.2 cm (not 3.8) | to be settled across all his sounds |
+| Larynx depth | "ee" asks ~1.5 cm (step 1c; 2.2 in 1b) | to be settled across all his sounds |
 
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
 protrusion; 2.5 cm larynx travel; stamped hum; free per-frame poses; formant
 warping for new sounds; the intents prosody planner (v10–v16); ElevenLabs,
-Kokoro and Seed-VC as sources.
+Kokoro and Seed-VC as sources; breath to brighten his tone (1b: airy, shrill); random cycle-to-cycle jitter (rough).
 
 ## 7. Before every change: checklist
 1. **Which property of him does it serve?** Name it (PRINCE_IDENTITY.md /

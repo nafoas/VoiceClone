@@ -19,6 +19,12 @@ explanations, or not yet tested.
 
 ---
 
+> **Correction (build step 1c):** building his "ee" showed his voice box closes
+> **cleanly** (an ordinary closure, not an especially gentle one), with **no
+> breath**. His hum is made by the mouth (F1 on his pitch). His bright 3–5 kHz
+> band is harmonic, and his pitch drifts slowly with almost no fast wobble.
+> "Gentle closure" below was an over-reading of E1/E2.
+
 ## The short version
 
 He is a small bun with one difference, a slightly lower larynx, speaking

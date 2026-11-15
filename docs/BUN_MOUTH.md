@@ -163,3 +163,25 @@ resonance; B: rabbit side spaces swept) and the literature:
   (what comes before each "ee"), for the dynamics step. (2) Measured jitter
   is inflated by breath in the model (0.5–1.7% vs his 0.2%) even with near-
   perfect fold steadiness: an analysis interaction, not settled.
+
+### Step 1c: a warm, pure hum (`scripts/build/ee_tone.py`, `analysis/physics/tone.py`)
+
+Da Boss on 1b: "very breathy, jittery, not a pure, smooth hum tone... airy...
+almost shrill... needs to be a warm, pure, bnuy hum tone." Measured per band
+(harmonics vs the noise between them, dB re H1):
+- **His bright 3–5 kHz band is harmonic**: noise 17–23 dB below. The breath of
+  1b was wrong (my band-filtered purity measure had misled me). Breath removed.
+- **His top (5–8 kHz) is quiet** (−32…−42); 1b's was −17 (shrill).
+- **His pitch drifts slowly** (5–25 cents, under 8 Hz) with almost no fast
+  wobble (2–3 cents). Random cycle-to-cycle jitter is audible roughness.
+  Rendered now as slow, smooth drift (~6 cents) + tiny cycle variation.
+- A chain of compensation was found and undone: fitting the voice box to the
+  hum region only made it too gentle, which starved the bright band, which
+  breath then patched.
+- Joint fit (one "ee" shape + larynx depth + one voice box, on band levels and
+  his hum): voice box **closes cleanly** (Oq 0.61, am 0.59, Ta 0): an ordinary,
+  relaxed-but-firm closure. **His "ee" asks for the larynx ~1.5 cm lower.**
+  Resonances 380 / 3450 / 4690 / 5390. Noise 28–50 dB under the tone; wobble
+  slow/fast 4–9 / 1–4 cents; top −29…−39 dB.
+- OPEN: at 350 and 330 Hz the model hums too deeply and its bright band is
+  6–10 dB weak (his F1 is higher in those "ee"s: context, for the dynamics step).
