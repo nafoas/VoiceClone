@@ -275,3 +275,31 @@ was wrong: it scrambled his steady low tones and made them flicker up to 19 dB.
 Result: phase and flicker profiles in his range; breath 0.01; cycle loudness
 variation 0.5%; larynx ~2 cm lower; level error 7.3 dB (his H2 at 264 Hz and
 his bright cluster still a little stronger than the model's).
+
+### Step 2: where every tone comes from (`scripts/build/ee_recipe.py`, `ee_inverse.py`)
+
+**The tone map of his "ee"** (264 Hz; the other three agree, shifted by pitch):
+
+| tones | his level (dB re H1) | what makes them |
+|---|---|---|
+| H1 (264 Hz) | 0 | the hum: the mouth's first resonance (F1) sits on his pitch and lifts it |
+| H2–H3 (0.5–0.8 kHz) | −10, −32 | the skirt of F1: how far each lies above it |
+| H4–H11 (1–2.9 kHz) | −43…−63 | the valley between F1 and F2; its depth is set by how narrow the tongue channel is (and the folds' fall-off) |
+| H12–H14 (3.2–3.7 kHz) | −24…−28 | F2, the throat behind the tongue (set by larynx depth) |
+| H15–H20 (4–5.3 kHz) | −30…−37 | F3 (the cavity in front of the tongue) and F4 (the laryngeal cavity) |
+
+- Inverse filtering (his tones ÷ the fitted mouth) recovers a textbook vocal-
+  fold puff at 389 and 350 Hz: smooth rise, quicker fall, closed pause. His
+  tones are a real larynx through a real mouth. The method can't fix the
+  recipe by itself (with only 2–3 steady tones it opens the mouth to cheat;
+  rejected).
+- **Bug found:** every "ee" fit so far (steps 1–1f, including the approved step-3
+  tone) had the tongue channel almost sealed (0.003–0.004 cm², step 1f
+  0.000): effectively a closed-mouth hum leaking through a numerical sliver,
+  because nothing required the channel to be open.
+- With an open channel required (≥0.04 cm²) his deep valley can't be reached
+  (10–20 dB too shallow); the fit presses toward ~0.017 cm². So his "ee" is a
+  **very close "ee"**: a very narrow tongue-palate channel. Physics says such a
+  channel also makes its own small hiss, shaped by the cavity in front of the
+  tongue (F3 ~4.4 kHz), which would be phase-random. That matches his wandering,
+  bright 3–5 kHz tones. Not yet tested.
