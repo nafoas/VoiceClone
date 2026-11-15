@@ -4,6 +4,26 @@
 picture and the sound come from the same geometry: what you see is what makes
 the sound.
 
+## Principle (Da Boss)
+
+**His abilities first, rooted in biology.** The question is never "what can a
+normal rabbit do?" A normal rabbit couldn't talk at all. It is "how would rabbit
+anatomy make *his* abilities possible?" His clip sets what the mouth must do.
+Rabbit anatomy is the starting point and a gentle pull that keeps the mouth
+grounded (proportions, parts, how they move). It is not a hard constraint.
+Every place his mouth departs from a normal rabbit is listed below as an
+**adaptation**, with the ability it serves. No departure without a reason.
+
+## His adaptations (where his mouth differs from a normal rabbit, and why)
+
+| adaptation | normal rabbit | Prince | the ability it serves |
+|---|---|---|---|
+| Size | ~0.75x the reference (small bun), tract ~5.5 cm | ~1.55x, tract ~11.5 cm, same proportions | his resonances (formant spacing); at true size he'd sound like a chipmunk |
+| Velum seals | larynx locked into the nasopharynx: breathes and sounds through the nose | the soft palate lifts and seals, or opens on purpose | speaking through the mouth; open for m, n and his nasal vowels |
+| Wider jaw drop and cheek stretch | small gape; cheeks fold into the diastema | jaw drops further and the cheeks stretch at the front | his open "a" (F1 ~1180 Hz) |
+
+(Add a row whenever calibration moves something away from rabbit anatomy.)
+
 ## Anatomy it is built on (rabbit, *Oryctolagus cuniculus*)
 
 | Part | Rabbit fact | In the model |
@@ -21,7 +41,7 @@ length 52.4 ± 1.8 mm in 2.9 kg rabbits; rabbit soft palate and epiglottis
 (PMC7711434); rabbit oral cavity is elongated and narrow rostrally (comparative
 study, agmv.ro); MediRabbit, anatomy of the rabbit tongue (lingual torus).
 
-## Size: an honest tension
+## Size
 
 Fitting his four recorded vowels gives the best size at **1.5–1.6 × the
 reference 2.9 kg rabbit** (an 11–12 cm tract). A small round bun is about
