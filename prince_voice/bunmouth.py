@@ -164,7 +164,7 @@ class BunMouth:
         nl = np.full(len(na), NASAL_LEN / 10.0 / len(na) * k)
         return na, nl
 
-    def response(self, p: Pose, freqs, radiate=True, source_at=None):
+    def response(self, p: Pose, freqs, radiate=True, source_at=None, zg=None):
         """Glottal-flow (or, with source_at=section index, frication) -> radiated
         sound. Same chain-matrix acoustics as mouth.py."""
         area, length, port, br = self.tube(p)
@@ -190,6 +190,8 @@ class BunMouth:
                 Un = 1.0 / (Kn[0, 0] * Zn + Kn[0, 1])
                 Ub = Ub + (Kn[1, 0] * Zn + Kn[1, 1]) * Un
             Ug = Kp[1, 0] + Kp[1, 1] * Ub
+            if zg:   # an open glottis leaks: the source sees the glottal resistance in parallel
+                Ug = Ug + (Kp[0, 0] + Kp[0, 1] * Ub) / zg
             H = (Ul + Un) / Ug
         if radiate:
             H = H * (1j * w / (2 * np.pi * 1000.0))
