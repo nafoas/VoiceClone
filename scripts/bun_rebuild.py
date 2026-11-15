@@ -184,7 +184,7 @@ def residuals(m, T, Z, voiced, f0, S_v, S_n):
 def main():
     ap_ = argparse.ArgumentParser()
     ap_.add_argument("--size", type=float, default=0.75)     # a small round bun, his real size
-    ap_.add_argument("--neck", type=float, default=60.0)     # descended larynx (reference mm; 4.5 cm real)
+    ap_.add_argument("--neck", type=float, default=50.0)     # his one adaptation: larynx ~3.8 cm lower (real)
     ap_.add_argument("--passes", type=int, default=3)
     a = ap_.parse_args()
     m = BunMouth(a.size, neck_mm=a.neck)

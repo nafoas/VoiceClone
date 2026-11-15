@@ -90,7 +90,8 @@ def _g(s, mu, sd):
 @dataclass
 class BunMouth:
     size: float = 1.0                       # x the reference rabbit
-    neck_mm: float = 0.0                    # larynx descended into the neck (reference mm): his adaptation
+    neck_mm: float = 0.0                    # larynx lower in the neck (reference mm): his ONE adaptation
+    extras: bool = False                    # the rejected extra adaptations (cheeks, wider jaw/lips, mobile larynx)
     s: np.ndarray = field(default_factory=lambda: np.linspace(0, REF_LEN, N_SEC + 1))
 
     # ---- geometry ----------------------------------------------------------------
@@ -99,32 +100,34 @@ class BunMouth:
         tongue/jaw surface for drawing. Reference-animal units."""
         s0 = self.s.copy()
         # larynx raised: the throat is shorter (the bottom 0..4 mm is removed)
-        cut = 4.0 * p.larynx if self.neck_mm <= 0 else 0.0
+        cut = 4.0 * p.larynx if self.neck_mm <= 0 else 0.0   # normal small rise
         s = cut + (s0 - 0) * (REF_LEN - cut) / REF_LEN
         # lips forward: the lip tube is longer
-        s_lips_extra = 7.0 * p.round      # rabbit lips are very mobile: push forward up to ~5 mm (real)
+        s_lips_extra = (7.0 if self.extras else 3.0) * p.round
         mid = 0.5 * (s[1:] + s[:-1])
         gap = np.interp(mid, _WS, _G0)
         width = np.interp(mid, _WS, _W)
         # jaw: rotation, so the floor drops more toward the front
         jaww = np.clip((mid - S_JAW_HINGE) / (S_INC - S_JAW_HINGE), 0, 1.15)
-        gap = gap + (p.jaw - 0.3) * 12.0 * jaww
+        gap = gap + (p.jaw - 0.3) * (12.0 if self.extras else 9.0) * jaww
         # tongue torus: a big hump on the back of the tongue (pos 40..56 mm)
         mu = 40.0 + 16.0 * p.front
-        gap = gap - p.body * 5.0 * _g(mid, mu, 6.5)
+        gap = gap - p.body * (5.0 if self.extras else 4.2) * _g(mid, mu, 6.5)
         # tongue root forward/back widens/narrows the throat
-        gap = gap + p.root * 3.0 * _g(mid, 14.0, 7.0)
+        gap = gap + (p.root * 3.0 * _g(mid, 14.0, 7.0) if self.extras else p.root * 2.5 * _g(mid, 12.0, 6.0))
         # tongue tip up to the ridge behind the incisors
         gap = gap - p.tip * 6.0 * _g(mid, 64.5, 2.2)
         # a dropped jaw stretches the cheeks: the front of the cavity gets wider
-        width = width * (1 + 0.5 * p.jaw * np.clip((mid - 48.0) / 8.0, 0, 1))
+        if self.extras:
+            width = width * (1 + 0.5 * p.jaw * np.clip((mid - 48.0) / 8.0, 0, 1))
         # cheeks: loose, fleshy rabbit cheeks (buccal folds) puffed out widen
         # the front of the mouth -> a bigger front cavity (his low-F2 "oo")
-        width = width * (1 + 0.9 * p.cheeks * _g(mid, 58.0, 7.0))
+        if self.extras:
+            width = width * (1 + 0.9 * p.cheeks * _g(mid, 58.0, 7.0))
         # lips (last ~3 mm): opening and rounding (narrower across)
         lipz = mid > REF_LEN - 3.0
-        gap = np.where(lipz, 0.2 + 6.5 * p.lips * (0.6 + 0.6 * p.jaw), gap)
-        width = np.where(lipz, width * (1 - 0.7 * p.round), width)
+        gap = np.where(lipz, 0.2 + (6.5 * p.lips * (0.6 + 0.6 * p.jaw) if self.extras else 4.5 * p.lips), gap)
+        width = np.where(lipz, width * (1 - (0.7 if self.extras else 0.45) * p.round), width)
         gap = np.maximum(gap, 0.0)
         length = np.diff(s)
         length[-3:] += s_lips_extra / 3
@@ -138,12 +141,12 @@ class BunMouth:
         length = length / 10.0 * k
         port = 0.45 * p.velum * k ** 2
         br = int(np.searchsorted(mid, S_PORT))
-        neck = max(0.0, self.neck_mm - LARYNX_TRAVEL * p.larynx)   # a mobile larynx: raised for ee, low for oo
+        neck = max(0.0, self.neck_mm - (LARYNX_TRAVEL if self.extras else 4.0) * p.larynx)   # normal small larynx movement
         if neck > 0:
             # the throat continues down into the neck to the descended larynx: a
             # pharynx tube like his lower throat, which the tongue root also shapes
             n = max(2, int(round(neck / 2.0)))
-            g = np.full(n, 5.5) + p.root * 4.5                  # root forward widens it (as in ee)
+            g = np.full(n, 5.5) + p.root * (4.5 if self.extras else 2.5)   # the tongue root shapes the throat
             g[0] = 2.2                                      # the larynx tube itself
             na = np.maximum(g * 9.0, 0.0) / 100.0 * k ** 2
             area = np.concatenate([na, area])
@@ -278,7 +281,7 @@ def draw(ax, mouth: BunMouth, p: Pose, title: str = "", head: bool = True):
         ax.add_patch(mp.Ellipse(((rx[ic] + fx[ic]) / 2, (ry[ic] + fy[ic]) / 2), (10 + 8 * p.cheeks) * k,
                                 (6 + 7 * p.cheeks) * k, fc="#f4a7b4", ec="#c77", alpha=0.35 + 0.3 * p.cheeks, zorder=6))
     # his descended larynx: the throat continues down into the neck
-    neck = max(0.0, mouth.neck_mm - LARYNX_TRAVEL * p.larynx) * k
+    neck = max(0.0, mouth.neck_mm - (LARYNX_TRAVEL if mouth.extras else 4.0) * p.larynx) * k
     if neck > 0:
         g0 = (5.5 + p.root * 4.5) * k
         ax.fill([rx[0], rx[0], fx[0], fx[0]], [ry[0], ry[0] - neck, ry[0] - neck, fy[0]], color="#ffd9df", zorder=2)
