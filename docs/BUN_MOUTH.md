@@ -241,3 +241,11 @@ dying'". Rejected: A–D.
   and the bun airway is 10–50x smaller in cross-section. Next: give the
   simulation a bun-sized larynx (a small animal has a small larynx; a rabbit's
   is about child-sized).
+
+### Step 1e: back to 1c, with breath and roughness put back (`scripts/build/ee_ladder.py`)
+
+Da Boss: it sounded fine earlier; 1c over-corrected (breath and roughness
+removed almost completely: "just a tone"). Everything after 1c tried to add
+life back the wrong way. 1e is 1c exactly (mouth, voice box, slow drift),
+with only breath and cycle-to-cycle roughness in five equal steps from 1c (0)
+to 1b's level (4). Da Boss picks by ear.
