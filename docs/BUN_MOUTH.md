@@ -303,3 +303,21 @@ his bright cluster still a little stronger than the model's).
   channel also makes its own small hiss, shaped by the cavity in front of the
   tongue (F3 ~4.4 kHz), which would be phase-random. That matches his wandering,
   bright 3–5 kHz tones. Not yet tested.
+
+### Step 3: puff and tube fitted together (`scripts/build/ee_exact.py`)
+
+A free, smooth, bun-sized tube (tongue channel narrow but open) and a flexible
+vocal-fold puff, fitted together on every tone's strength and his steady low
+tones' timing; one shared "ee" tube, then each "ee" nudged by its context.
+
+| run | 264 Hz | 389 Hz | 350 Hz | 331 Hz | notes |
+|---|---|---|---|---|---|
+| ceiling: a free tube per "ee" (KLGLOTT puff) | 8.0 | 9.5 | 5.9 | 10.3 | before the joint fit |
+| joint fit | 8.5 | 8.6 | 6.4 | 5.9 | presses the channel limit (0.015 cm²) and length limit (8.6 cm); puff open 95% |
+| A: puff forced open half, even | 7.3* | 9.3 | 7.3 | 7.1 | *264 not reproduced; no harmonic-4 dip: the dip is NOT the puff (rejected) |
+| B: narrower (≥0.006) and longer (≤9.5 cm) allowed | 6.8 | 8.8 | 6.1 | 6.0 | barely better |
+
+A single tube + a puff levels off at ~6–9 dB. The misses are the same few
+tones: a sharp dip at harmonic 4 (264, 350, 389 Hz) / 3 (331 Hz), 15–20 dB
+deeper in him, and a much purer hum at 389 Hz (his H2 −32, model −6). Bun
+translation of the B tube: larynx ~1.8 cm lower, shape match 0.87.
