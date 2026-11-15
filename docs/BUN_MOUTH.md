@@ -255,3 +255,23 @@ to 1b's level (4). Da Boss picks by ear.
 cycle jitter 0.2%, cycle shimmer 1.5%, slow pitch drift ~6 cents, loudness
 drift 0.15 dB. Measured at 264 Hz: noise 22–49 dB under the harmonics per
 band, wobble slow/fast 8.4/10.2 cents. This is the tone to build on.
+
+### Step 1f: his "ee" tone by tone (`analysis/physics/ee_decompose.py`, `scripts/build/ee_tones.py`)
+
+Da Boss: "it is a collection of tones... we can figure out how to make this
+specific sound." His "ee" decomposed into every harmonic's level, flicker and
+phase (place in the cycle), every 2.5 ms; all four of his "ee"s agree:
+- **Levels:** a very deep valley (harmonics 4–11 at −43…−63 dB re H1), a bright
+  cluster near 3.2–4 kHz, a quiet top.
+- **Phase:** only harmonics 1–2 (3) keep their place in each cycle; higher
+  ones wander (steadiness 0.1–0.8). The model had every harmonic locked (every
+  cycle identical): a machine signature.
+- **Flicker:** harmonics 1–3 steady (~1 dB); higher ones 2–6 dB.
+
+Mechanism, tested: the folds' **closing moment varies ~0.1 ms per cycle** while
+the bulk airflow of each cycle stays steady. High tones scramble, low ones stay
+locked, which is exactly his pattern. Varying the whole pulse shape instead
+was wrong: it scrambled his steady low tones and made them flicker up to 19 dB.
+Result: phase and flicker profiles in his range; breath 0.01; cycle loudness
+variation 0.5%; larynx ~2 cm lower; level error 7.3 dB (his H2 at 264 Hz and
+his bright cluster still a little stronger than the model's).
