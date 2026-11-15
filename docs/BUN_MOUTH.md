@@ -321,3 +321,9 @@ A single tube + a puff levels off at ~6–9 dB. The misses are the same few
 tones: a sharp dip at harmonic 4 (264, 350, 389 Hz) / 3 (331 Hz), 15–20 dB
 deeper in him, and a much purer hum at 389 Hz (his H2 −32, model −6). Bun
 translation of the B tube: larynx ~1.8 cm lower, shape match 0.87.
+| C: puff may close smoothly (eases shut) | 7.5 | 8.3 | 6.3 | 5.2 | the smooth closing makes a dip that moves with pitch, but at harmonic 3 (his is at 4; 3 only at 331 Hz, where it now matches) |
+| D: C + each "ee" may nudge its puff and tube more freely | 6.5 | 8.0 | 5.6 | 5.1 | best so far; the puff nudges weren't used (cost too high); many tones within 1–3 dB |
+
+Da Boss on B (step 3): "This sounds a lot better. We might be getting back on track."
+Still off: harmonic 4 not dipping enough (about −33 vs his −50); the hum at 389 Hz
+not pure enough (H2 −11 vs −32).

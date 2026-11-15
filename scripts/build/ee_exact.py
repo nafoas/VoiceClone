@@ -35,6 +35,8 @@ NH = 20; NS = 40; NC = 10; FLOOR = -58.0; SR = 48000
 MIN_CH = float(os.environ.get("MIN_CH", "0.015")); LMAX = float(os.environ.get("LMAX", "8.6"))
 FIXQ = os.environ.get("FIXQ")          # e.g. "0.5,0.5,1.0,0.1": the puff held fixed
 TAG = os.environ.get("TAG", "")
+SMOOTH = os.environ.get("PULSE", "") == "smooth"     # puff may close smoothly (easing to zero)
+NUDGE = float(os.environ.get("NUDGE", "1.5"))        # cost per unit of each "ee"'s own nudge
 T = R.his_tones()
 
 
@@ -43,10 +45,13 @@ def areas(c):
     return np.exp(np.clip(idct(z, norm="ortho"), -7, 1.2))
 
 
-def pulse_flex(n, Oq, am, p):
-    x = np.arange(n, dtype=float) / n; Tp = am * Oq
+def pulse_flex(n, Oq, am, p, sm=0.0):
+    """sm: 0 = the folds meet with a corner; 1 = they ease together (zero slope at closing)."""
+    x = np.arange(n, dtype=float) / n; Tp = am * Oq; u = (x - Tp) / max(Oq - Tp, 1e-3)
     rise = 0.5 * (1 - np.cos(np.pi * x / Tp))
-    fall = np.clip(np.cos(0.5 * np.pi * (x - Tp) / max(Oq - Tp, 1e-3)), 0, None) ** p
+    corner = np.clip(np.cos(0.5 * np.pi * u), 0, None) ** p
+    ease = np.clip(0.5 * (1 + np.cos(np.pi * u)), 0, None) ** p
+    fall = (1 - sm) * corner + sm * ease
     return np.where(x < Tp, rise, np.where(x < Oq, fall, 0.0))
 
 
@@ -57,9 +62,9 @@ def tube_H(a, L, f):
 
 
 def puff_C(f0, q):
-    Oq, am, p, Ta = q
+    Oq, am, p, Ta = q[:4]; sm = q[4] if len(q) > 4 else 0.0
     k = np.arange(1, NH + 1) * f0
-    return np.fft.rfft(pulse_flex(4096, Oq, am, p))[1: NH + 1] / (1 + 1j * 2 * np.pi * k * Ta * 1e-3)
+    return np.fft.rfft(pulse_flex(4096, Oq, am, p, sm))[1: NH + 1] / (1 + 1j * 2 * np.pi * k * Ta * 1e-3)
 
 
 def tones(a, L, f0, q):
@@ -83,6 +88,8 @@ def phys_pen(a):
 
 def unpack1(z):
     q = tuple(np.clip(z[NC:NC + 4], [0.3, 0.3, 0.3, 0.0], [0.95, 0.95, 4.0, 1.5]))
+    if SMOOTH:
+        q = q + (float(np.clip(z[NC + 5], 0.0, 1.0)),)
     if FIXQ:
         q = tuple(float(v) for v in FIXQ.split(","))
     return areas(z[:NC]), float(np.clip(z[NC + 4], 7.0, LMAX)), q
@@ -96,20 +103,28 @@ def cost1(z):
 def run1(seed):
     rng = np.random.default_rng(seed)
     z0 = np.r_[np.log(0.25) * np.sqrt(NS), rng.normal(0, 0.7, NC - 1), rng.uniform(0.4, 0.7), rng.uniform(0.4, 0.7),
-               rng.uniform(0.7, 1.6), 0.1, 7.6]
+               rng.uniform(0.7, 1.6), 0.1, 7.6, rng.uniform(0.3, 1.0)]
     r = minimize(cost1, z0, method="Powell", options=dict(maxfev=9000, xtol=1e-4, ftol=1e-6))
     return float(r.fun), r.x.tolist()
 
 
 def run2(args):
+    """Each "ee": nudge the tube (its context) and, slightly, the puff's open
+    share and rise (a larynx doesn't hold them exactly the same every time)."""
     j, z1 = args
     a0, L, q = unpack1(np.array(z1)); c0 = np.array(z1[:NC]); t = T[j]
 
-    def cost(dc):
+    def cost(z):
+        dc, dq = z[:NC], z[NC:NC + 2]
         a = areas(c0 + dc)
-        return err_one(a, L, q, t) + phys_pen(a) + 1.5 * np.sqrt(np.mean(dc ** 2))
-    r = minimize(cost, np.zeros(NC), method="Powell", options=dict(maxfev=5000, xtol=1e-4))
-    return j, float(r.fun), (c0 + r.x).tolist()
+        qq = (float(np.clip(q[0] + dq[0], 0.3, 0.97)), float(np.clip(q[1] + dq[1], 0.3, 0.95))) + tuple(q[2:])
+        return (err_one(a, L, qq, t) + phys_pen(a) + NUDGE * np.sqrt(np.mean(dc ** 2))
+                + 20.0 * np.sqrt(np.mean(dq ** 2)))
+    r = min((minimize(cost, np.r_[np.zeros(NC), d0], method="Powell", options=dict(maxfev=6000, xtol=1e-4))
+             for d0 in ([0, 0], [-0.15, 0], [-0.3, 0.05])), key=lambda r: r.fun)
+    dq = r.x[NC:NC + 2]
+    qq = (float(np.clip(q[0] + dq[0], 0.3, 0.97)), float(np.clip(q[1] + dq[1], 0.3, 0.95))) + tuple(q[2:])
+    return j, float(r.fun), (c0 + r.x[:NC]).tolist(), qq
 
 
 def to_bun(a, L):
@@ -146,9 +161,10 @@ def render(a, L, q, f0, ms, seed, close_ms=0.1):
         T_ = 1 / (f0 * 2 ** (drift[i] / 1200)); Ls = int(round(T_ * SR)); s0 = int(round(t * SR))
         if s0 + Ls + 10 >= n:
             break
-        u0[s0:s0 + Ls] += pulse_flex(Ls, q[0], q[1], q[2]) * amp[i]
+        sm = q[4] if len(q) > 4 else 0.0
+        u0[s0:s0 + Ls] += pulse_flex(Ls, q[0], q[1], q[2], sm) * amp[i]
         d = close_ms * 1e-3 * rng.standard_normal()
-        u1[s0:s0 + Ls] += pulse_flex(Ls, float(np.clip(q[0] + d / T_, 0.2, 0.97)), q[1] * q[0] / max(q[0] + d / T_, 0.2), q[2]) * amp[i]
+        u1[s0:s0 + Ls] += pulse_flex(Ls, float(np.clip(q[0] + d / T_, 0.2, 0.97)), q[1] * q[0] / max(q[0] + d / T_, 0.2), q[2], sm) * amp[i]
         t += T_
     lo = butter(4, 1200 / (SR / 2), "low", output="sos"); hi = butter(4, 1200 / (SR / 2), "high", output="sos")
     u = sosfiltfilt(lo, u0) + sosfiltfilt(hi, u1)
@@ -166,7 +182,8 @@ def main():
     s1.sort(key=lambda r: r[0]); e1, z1 = s1[0]
     a1, L, q = unpack1(np.array(z1))
     print(f"stage 1 (one tube): error {e1:.2f}; tube {L:.2f} cm; narrowest {a1[4:].min():.3f} cm2; "
-          f"puff: open {q[0]:.2f}, rising {q[1]:.2f}, closing roundness {q[2]:.2f}, smoothness {q[3]:.2f} ms", flush=True)
+          f"puff: open {q[0]:.2f}, rising {q[1]:.2f}, closing roundness {q[2]:.2f}, smoothness {q[3]:.2f} ms"
+          + (f", eases shut {q[4]:.2f}" if len(q) > 4 else ""), flush=True)
     with Pool(4) as pool:
         s2 = sorted(pool.map(run2, [(j, z1) for j in range(4)]))
     import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
@@ -174,10 +191,10 @@ def main():
     x, sr = sf.read(ROOT / "reference/source/prince_reference.wav"); x = x.mean(1)
     import ee_decompose as DC
     gap = np.zeros(int(0.35 * 24000)); pieces = []
-    for (j, e2, c), t, (s, e) in zip(s2, T, R.SPANS):
-        a = areas(np.array(c)); lv, ph = tones(a, L, t["f0"], q)
+    for (j, e2, c, qj), t, (s, e) in zip(s2, T, R.SPANS):
+        a = areas(np.array(c)); lv, ph = tones(a, L, t["f0"], qj)
         el = np.sqrt(np.mean((np.maximum(lv[1:], FLOOR) - np.maximum(t["level"][1:], FLOOR)) ** 2))
-        print(f"\n{t['f0']:.0f} Hz: tone error {el:.2f} dB (narrowest {a[4:].min():.3f} cm2)")
+        print(f"\n{t['f0']:.0f} Hz: tone error {el:.2f} dB (narrowest {a[4:].min():.3f} cm2; puff open {qj[0]:.2f}, rising {qj[1]:.2f})")
         print("  his  " + " ".join(f"{v:4.0f}" for v in t["level"]))
         print("  model" + " ".join(f"{v:4.0f}" for v in lv))
         print("  timing diff (steady tones) " + " ".join(f"{np.angle(np.exp(1j * (u - v))):4.1f}" if cc >= 0.7 else "   ."
@@ -188,11 +205,11 @@ def main():
         pos = (np.arange(NS) + 0.5) * L / NS
         ax[1, j].fill_between(pos, -np.sqrt(a / np.pi), np.sqrt(a / np.pi), step="mid", color="#e58c9a")
         ax[1, j].set_title("the tube (vocal folds left, lips right), radius cm"); ax[1, j].set_xlabel("cm")
-        res.append(dict(f0=t["f0"], err=el, coeffs=c, areas=a.tolist()))
+        res.append(dict(f0=t["f0"], err=el, coeffs=c, areas=a.tolist(), puff=list(qj)))
         # tones-only comparison: his (rebuilt from his tones) vs the model's audio
         d = DC.decompose(x[int((s - 0.02) * sr): int((e + 0.02) * sr)], sr, f"x{j}")
         his_t = resample_poly(d["harm"], 1, 2); his_t = his_t / np.abs(his_t).max() * 0.7
-        y = render(a, L, q, t["f0"], max(int((e - s) * 1000), 150), seed=j)
+        y = render(a, L, qj, t["f0"], max(int((e - s) * 1000), 150), seed=j)
         pieces += [his_t, gap, resample_poly(y, 1, 2), gap, gap]
     plt.tight_layout(); plt.savefig(ROOT / f"analysis/physics/ee_exact{TAG}.png", dpi=65)
     sf.write(ROOT / f"out/build/ee_exact{TAG}_his_tones_vs_model.wav", np.concatenate(pieces), 24000)
@@ -200,7 +217,7 @@ def main():
     print(f"\nas bun anatomy: {dict(zip(['jaw','body','front','tip','root','lips','round','velum','larynx'], np.round(pose.vec()[:9], 2)))}, "
           f"larynx {neck * 0.075:.2f} cm lower; shape match {fitq:.2f} (log-area rms)")
     (ROOT / f"models/ee_exact{TAG}.json").write_text(json.dumps(dict(
-        L_cm=L, puff=dict(Oq=q[0], am=q[1], p=q[2], Ta_ms=q[3]), stage1_err=e1, shared_coeffs=z1[:NC], per_ee=res,
+        L_cm=L, puff=dict(Oq=q[0], am=q[1], p=q[2], Ta_ms=q[3], ease=(q[4] if len(q) > 4 else 0.0)), stage1_err=e1, shared_coeffs=z1[:NC], per_ee=res,
         bun_pose=pose.vec().tolist(), bun_neck=neck, bun_shape_match=fitq), indent=1, default=float))
 
 
