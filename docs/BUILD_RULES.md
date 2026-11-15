@@ -139,8 +139,8 @@ Allowed, and encouraged:
 | Split upper lip leak | ~0.03–0.04 cm² (to be fitted) | weak, voiced "p" (PRINCE_PHYSICS.md §7) |
 | Fold tension | relaxed (~4–13 kPa) | his pitch 215–390 Hz (§5) |
 | Fold closure | clean, relaxed (Oq ~0.6, Ta ~0) | his band balance and hum (step 1c); "gentle" + breath was rejected: airy, jittery |
-| Breath | none in his tone (his bright band is harmonic) | step 1c; breath sounded airy/shrill |
-| Pitch micro-movement | slow smooth drift ~6 cents (<6 Hz), tiny cycle variation | his measured wobble; random jitter sounded rough |
+| Breath + roughness | **Da Boss's pick, step 1e ladder step 3**: breath 0.0375, cycle jitter 0.2%, shimmer 1.5% | none = "just a tone" (1c); 1b level = breathy/jittery |
+| Pitch micro-movement | slow smooth drift ~6 cents (<6 Hz) | his measured wobble |
 | Laryngeal cavity | ~5 mm cavity, ~3 mm inlet at 15% of the throat | his "ee" F4 (~5 kHz); every larynx has one (Takemoto et al.) |
 | Larynx depth | "ee" asks ~1.5 cm (step 1c; 2.2 in 1b) | to be settled across all his sounds |
 
@@ -181,7 +181,12 @@ From `analysis/negative_space.csv` and Da Boss's verdicts:
 - **Inserted pitch, formulaic, volume peaks or fades mid-utterance**: prosody
   added without a reason.
 
-## 9. Process
+## 9. Lesson: don't over-correct
+When Da Boss names a problem ("breathy", "jittery"), turn it DOWN, don't
+remove it. 1c removed breath and roughness entirely and became "just a tone".
+Offer a ladder of amounts and let his ear pick (that's how step 3 was found).
+
+## 10. Process
 - Measure, don't assume. Report honestly: what failed, what's open, what was
   skipped.
 - Keep `out/` as scratch; copy anything with a verdict to `reference/archive/`

@@ -249,3 +249,9 @@ removed almost completely: "just a tone"). Everything after 1c tried to add
 life back the wrong way. 1e is 1c exactly (mouth, voice box, slow drift),
 with only breath and cycle-to-cycle roughness in five equal steps from 1c (0)
 to 1b's level (4). Da Boss picks by ear.
+
+**Da Boss's pick: step 3** → `models/ee_tone_approved.json`. His "ee" tone:
+1c's mouth and voice box (clean closure, Oq 0.61), breath 0.0375 (3/4 of 1b),
+cycle jitter 0.2%, cycle shimmer 1.5%, slow pitch drift ~6 cents, loudness
+drift 0.15 dB. Measured at 264 Hz: noise 22–49 dB under the harmonics per
+band, wobble slow/fast 8.4/10.2 cents. This is the tone to build on.

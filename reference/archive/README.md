@@ -21,3 +21,8 @@ that record a decision or a verdict are copied here.
 
 The gold standard itself is in `reference/gold/`, the source clip in
 `reference/source/`, his sentences (the audit, V8) in `reference/sentences/`.
+
+- `build/`: the model-only build (his "ee"). Verdicts: step 1 "the least
+  computery" of the run; 1b breathy/jittery/shrill; 1c very computery (just a
+  tone); 1d stuttery/phlegmatic/"dying"; engine check "dial-up". **1e ladder:
+  Da Boss picked step 3** (`ee_tone_approved.json`).
