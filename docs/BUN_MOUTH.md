@@ -327,3 +327,26 @@ translation of the B tube: larynx ~1.8 cm lower, shape match 0.87.
 Da Boss on B (step 3): "This sounds a lot better. We might be getting back on track."
 Still off: harmonic 4 not dipping enough (about −33 vs his −50); the hum at 389 Hz
 not pure enough (H2 −11 vs −32).
+
+### Step 3e/3f: tightening toward an exact match
+
+Da Boss: "Is there any reason the tones can't exactly match? If not, that's my aim."
+- **His own spread:** tone levels differ ~4 dB rms between the first and second
+  half of one "ee" (his mouth and voice aren't frozen). A static recipe
+  matching his averaged tones to within ~3 dB counts as exact; the rest is
+  movement over time.
+- **3e, least squares, every tone its own residual** (`scripts/build/ee_lsq.py`):
+  any smooth tube + a per-"ee" puff reaches **3.1–5.2 dB** (264: 3.1, 389:
+  3.9, 350: 5.2, 331: 3.6) with the front held to bun width (0.5 cm²). Without
+  that limit it inflated the front (puffed-cheek-like, not a bun). The tubes
+  are partly not bun-like (264 ripples, 350 has no tongue narrowing): with
+  ~19 tones per "ee" a free tube can fit many shapes.
+- **3f, the bun mouth + natural variation (~±15%, costed)**
+  (`scripts/build/ee_bunfit.py`): 389 / 350 / 331 Hz reach **5.5 / 6.1 / 6.1 dB**
+  as a normal bun "ee" (tongue high, jaw nearly closed, lips open, larynx
+  1.6–1.9 cm lower) with departures of 19–32%. 264 Hz needs an 89% departure
+  (not honest yet: 7.0 dB).
+- The gap between bun (~6 dB) and any tube (~3.5 dB) is the front of the
+  mouth: his tones want more space near the lips than a bun's narrow front.
+  Next: the real spaces beside the teeth (the vestibule between teeth and
+  cheeks, every rabbit has it; not puffed cheeks).
