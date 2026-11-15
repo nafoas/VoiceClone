@@ -40,7 +40,7 @@ FQ = np.geomspace(90, 7500, 140)                   # fitting grid
 WF = np.where(FQ < 5000, 1.0, 0.4)                 # trust the clip less up high
 TILT = np.maximum(0.0, np.log2(FQ / 500.0))        # brightness basis (per octave above 500 Hz)
 LAMBDA = 2.5                                       # smoothness: dB of fit traded per unit of movement
-N_CODE, TOPK = 4000, 50
+N_CODE, TOPK = 8000, 60
 HUM = dict(depth=25.0, start=1.5, end=3.2)         # his hum cliff (bnuysynth defaults, validated on gold)
 
 # What each sound physically requires of a mouth (the transcription tells the
@@ -183,10 +183,11 @@ def residuals(m, T, Z, voiced, f0, S_v, S_n):
 
 def main():
     ap_ = argparse.ArgumentParser()
-    ap_.add_argument("--size", type=float, default=1.55)
+    ap_.add_argument("--size", type=float, default=0.75)     # a small round bun, his real size
+    ap_.add_argument("--neck", type=float, default=60.0)     # descended larynx (reference mm; 4.5 cm real)
     ap_.add_argument("--passes", type=int, default=3)
     a = ap_.parse_args()
-    m = BunMouth(a.size)
+    m = BunMouth(a.size, neck_mm=a.neck)
     ref = I.reference()
     t0 = time.time()
     codes = {"": codebook(m)}
@@ -194,7 +195,7 @@ def main():
         lo_, hi_ = LO.copy(), HI.copy()
         for art, l, h in needs:
             lo_[NAMES.index(art)], hi_[NAMES.index(art)] = l, h
-        codes[lab] = codebook(m, seed=i + 1, lo=lo_, hi=hi_, n=1500)
+        codes[lab] = codebook(m, seed=i + 1, lo=lo_, hi=hi_, n=3000)
     print(f"codebooks for {len(codes)} sounds ({time.time() - t0:.0f}s)", flush=True)
     data = []
     for s, e in SPANS:
@@ -240,7 +241,7 @@ def main():
     pause = np.zeros(int(0.34 * SR))
     y = np.concatenate([phrases[0][0], pause, phrases[1][0]])
     sf.write(out / "rebuild.wav", y / np.abs(y).max() * 0.8, SR)
-    np.savez(ROOT / "models/bun_trajectory.npz", size=a.size, names=NAMES, S_v=S_v, S_n=S_n, fq=FQ,
+    np.savez(ROOT / "models/bun_trajectory.npz", size=a.size, neck=a.neck, names=NAMES, S_v=S_v, S_n=S_n, fq=FQ,
              Z0=Zs[0], Z1=Zs[1], v0=data[0]["voiced"], v1=data[1]["voiced"], t0=SPANS[0][0], t1=SPANS[1][0], **extra)
     print(out / "rebuild.wav")
 

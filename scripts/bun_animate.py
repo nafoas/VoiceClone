@@ -24,7 +24,7 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--audio", default="rebuild")
     a = ap.parse_args()
     z = np.load(ROOT / "models/bun_trajectory.npz")
-    m = BunMouth(float(z["size"]))
+    m = BunMouth(float(z["size"]), neck_mm=float(z["neck"]) if "neck" in z else 0.0)
     SR = I.SR
     if a.audio == "rebuild":
         y, _ = sf.read(ROOT / "out/bunmouth/rebuild.wav")
@@ -46,7 +46,7 @@ def main():
     for i in range(n):
         t = i / FPS; k = min(len(Z) - 1, int(t * 200))
         p = Pose.from_vec(Z[k])
-        axm.clear(); draw(axm, m, p, f"Prince's mouth   t = {t:.2f} s"); axm.set_xlim(-60, 200); axm.set_ylim(-60, 150)
+        axm.clear(); draw(axm, m, p, f"Prince's mouth   t = {t:.2f} s"); axm.set_xlim(-60, 130); axm.set_ylim(-90, 110)
         axb.clear(); v = p.vec()
         axb.barh(range(len(NAMES)), v, color=["#e58c9a" if x >= 0 else "#8ab" for x in v])
         axb.set_yticks(range(len(NAMES))); axb.set_yticklabels(NAMES); axb.set_xlim(-1, 1); axb.invert_yaxis()

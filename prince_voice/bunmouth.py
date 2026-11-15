@@ -29,6 +29,7 @@ Articulators (all 0..1 or -1..1, plain words):
   round   lips pushed forward/narrowed (0 .. 1)
   velum   nasal port open (0 sealed .. 1 open)
   larynx  larynx raised (shorter throat) (0 .. 1)
+  cheeks  cheeks puffed out (bigger front cavity) (0 .. 1)
 """
 from __future__ import annotations
 
@@ -47,6 +48,7 @@ S_DIAST = (55.0, 66.0) # diastema: narrowest part of the oral cavity
 S_INC = 68.0           # incisors
 S_JAW_HINGE = 30.0     # the jaw's rotation reaches the floor from about here
 NASAL_LEN = 58.0       # nasopharynx + nasal cavity (long, with turbinates)
+LARYNX_TRAVEL = 25.0   # how far his descended larynx can rise (reference mm); 0 if no neck
 
 # width of the cavity across (mm) along s, and the neutral gap (mm)
 _WS = np.array([0, 4, 10, 17, 30, 40, 52, 58, 64, 68, 71, 74], float)
@@ -66,6 +68,7 @@ class Pose:
     round: float = 0.0
     velum: float = 0.0
     larynx: float = 0.0
+    cheeks: float = 0.0
 
     def vec(self):
         return np.array(list(asdict(self).values()), float)
@@ -76,8 +79,8 @@ class Pose:
 
 
 NAMES = list(asdict(Pose()).keys())
-LO = np.array([0, -1, 0, 0, -1, 0, 0, 0, 0], float)
-HI = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1], float)
+LO = np.array([0, -1, 0, 0, -1, 0, 0, 0, 0, 0], float)
+HI = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1], float)
 
 
 def _g(s, mu, sd):
@@ -87,6 +90,7 @@ def _g(s, mu, sd):
 @dataclass
 class BunMouth:
     size: float = 1.0                       # x the reference rabbit
+    neck_mm: float = 0.0                    # larynx descended into the neck (reference mm): his adaptation
     s: np.ndarray = field(default_factory=lambda: np.linspace(0, REF_LEN, N_SEC + 1))
 
     # ---- geometry ----------------------------------------------------------------
@@ -95,10 +99,10 @@ class BunMouth:
         tongue/jaw surface for drawing. Reference-animal units."""
         s0 = self.s.copy()
         # larynx raised: the throat is shorter (the bottom 0..4 mm is removed)
-        cut = 4.0 * p.larynx
+        cut = 4.0 * p.larynx if self.neck_mm <= 0 else 0.0
         s = cut + (s0 - 0) * (REF_LEN - cut) / REF_LEN
         # lips forward: the lip tube is longer
-        s_lips_extra = 3.0 * p.round
+        s_lips_extra = 7.0 * p.round      # rabbit lips are very mobile: push forward up to ~5 mm (real)
         mid = 0.5 * (s[1:] + s[:-1])
         gap = np.interp(mid, _WS, _G0)
         width = np.interp(mid, _WS, _W)
@@ -114,10 +118,13 @@ class BunMouth:
         gap = gap - p.tip * 6.0 * _g(mid, 64.5, 2.2)
         # a dropped jaw stretches the cheeks: the front of the cavity gets wider
         width = width * (1 + 0.5 * p.jaw * np.clip((mid - 48.0) / 8.0, 0, 1))
+        # cheeks: loose, fleshy rabbit cheeks (buccal folds) puffed out widen
+        # the front of the mouth -> a bigger front cavity (his low-F2 "oo")
+        width = width * (1 + 0.9 * p.cheeks * _g(mid, 58.0, 7.0))
         # lips (last ~3 mm): opening and rounding (narrower across)
         lipz = mid > REF_LEN - 3.0
         gap = np.where(lipz, 0.2 + 6.5 * p.lips * (0.6 + 0.6 * p.jaw), gap)
-        width = np.where(lipz, width * (1 - 0.45 * p.round), width)
+        width = np.where(lipz, width * (1 - 0.7 * p.round), width)
         gap = np.maximum(gap, 0.0)
         length = np.diff(s)
         length[-3:] += s_lips_extra / 3
@@ -131,6 +138,17 @@ class BunMouth:
         length = length / 10.0 * k
         port = 0.45 * p.velum * k ** 2
         br = int(np.searchsorted(mid, S_PORT))
+        neck = max(0.0, self.neck_mm - LARYNX_TRAVEL * p.larynx)   # a mobile larynx: raised for ee, low for oo
+        if neck > 0:
+            # the throat continues down into the neck to the descended larynx: a
+            # pharynx tube like his lower throat, which the tongue root also shapes
+            n = max(2, int(round(neck / 2.0)))
+            g = np.full(n, 5.5) + p.root * 4.5                  # root forward widens it (as in ee)
+            g[0] = 2.2                                      # the larynx tube itself
+            na = np.maximum(g * 9.0, 0.0) / 100.0 * k ** 2
+            area = np.concatenate([na, area])
+            length = np.concatenate([np.full(n, neck / n / 10.0 * k), length])
+            br += n
         return area, length, port, br
 
     def length_cm(self, p: Pose = Pose()):
@@ -213,6 +231,7 @@ def draw(ax, mouth: BunMouth, p: Pose, title: str = "", head: bool = True):
     fx, fy = (x - nx * g) * k, (y - ny * g) * k
     allx = np.concatenate([rx, fx]); ally = np.concatenate([ry, fy])
     xmin, xmax, ymin, ymax = allx.min(), allx.max(), ally.min(), ally.max()
+    ymin_neck = ymin - max(0.0, mouth.neck_mm) * k
     Wd = 1.30 * (xmax - xmin); Hd = 0.92 * Wd
     hcx, hcy = xmax - 0.5 * Wd + 0.06 * Wd, ymin - 0.04 * Hd + 0.5 * Hd
     if head:
@@ -221,6 +240,11 @@ def draw(ax, mouth: BunMouth, p: Pose, title: str = "", head: bool = True):
         ax.add_patch(mp.Ellipse((hcx - 0.22 * Wd, hcy + 0.62 * Hd), 0.24 * Wd, 0.75 * Hd, angle=18,
                                 fc="#f7f4ee", ec="#c9c2b5", lw=1.2, zorder=0))
         ax.add_patch(mp.Circle((hcx + 0.17 * Wd, hcy + 0.22 * Hd), 0.035 * Wd, fc="#5a3a3a", zorder=1))
+        if mouth.neck_mm > 0:   # his round fluffy body below (the neck is hidden in the fluff)
+            bh = 1.35 * Hd; top = hcy - 0.28 * Hd        # body top tucked under the head
+            ax.add_patch(mp.Ellipse((hcx - 0.22 * Wd, top - bh / 2), 1.55 * Wd, bh, fc="#f7f4ee",
+                                    ec="#c9c2b5", lw=1.2, zorder=-1))
+            ax.add_patch(mp.Ellipse((hcx, hcy - 0.2 * Hd), 0.9 * Wd, 0.5 * Hd, fc="#f7f4ee", ec="none", zorder=-0.5))
         # 1 cm scale bar
         ax.plot([hcx - 0.45 * Wd, hcx - 0.45 * Wd + 10.0], [hcy - 0.55 * Hd] * 2, color="#555", lw=2)
         ax.text(hcx - 0.45 * Wd, hcy - 0.62 * Hd, "1 cm", fontsize=7, color="#555")
@@ -249,6 +273,19 @@ def draw(ax, mouth: BunMouth, p: Pose, title: str = "", head: bool = True):
             np.concatenate([fy[body], fy[body][::-1] - 12 * k * np.clip((s[body][::-1] - 8) / 30, 0.2, 1)]),
             color="#e58c9a", zorder=4)
     ax.plot(fx[body], fy[body], color="#b04a5a", lw=2, zorder=5)
+    if p.cheeks > 0.05:   # puffed cheeks (seen through): a wider front of the mouth
+        ic = np.searchsorted(s, 58.0)
+        ax.add_patch(mp.Ellipse(((rx[ic] + fx[ic]) / 2, (ry[ic] + fy[ic]) / 2), (10 + 8 * p.cheeks) * k,
+                                (6 + 7 * p.cheeks) * k, fc="#f4a7b4", ec="#c77", alpha=0.35 + 0.3 * p.cheeks, zorder=6))
+    # his descended larynx: the throat continues down into the neck
+    neck = max(0.0, mouth.neck_mm - LARYNX_TRAVEL * p.larynx) * k
+    if neck > 0:
+        g0 = (5.5 + p.root * 4.5) * k
+        ax.fill([rx[0], rx[0], fx[0], fx[0]], [ry[0], ry[0] - neck, ry[0] - neck, fy[0]], color="#ffd9df", zorder=2)
+        ax.plot([rx[0], rx[0]], [ry[0], ry[0] - neck], color="#8a6", lw=3, zorder=3)
+        ax.plot([rx[0] + g0, rx[0] + g0], [fy[0], ry[0] - neck], color="#b04a5a", lw=2, zorder=3)
+        ax.plot([rx[0] - 1 * k, rx[0] + g0 + 1 * k], [ry[0] - neck] * 2, color="#6a4", lw=4, zorder=4)   # vocal folds
+        ax.text(rx[0] - 14 * k, ry[0] - neck, "larynx", fontsize=7, color="#6a4")
     # epiglottis / larynx
     ax.plot([rx[0] - 3 * k, fx[0]], [ry[0], fy[0]], color="#8a6", lw=3)
     # incisors (chisel teeth) and the split upper lip

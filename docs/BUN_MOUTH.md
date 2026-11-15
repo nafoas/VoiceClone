@@ -16,13 +16,33 @@ Every place his mouth departs from a normal rabbit is listed below as an
 
 ## His adaptations (where his mouth differs from a normal rabbit, and why)
 
-| adaptation | normal rabbit | Prince | the ability it serves |
-|---|---|---|---|
-| Size | ~0.75x the reference (small bun), tract ~5.5 cm | ~1.55x, tract ~11.5 cm, same proportions | his resonances (formant spacing); at true size he'd sound like a chipmunk |
-| Velum seals | larynx locked into the nasopharynx: breathes and sounds through the nose | the soft palate lifts and seals, or opens on purpose | speaking through the mouth; open for m, n and his nasal vowels |
-| Wider jaw drop and cheek stretch | small gape; cheeks fold into the diastema | jaw drops further and the cheeks stretch at the front | his open "a" (F1 ~1180 Hz) |
+He is a **small round bun at his real size** (0.75 x the 2.9 kg reference
+rabbit; mouth and head unchanged). His resonances come from a longer throat,
+not a bigger body.
 
-(Add a row whenever calibration moves something away from rabbit anatomy.)
+| adaptation | normal rabbit | Prince | the ability it serves | precedent in nature |
+|---|---|---|---|---|
+| **Descended larynx** | high, locked into the back of the nose (breathes and calls through the nose) | about 4.5 cm down his neck, inside the fluff; the throat runs down to it | (1) his resonances: tract 5.6 -> 10.1 cm in the same small body; (2) unplugs the larynx from the nose, so he can speak through his mouth; (3) a long throat behind the tongue gives a wide vowel range (his ee F2 3300 to oo F2 1300) | red and fallow deer (pull the larynx down to roar), koalas (permanently low larynx), humans |
+| **Mobile larynx** | fixed | rises up to ~1.9 cm for ee, sinks for oo | ee and oo need different throat lengths | humans (larynx higher for "ee", lower for "oo"); deer |
+| **Velum seals** | at rest the larynx is locked into the nose | the soft palate lifts and seals, or opens on purpose (m, n, nasal vowels) | speaking through the mouth | follows from the descended larynx |
+| **Puffed cheeks** | loose, fleshy cheeks (they fold into the gap behind the incisors) | can puff out, widening the front of the mouth | his low-F2 "oo" (without them, oo's F2 stuck near 1700 Hz; with them 1380) | rabbits' extensible cheeks |
+| **Wider jaw drop** | small gape | jaw drops further, cheeks stretch at the front | his open "a" (F1 ~1180 Hz) | |
+| Lips | very mobile split lip | pushed forward up to ~5 mm (real), puckered | rounding for oo | rabbits' constantly moving lips |
+
+How it was decided (`scripts/bun_rebuild.py`; vowel fit as in `scripts/fit_mouth.py`):
+error over his four vowels, in Bark.
+
+| mouth | his vowels |
+|---|---|
+| small bun, high larynx (a normal rabbit) | 12.9: cannot make his vowels |
+| 2x-sized bun (rejected: he is small) | 1.7 |
+| small bun + larynx 3-5 cm down the neck | 3.3-3.7 |
+| + puffed cheeks | 2.1-2.3 |
+| **+ mobile larynx (his mouth now)** | **1.72**: as good as the 2x bun |
+
+Whole clip, mouth only: 2x bun 8.0 LSD; his real size 8.7-9.0. Vowels fit
+equally well; consonants and transitions are a bit worse. Doubling the pose
+search didn't change that, so the gap is anatomy detail (calibration next).
 
 ## Anatomy it is built on (rabbit, *Oryctolagus cuniculus*)
 
@@ -41,7 +61,7 @@ length 52.4 ± 1.8 mm in 2.9 kg rabbits; rabbit soft palate and epiglottis
 (PMC7711434); rabbit oral cavity is elongated and narrow rostrally (comparative
 study, agmv.ro); MediRabbit, anatomy of the rabbit tongue (lingual torus).
 
-## Size
+## Size (superseded: see the adaptations above)
 
 Fitting his four recorded vowels gives the best size at **1.5–1.6 × the
 reference 2.9 kg rabbit** (an 11–12 cm tract). A small round bun is about
