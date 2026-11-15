@@ -17,6 +17,9 @@ from prince_voice.bnuysynth import SR, Catalogue, Unit as U, derive_vowel, synth
 from prince_voice.mouthderive import derive_by_mouth  # noqa: E402
 
 SAYINGS = dict(SAYINGS)
+SAYINGS["ninny"] = ([U("n", 105), U("ɪ", 110), U("n", 65), U("iː", 300, fade_ms=100)], [216, 216, 214, 213], 1.0)
+SAYINGS["neenee"] = ([U("n", 105), U("iː", 140), U("n", 65), U("iː", 300, fade_ms=100)], [216, 216, 214, 213], 1.0)
+SAYINGS["minny_i"] = ([U("m", 90), U("ɪ", 110), U("n", 60), U("iː", 300, fade_ms=100)], [264, 264, 263, 262], 0.6)
 SAYINGS["minny"] = ([U("m", 90), U("iː", 140), U("n", 60), U("iː", 300, fade_ms=100)], [264, 264, 263, 262], 0.6)
 
 VERSIONS = {   # name: (how ɑ is made, synth settings)
@@ -36,7 +39,8 @@ def main():
             derive_vowel(cat, "ɑ", "ã", [(1200, 1200), (2160, 1700), (3700, 3600)])
         else:
             derive_by_mouth(cat, "ɑ", "ã", np.array(fit["derived"]["ɑ"]["params"]))
-        for say in ("mama", "minny"):
+            derive_by_mouth(cat, "ɪ", "iː", np.array(fit["derived"]["ɪ"]["params"]))
+        for say in ("mama", "minny") + (("ninny", "neenee", "minny_i") if how == "mouth" else ()):
             units, levels, onset = SAYINGS[say]
             y = synth(units, pitch_plan(units, levels, onset=onset, step_ms=60.0), cat, **kw)
             sf.write(out / f"{say}_{vname}.wav", y / np.abs(y).max() * 0.8, SR)

@@ -68,3 +68,15 @@ github.com/dsuedholt/vocal-tract-grad).
   check_phoneme on "mama": the old warp makes the 2nd syllable measure as the
   r-vowel ɐ˞ ("rarra"); both mouth versions measure as ɑ in both syllables.
   Open issue: the mouth's lip opening into iː (minny) gives almost no F2 dip.
+- **ɪ by the mouth** (`scripts/mouth_vowels.py`, MOVES): his fitted iː + the
+  human VocalTractLab i->I move (tongue lower and back, jaw opens) -> 555 / 2815
+  / 3925. In context: ninny 545 / 2885 vs neenee 321 / 3378 (the old warped ɪ
+  only reached F1 ~436, which is why ninny and neenee sounded the same).
+  check_voice: ninny 94%, closest approved = nanni ('good').
+- **His real lip->ee is tiny**: p->iː in the clip dips F2 only 42 Hz (m->ũ:
+  245 Hz). For ee the tongue channel (0.15-0.3 cm^2) dominates until the lips
+  are nearly shut, so a small F2 dip after m in "minny" is correct for him.
+- **Open**: mouth ɑ has H1-A3 26-28 vs his ã 22.6 (open-vowel range 22-27):
+  moving the tongue back lowers F2 away from F3, so the 3-4 kHz harmonics drop
+  (real acoustics, but it reads as a deeper hum cliff). mama overall 75% in
+  check_voice; the warp version fails F3_low (2576 Hz: the "rarra").

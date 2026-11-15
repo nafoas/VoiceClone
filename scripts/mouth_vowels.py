@@ -19,6 +19,11 @@ DERIVED = {
     "ɑ": ("ã", ["TCX", "TCY", "TRX", "TRY", "TBX", "TBY"], (1178, 1700, 3600),
           "mama's ah: tongue back from his nannar a (F2 1700 = Da Boss's pick, version F)"),
 }
+# new vowel by the HUMAN articulatory move between two VocalTractLab shapes,
+# applied to his fitted shape (works for small moves; see docs/MOUTH_TOOLS.md)
+MOVES = {
+    "ɪ": ("iː", "i", "I", 1.0, "the i of ninny/minny: his ee + the human i->I move (tongue lower and back, jaw opens)"),
+}
 
 
 def main():
@@ -41,6 +46,11 @@ def main():
         moved = {n: round(float(p[i] - p0[i]), 2) for n, i in zip(free, idx) if abs(p[i] - p0[i]) > 0.05}
         print(f"/{new}/ from his /{base}/: {[int(x) for x in F[:3]]} (target {tgt}); moved {moved}")
         fit["derived"][new] = dict(base=base, params=[float(x) for x in p], formants=F, why=why, moved=moved)
+    for new, (base, h_from, h_to, k, why) in MOVES.items():
+        p = np.array(fit["vowels"][base]["params"]) + k * (m.shape(h_to) - m.shape(h_from))
+        p = np.clip(p, m.lo, m.hi); F = m.formants(p)
+        print(f"/{new}/ from his /{base}/ + human {h_from}->{h_to}: {[int(x) for x in F[:3]]}")
+        fit["derived"][new] = dict(base=base, params=[float(x) for x in p], formants=F, why=why)
     (ROOT / "models/mouth_fit.json").write_text(json.dumps(fit, indent=1, ensure_ascii=False))
 
 
