@@ -83,6 +83,27 @@ NSH = 8 + NF
 PO = {s: slice(NSH + 9 * i, NSH + 9 * i + 9) for i, s in enumerate(SOUNDS)}
 PU0 = NSH + 9 * len(SOUNDS)
 SHARED_SRC = os.environ.get("SRC", "") in ("shared", "shared2")
+HIS_SRC = os.environ.get("SRC", "") == "his"     # his real voice, recovered from the clip (PLAN step 1), held fixed
+
+
+def his_voice_tones(path=ROOT / "models/his_voice.npz", nh=NH):
+    """His average cycle's tones, by harmonic number (cycles keep their shape at any pitch):
+    each clean cycle's tones normalised to its 1st (level and timing), then averaged."""
+    d = np.load(path); acc = []
+    for i, cl in enumerate(d["clean"]):
+        if not cl:
+            continue
+        for c in np.split(d[f"cyc_{i}"], np.cumsum(d[f"len_{i}"])[:-1]):
+            C = np.fft.rfft(np.interp(np.linspace(0, 1, 1024, endpoint=False), np.linspace(0, 1, len(c), endpoint=False), c))[1: nh + 1]
+            k = np.arange(1, nh + 1); acc.append(C / np.abs(C[0]) * np.exp(-1j * k * np.angle(C[0])))
+    return np.mean(acc, 0)
+
+
+def seal(a, lab):
+    """m: the lips meet (sound leaves by the nose only)."""
+    if lab == "m":
+        a = a.copy(); a[-2:] = 1e-4
+    return a
 SRC2 = os.environ.get("SRC", "") == "shared2"            # + his vocal cords' puff shape (per harmonic number)
 GK = np.geomspace(100, 10000, 14)                     # knots of his one voice's spectrum (Hz)
 if SHARED_SRC:
@@ -92,6 +113,8 @@ if SHARED_SRC:
 elif os.environ.get("SRC", "") == "puff":   # his one pair of vocal cords: one puff shape for every sound
     PU = [slice(PU0, PU0 + 5)] * NI
     NP = PU0 + 5
+elif HIS_SRC:
+    PU = [None] * NI; NP = PU0; HISC = his_voice_tones()
 else:
     PU = [slice(PU0 + 5 * i, PU0 + 5 * i + 5) for i in range(NI)]
     NP = PU0 + 5 * NI
@@ -111,7 +134,7 @@ if SHARED_SRC:
         d = np.load(nv); Z0[GS] = np.interp(np.log(GK), np.log(np.maximum(d["fq"], 1)), d["G"])
     if SRC2:
         LO[GH], HI[GH], Z0[GH] = -30.0, 30.0, 0.0
-else:
+elif not HIS_SRC:
     for p in PU:
         LO[p], HI[p], Z0[p] = [.3, .3, .3, 0, 0], [.97, .95, 4, 1.5, 1], [.8, .5, 1.0, .2, .5]
 _cache = {}
@@ -136,13 +159,15 @@ def tube(pose9, neck, lar):
 def sound_model(z, s):
     a0, L, frac, port = tube(z[PO[s]], z[0], z[SH["lar"]])
     dev = idct(np.r_[z[SH["shape"]], np.zeros(NS - NF)], norm="ortho")
-    return a0 * np.exp(dev), L, frac, port, dev
+    return seal(a0 * np.exp(dev), s), L, frac, port, dev
 
 
 def tones(z, t):
     a, L, frac, port, _ = sound_model(z, t["lab"]); k = np.arange(1, NH + 1) * t["f0"]
     H = B.tube_H_nose(a, L, k, frac, port, z[6], z[7]) * B.head_baffle(k, z[1])
-    if SHARED_SRC:   # his one voice: the same spectrum for every sound (phase from a simple pulse)
+    if HIS_SRC:      # his real voice (tones and their timing), the same for every sound
+        Zc = HISC * H
+    elif SHARED_SRC:   # his one voice: the same spectrum for every sound (phase from a simple pulse)
         gdb = np.interp(np.log(k), np.log(GK), z[GS])
         if SRC2:
             gdb = gdb + np.r_[0.0, z[GH]]
@@ -220,6 +245,8 @@ def main():
     rng = np.random.default_rng(0); best = None
     if os.environ.get("WARM"):   # continue from an earlier solution
         zw = np.array(json.loads((ROOT / os.environ["WARM"]).read_text())["z"])
+        if HIS_SRC:
+            zw = zw[:NP]
         if os.environ.get("SRC", "") == "puff" and len(zw) != NP:   # anatomy + positions kept; one puff from the median of theirs
             q = np.median(np.array(zw[PU0:]).reshape(-1, 5), 0) if (len(zw) - PU0) % 5 == 0 and len(zw) > PU0 else Z0[PU0:PU0 + 5]
             zw = np.r_[zw[:PU0], q]
