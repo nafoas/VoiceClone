@@ -21,6 +21,13 @@
 >    rabbit's, it may, and the departure is **logged with the ability it
 >    serves**. Prefer the explanation that keeps him "just a little guy", but
 >    never refuse a sound he really makes because a normal rabbit couldn't.
+> 2b. **His one neutral voice is the source** (Da Boss): instead of a drawn buzz,
+>    the sound his own voice box made, recovered from the clip by undoing the
+>    mouth model, ONE voice shared by every sound, enters the mouth as its input.
+>    Nothing else from the clip enters the output. Re-pitching or lengthening it is
+>    done to the source only, before the mouth. Honesty checks: one shared voice
+>    (never a per-sound source), and each sound rebuilt with voice cycles taken
+>    from OTHER sounds.
 > 5. **One anatomy, many movements.** His anatomy (sizes, cavities) is shared
 >    by every sound; only articulation (how the mouth moves) differs per sound.
 >

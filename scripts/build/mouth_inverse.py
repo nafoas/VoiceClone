@@ -82,8 +82,13 @@ SH = dict(neck=0, head=1, lar=slice(2, 6), nlen=6, ndamp=7, shape=slice(8, 8 + N
 NSH = 8 + NF
 PO = {s: slice(NSH + 9 * i, NSH + 9 * i + 9) for i, s in enumerate(SOUNDS)}
 PU0 = NSH + 9 * len(SOUNDS)
-PU = [slice(PU0 + 5 * i, PU0 + 5 * i + 5) for i in range(NI)]
-NP = PU0 + 5 * NI
+SHARED_SRC = os.environ.get("SRC", "") == "shared"
+GK = np.geomspace(100, 10000, 14)                     # knots of his one voice's spectrum (Hz)
+if SHARED_SRC:
+    PU = [None] * NI; GS = slice(PU0, PU0 + len(GK)); NP = PU0 + len(GK)
+else:
+    PU = [slice(PU0 + 5 * i, PU0 + 5 * i + 5) for i in range(NI)]
+    NP = PU0 + 5 * NI
 LO = np.zeros(NP); HI = np.zeros(NP); Z0 = np.zeros(NP)
 LO[0], HI[0], Z0[0] = 15, 45, 28
 LO[1], HI[1], Z0[1] = 2.0, 4.0, 2.6
@@ -93,8 +98,14 @@ LO[7], HI[7], Z0[7] = .05, .5, .15
 LO[SH["shape"]], HI[SH["shape"]] = -2.5, 2.5
 for s in SOUNDS:
     b = np.array(BOUNDS[s]); LO[PO[s]], HI[PO[s]] = b[:, 0], b[:, 1]; Z0[PO[s]] = np.clip(START[s], b[:, 0], b[:, 1])
-for p in PU:
-    LO[p], HI[p], Z0[p] = [.3, .3, .3, 0, 0], [.97, .95, 4, 1.5, 1], [.8, .5, 1.0, .2, .5]
+if SHARED_SRC:
+    LO[GS], HI[GS] = -90.0, 20.0
+    nv = ROOT / "models/neutral_voice.npz"
+    if nv.exists():   # start from the shared shape recovered from the clip
+        d = np.load(nv); Z0[GS] = np.interp(np.log(GK), np.log(np.maximum(d["fq"], 1)), d["G"])
+else:
+    for p in PU:
+        LO[p], HI[p], Z0[p] = [.3, .3, .3, 0, 0], [.97, .95, 4, 1.5, 1], [.8, .5, 1.0, .2, .5]
 _cache = {}
 
 
@@ -123,8 +134,12 @@ def sound_model(z, s):
 def tones(z, t):
     a, L, frac, port, _ = sound_model(z, t["lab"]); k = np.arange(1, NH + 1) * t["f0"]
     H = B.tube_H_nose(a, L, k, frac, port, z[6], z[7]) * B.head_baffle(k, z[1])
-    q = tuple(z[PU[T.index(t)]])
-    Zc = X.puff_C(t["f0"], q) * H
+    if SHARED_SRC:   # his one voice: the same spectrum for every sound (phase from a simple pulse)
+        gdb = np.interp(np.log(k), np.log(GK), z[GS])
+        Zc = 10 ** (gdb / 20) * np.exp(1j * np.angle(X.puff_C(t["f0"], (0.8, 0.55, 1.0, 0.2, 0.4)))) * H
+    else:
+        q = tuple(z[PU[T.index(t)]])
+        Zc = X.puff_C(t["f0"], q) * H
     lv = 20 * np.log10(np.abs(Zc) + 1e-15); lv -= lv[0]
     ph = np.angle(np.exp(1j * (np.angle(Zc) - np.arange(1, NH + 1) * np.angle(Zc[0]))))
     return lv, ph, a
@@ -150,6 +165,8 @@ def resid(z):
                 r.append([40.0 * max(0.0, 290.0 - f1) / 290.0])
     dev = idct(np.r_[z[SH["shape"]], np.zeros(NS - NF)], norm="ortho")
     r.append(1.0 * dev[::4] / 0.15)     # departures from a normal bun cost a little (preference, not a wall)
+    if SHARED_SRC:   # his voice's spectrum is smooth
+        r.append(0.5 * np.diff(z[GS], 2))
     return np.concatenate([np.atleast_1d(x) for x in r])
 
 
@@ -190,7 +207,10 @@ def main():
     print(f"{NI} voiced sounds, {len(SOUNDS)} distinct; {NP} unknowns, fitted at once", flush=True)
     rng = np.random.default_rng(0); best = None
     if os.environ.get("WARM"):   # continue from an earlier solution
-        zw = np.clip(np.array(json.loads((ROOT / os.environ["WARM"]).read_text())["z"]), LO + 1e-6, HI - 1e-6)
+        zw = np.array(json.loads((ROOT / os.environ["WARM"]).read_text())["z"])
+        if SHARED_SRC and len(zw) != NP:   # from a per-sound-puff solution: keep anatomy + positions, start the voice from the clip
+            zw = np.r_[zw[:PU0], Z0[GS]]
+        zw = np.clip(zw, LO + 1e-6, HI - 1e-6)
         r = least_squares(resid, zw, bounds=(LO, HI), method="trf", max_nfev=int(os.environ.get("NFEV", "60")), diff_step=1e-3)
         best = (float(np.sum(r.fun ** 2)), r.x); print(f"  continued: cost {best[0]:.0f}", flush=True)
     from multiprocessing import Pool

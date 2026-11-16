@@ -526,3 +526,24 @@ normal bun's** (shape map up to ~3.4x) and a wider mouth opening (~1.9x). The
 cluster too weak; one shared "ee" position serves four contexts) and the n's
 above 2 kHz. Next: Phase B (movement and context), C (hiss and bursts), D
 (render the whole phrase from the mouth alone).
+
+### His one neutral voice as the source (Da Boss's idea) — first attempt (`scripts/build/neutral_voice.py`)
+
+- Recovering his voice by undoing each sound's mouth (A4 mouths, built with a
+  per-sound buzz): the recovered voices disagree by **13–18 dB** between sounds.
+  The per-sound buzz was carrying 10–30 dB of each sound's character, so the
+  source was doing the mouth's job (Da Boss's diagnosis, confirmed).
+- **One shared voice for every sound** (`mouth_inverse.py SRC=shared`): stuck at
+  14.3 dB from the old positions; a wide 12-start search gives **9.74 dB
+  overall** (n 6.6/9.3/5.9, ã 12.3, ɐ˞ 8.3, ɹ 5.2, m 12.2, ũ 8.3, iː
+  13.6/10.8/10.0/10.5). The first fully objective one-mouth, one-voice fit.
+- Recovered again through that mouth, the voices still disagree by 6–17 dB,
+  so a waveform-level recovery is mostly mouth error plus amplified noise. The
+  rebuild audio is **not usable yet** (not pitched; first phrase near silent);
+  not sent.
+- Fixed on the way: the tube model is capped at its plane-wave validity
+  (roll-off from 8 kHz; it was amplifying 10–23 kHz enormously); a pitch
+  fallback that ended a sound after one cycle; unbuilt consonant gaps swamping
+  the levels.
+- Next: recover the voice from his measured tones (tone by tone, no noise
+  blow-up) and alternate voice recovery and mouth refit until they agree.
