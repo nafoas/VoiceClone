@@ -82,10 +82,16 @@ SH = dict(neck=0, head=1, lar=slice(2, 6), nlen=6, ndamp=7, shape=slice(8, 8 + N
 NSH = 8 + NF
 PO = {s: slice(NSH + 9 * i, NSH + 9 * i + 9) for i, s in enumerate(SOUNDS)}
 PU0 = NSH + 9 * len(SOUNDS)
-SHARED_SRC = os.environ.get("SRC", "") == "shared"
+SHARED_SRC = os.environ.get("SRC", "") in ("shared", "shared2")
+SRC2 = os.environ.get("SRC", "") == "shared2"            # + his vocal cords' puff shape (per harmonic number)
 GK = np.geomspace(100, 10000, 14)                     # knots of his one voice's spectrum (Hz)
 if SHARED_SRC:
     PU = [None] * NI; GS = slice(PU0, PU0 + len(GK)); NP = PU0 + len(GK)
+    if SRC2:
+        GH = slice(NP, NP + NH - 1); NP = NP + NH - 1
+elif os.environ.get("SRC", "") == "puff":   # his one pair of vocal cords: one puff shape for every sound
+    PU = [slice(PU0, PU0 + 5)] * NI
+    NP = PU0 + 5
 else:
     PU = [slice(PU0 + 5 * i, PU0 + 5 * i + 5) for i in range(NI)]
     NP = PU0 + 5 * NI
@@ -103,6 +109,8 @@ if SHARED_SRC:
     nv = ROOT / "models/neutral_voice.npz"
     if nv.exists():   # start from the shared shape recovered from the clip
         d = np.load(nv); Z0[GS] = np.interp(np.log(GK), np.log(np.maximum(d["fq"], 1)), d["G"])
+    if SRC2:
+        LO[GH], HI[GH], Z0[GH] = -30.0, 30.0, 0.0
 else:
     for p in PU:
         LO[p], HI[p], Z0[p] = [.3, .3, .3, 0, 0], [.97, .95, 4, 1.5, 1], [.8, .5, 1.0, .2, .5]
@@ -136,6 +144,8 @@ def tones(z, t):
     H = B.tube_H_nose(a, L, k, frac, port, z[6], z[7]) * B.head_baffle(k, z[1])
     if SHARED_SRC:   # his one voice: the same spectrum for every sound (phase from a simple pulse)
         gdb = np.interp(np.log(k), np.log(GK), z[GS])
+        if SRC2:
+            gdb = gdb + np.r_[0.0, z[GH]]
         Zc = 10 ** (gdb / 20) * np.exp(1j * np.angle(X.puff_C(t["f0"], (0.8, 0.55, 1.0, 0.2, 0.4)))) * H
     else:
         q = tuple(z[PU[T.index(t)]])
@@ -167,6 +177,8 @@ def resid(z):
     r.append(1.0 * dev[::4] / 0.15)     # departures from a normal bun cost a little (preference, not a wall)
     if SHARED_SRC:   # his voice's spectrum is smooth
         r.append(0.5 * np.diff(z[GS], 2))
+    if SRC2:         # the puff shape may dip, but stays modest
+        r.append(0.15 * z[GH])
     return np.concatenate([np.atleast_1d(x) for x in r])
 
 
@@ -199,7 +211,7 @@ def run_start(k):
         for s in SOUNDS:   # varied but sensible starting mouths
             z0[PO[s]] = np.clip(np.array(START[s]) + rng.normal(0, 0.15, 9), LO[PO[s]], HI[PO[s]])
     z0 = np.clip(z0, LO + 1e-6, HI - 1e-6)
-    r = least_squares(resid, z0, bounds=(LO, HI), method="trf", max_nfev=int(os.environ.get("NFEV", "60")), diff_step=1e-3)
+    r = least_squares(resid, z0, bounds=(LO, HI), method="trf", max_nfev=int(os.environ.get("NFEV", "60")), diff_step=1e-3, x_scale="jac", xtol=1e-12, ftol=1e-10)
     return k, float(np.sum(r.fun ** 2)), r.x.tolist()
 
 
@@ -208,10 +220,16 @@ def main():
     rng = np.random.default_rng(0); best = None
     if os.environ.get("WARM"):   # continue from an earlier solution
         zw = np.array(json.loads((ROOT / os.environ["WARM"]).read_text())["z"])
-        if SHARED_SRC and len(zw) != NP:   # from a per-sound-puff solution: keep anatomy + positions, start the voice from the clip
-            zw = np.r_[zw[:PU0], Z0[GS]]
+        if os.environ.get("SRC", "") == "puff" and len(zw) != NP:   # anatomy + positions kept; one puff from the median of theirs
+            q = np.median(np.array(zw[PU0:]).reshape(-1, 5), 0) if (len(zw) - PU0) % 5 == 0 and len(zw) > PU0 else Z0[PU0:PU0 + 5]
+            zw = np.r_[zw[:PU0], q]
+        if SHARED_SRC and len(zw) != NP:   # keep anatomy + positions (+ voice if present); new parts start neutral
+            if SRC2 and len(zw) == PU0 + len(GK):
+                zw = np.r_[zw, Z0[GH]]
+            else:
+                zw = np.r_[zw[:PU0], Z0[GS]] if not SRC2 else np.r_[zw[:PU0], Z0[GS], Z0[GH]]
         zw = np.clip(zw, LO + 1e-6, HI - 1e-6)
-        r = least_squares(resid, zw, bounds=(LO, HI), method="trf", max_nfev=int(os.environ.get("NFEV", "60")), diff_step=1e-3)
+        r = least_squares(resid, zw, bounds=(LO, HI), method="trf", max_nfev=int(os.environ.get("NFEV", "60")), diff_step=1e-3, x_scale="jac", xtol=1e-12, ftol=1e-10)
         best = (float(np.sum(r.fun ** 2)), r.x); print(f"  continued: cost {best[0]:.0f}", flush=True)
     from multiprocessing import Pool
     ks = list(range(int(os.environ.get("NSTART", "3"))))
