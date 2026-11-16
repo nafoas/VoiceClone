@@ -157,7 +157,8 @@ _cache = {}
 
 
 def tube(pose9, neck, lar):
-    key = (tuple(np.round(pose9, 3)), round(float(neck), 1), tuple(np.round(lar, 2)))
+    # fine rounding: a coarse key erased the fit's small test steps, freezing the larynx depth and cavity
+    key = (tuple(np.round(pose9, 6)), round(float(neck), 6), tuple(np.round(lar, 6)))
     if key not in _cache:
         v = Pose().vec(); v[:9] = pose9
         m = BunMouth(0.75, neck_mm=float(neck), larcav=tuple(float(q) for q in lar))
