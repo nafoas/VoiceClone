@@ -87,12 +87,22 @@ SHARED_SRC = os.environ.get("SRC", "") in ("shared", "shared2")
 HIS_SRC = os.environ.get("SRC", "") == "his"     # his real voice, recovered from the clip (PLAN step 1), held fixed
 
 
-def his_voice_tones(path=ROOT / "models/his_voice.npz", nh=NH):
+def his_voice_bank_tones(path=ROOT / "models/his_voice.npz", nh=NH):
+    """Per bank sound (his cycles at that pitch): (pitch, tones). The render draws each sound's
+    cycles from the bank sound nearest in pitch; the fit uses the same."""
+    d = np.load(path); out = []
+    for i, cl in enumerate(d["clean"]):
+        if cl:
+            out.append((float(d["f0"][i]), his_voice_tones(path, nh, only=i)))
+    return out
+
+
+def his_voice_tones(path=ROOT / "models/his_voice.npz", nh=NH, only=None):
     """His average cycle's tones, by harmonic number (cycles keep their shape at any pitch):
     each clean cycle's tones normalised to its 1st (level and timing), then averaged."""
     d = np.load(path); acc = []
     for i, cl in enumerate(d["clean"]):
-        if not cl:
+        if not cl or (only is not None and i != only):
             continue
         for c in np.split(d[f"cyc_{i}"], np.cumsum(d[f"len_{i}"])[:-1]):
             C = np.fft.rfft(np.interp(np.linspace(0, 1, 1024, endpoint=False), np.linspace(0, 1, len(c), endpoint=False), c))[1: nh + 1]
@@ -118,7 +128,7 @@ elif os.environ.get("SRC", "") == "puff":   # his one pair of vocal cords: one p
     PU = [slice(PU0, PU0 + 5)] * NI
     NP = PU0 + 5
 elif HIS_SRC:
-    PU = [None] * NI; HISC = his_voice_tones(); NV = PU0; NP = PU0 + 1   # + his nose's turbinate surface
+    PU = [None] * NI; HISC = his_voice_tones(); HISB = his_voice_bank_tones(); NV = PU0; NP = PU0 + 1   # + his nose's turbinate surface
 else:
     PU = [slice(PU0 + 5 * i, PU0 + 5 * i + 5) for i in range(NI)]
     NP = PU0 + 5 * NI
@@ -174,7 +184,7 @@ def tones(z, t):
     a, L, frac, port, _ = sound_model(z, t["lab"]); k = np.arange(1, NH + 1) * t["f0"]
     H = B.tube_H_nose(a, L, k, frac, port, z[6], z[7]) * B.head_baffle(k, z[1])
     if HIS_SRC:      # his real voice (tones and their timing), the same for every sound
-        Zc = HISC * H
+        Zc = (min(HISB, key=lambda b: abs(np.log(b[0] / t["f0"])))[1] if os.environ.get("VOICE", "bank") == "bank" else HISC) * H
     elif SHARED_SRC:   # his one voice: the same spectrum for every sound (phase from a simple pulse)
         gdb = np.interp(np.log(k), np.log(GK), z[GS])
         if SRC2:

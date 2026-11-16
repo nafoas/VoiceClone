@@ -43,7 +43,7 @@ def mag(z, pose9, f):
 
 def bands(z, pose9, f0):
     k = np.arange(1, min(60, int(12800 // f0)) + 1); f = k * f0
-    E = (np.abs(TR.HIS[: len(k)]) * mag(z, pose9, f)) ** 2
+    E = (np.abs(TR.his_at(f0)[: len(k)]) * mag(z, pose9, f)) ** 2
     S = np.zeros(len(TR.FB))
     for fk, ek in zip(f, E):
         S += ek * np.interp(TR.FB - fk, TR.KER_F, TR.KER, left=0, right=0)

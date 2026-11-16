@@ -36,6 +36,12 @@ EDGES = 200 * 2 ** (np.arange(0, 19) / 3); EDGES = EDGES[EDGES <= 12800]
 LIPS, VELUM = 5, 7
 LO = np.array([-0.03, 0.008, -0.03, -0.04]); HI = np.array([0.03, 0.08, 0.03, 0.04]); X0 = np.array([0.0, 0.03, 0.0, 0.0])
 HIS = M.his_voice_tones(nh=60)
+HISB = M.his_voice_bank_tones(nh=60)
+
+
+def his_at(f0):
+    """His voice at this pitch: the bank sound nearest in pitch (as the render does)."""
+    return min(HISB, key=lambda b: abs(np.log(b[0] / f0)))[1]
 _H = {}
 
 
@@ -75,7 +81,7 @@ _o = np.argsort(_wf); KER_F, KER = _wf[_o], _win[_o]
 def model_bands(pose, f0):
     """Each tone spread exactly as the clip's analysis window spreads it, then the same bands."""
     k = np.arange(1, min(60, int(12800 // f0)) + 1); f = k * f0
-    E = (np.abs(HIS[: len(k)]) * mouth_mag(pose, f)) ** 2
+    E = (np.abs(his_at(f0)[: len(k)]) * mouth_mag(pose, f)) ** 2
     S = np.zeros(len(FB))
     for fk, ek in zip(f, E):
         S += ek * np.interp(FB - fk, KER_F, KER, left=0, right=0)
