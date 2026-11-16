@@ -2,7 +2,7 @@
 
 Voice: his voice bank (models/his_voice.npz, recovered from the clip by quasi-closed-
   phase inverse filtering). Each cycle is one of his real cycles, taken in his own order
-  (forward, then back) from the bank sound nearest in pitch, and played at the pitch
+  (forward, then back) from the bank sound nearest in pitch (one per sound), and played at the pitch
   wanted (a real cycle keeps its shape at a higher pitch; it just runs faster).
 Mouth: the one mouth fitted to that voice (mouth_inverse SRC=his). Every buzz goes
   through the mouth's shape at the instant it happens, and its ring is left to die
@@ -82,10 +82,10 @@ def render_phrase(ph, x, tt, ff0, BK, gain_db=None):
         ins = ff0[(tt >= v["s"]) & (tt <= v["e"]) & (ff0 > 0)]; v0 = float(np.median(ins)) if len(ins) else 250.0
         g = 10 ** ((gain_db[vi] if gain_db is not None else 0.0) / 20)
         t = v["s"]
+        src = min(BK, key=lambda b: abs(np.log(b["f0"] / v0)))              # one run of his own cycles per sound
         while t < v["e"]:
             f0 = np.interp(t, tt, np.where(ff0 > 0, ff0, np.nan)); f0 = f0 if np.isfinite(f0) and 100 < f0 < 900 else v0
             P = int(round(SR / f0)); c = int((t - s0) * SR)
-            src = min(BK, key=lambda b: abs(np.log(b["f0"] / f0)))          # his cycles nearest in pitch
             cyc = src["cyc"][src["order"][src["k"] % len(src["order"])]]; src["k"] += 1
             pulse = at_period(cyc, P) * g
             h = mouth_ir(poses[min(c // hop, nfr - 1)], v["lab"] == "m")
