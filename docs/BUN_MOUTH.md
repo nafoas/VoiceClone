@@ -440,3 +440,23 @@ a fixed 1.3–1.8 kHz: correction, not a puff effect), 3–5.2 kHz model −4.1 
 **Conclusion:** the per-"ee" change in the laryngeal cavity (±12–17%) is an
 ordinary gesture of a normal larynx, not new anatomy. Logged in BUILD_RULES as
 a gesture.
+
+### Step 3i: more variables (Da Boss: "keep tightening until it meets an exact pitch... find other variables... head shape?")
+
+| candidate | result | verdict |
+|---|---|---|
+| **windpipe and lungs below the folds** (subglottal coupling; Chi & Sonderegger 2007: 5–12 dB dips near the windpipe's resonance, stronger with the folds open longer; rabbit trachea ~6–7 mm across, CT) | swept 3.5–7.5 cm, coupling 100–1600 cgs, from the best solution: worse in 3 of 4 "ee"s (264: 5.56→5.45; 389: 4.45→5.05; 350: 4.00→5.05; 331: 3.88→4.26) | **rejected** |
+| **exact head shape** (a mouth on a rigid sphere, Morse & Ingard; radius and listening angle free) | agrees with the simple step within ~1 dB straight ahead; fits unchanged (±0.05 dB) at 0° or 30–40° off-axis | head **size** matters (kept, 2.6 cm); **shape** isn't a lever at this scale |
+| **movement within each "ee"** (early / middle / late thirds fitted separately) | 3.8–6.1 dB per third; helps in places (331 late: 7.1→4.3) | modest; for the dynamics step |
+
+**Measurement floor:** his averaged tone levels carry ~±2 dB of natural
+wobble (from the half-vs-half spread of ~4 dB rms), so even a perfect model
+scores ~2 dB. Best honest bun result: **5.6 / 4.5 / 4.0 / 3.9 dB** (264 / 389 /
+350 / 331), i.e. ~3–5 dB of genuine miss above the floor.
+
+Rejected so far for his "ee" tones: nose side branch, cheek pockets, tissue
+damping, windpipe coupling, head shape beyond size.
+Kept: his one adaptation (larynx ~1.6–2.5 cm lower), his small head (2.6 cm),
+the laryngeal cavity (~6.8 mm, inlet ~3 mm; shape changes a little per
+utterance as a gesture), a very close "ee" (narrow tongue channel), a puff that
+eases shut, closing moment varying ~0.1 ms.

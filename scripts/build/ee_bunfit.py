@@ -35,7 +35,9 @@ HEAD_R = float(os.environ.get("HEAD_R", "0"))  # >0: his head radius is fixed (c
 NAT_W = float(os.environ.get("NAT_W", "1.5"))  # cost of departing from the bun shape
 NOSE = os.environ.get("NOSE", "") == "1"         # the nasal passage as a side branch (velum slightly open)
 LARV = os.environ.get("LARV", "") == "1"         # the laryngeal cavity's size may vary (natural variation)
-CHEEK = os.environ.get("CHEEK", "") == "1"       # cheek pockets (between cheek teeth and cheeks), a pair of small bottles
+CHEEK = os.environ.get("CHEEK", "") == "1"
+SUB = os.environ.get("SUB", "") == "1"
+HEADX = os.environ.get("HEADX", "") == "1"       # exact radiation from a mouth on his round head (sphere), at a listening angle           # his windpipe and lungs below the folds (coupled while the folds are open)       # cheek pockets (between cheek teeth and cheeks), a pair of small bottles
 TAG = os.environ.get("TAG", "")
 SIGMA = 0.15            # natural variation of width (~15%)
 LARCAV = tuple(float(v) for v in os.environ.get("LARCAV", "7,1.0,4,0.15").split(","))
@@ -103,6 +105,44 @@ def cheek_H(a, L, f, pos, neck_a, neck_l, cav_a, cav_l):
     return 1j * w / (K[1, 0] * _radiation(a[-1], w) + K[1, 1])
 
 
+def sub_factor(a, L, f, Lt, At, lung, log_zg):
+    """Coupling to the windpipe below the folds. The folds are a pressure source
+    behind the glottal resistance Zg; the flow into the mouth is reduced where
+    the mouth's or the windpipe's input impedance is high:
+        U = U_source * Zg / (Zg + Z_mouth + Z_windpipe)
+    Windpipe: a tube (length Lt, area At) ending in the lungs (a resistive load)."""
+    from prince_voice.mouth import _chain, _radiation, RHO, C
+    w = 2 * np.pi * np.asarray(f, float); n = len(a); ls = np.full(n, L / n)
+    K = _chain(np.maximum(a, 1e-4), ls, w); Zl = _radiation(a[-1], w)
+    Zm = (K[0, 0] * Zl + K[0, 1]) / (K[1, 0] * Zl + K[1, 1])
+    nt = max(4, int(round(Lt / 0.25)))
+    Kt = _chain(np.full(nt, At), np.full(nt, Lt / nt), w)
+    Zlung = lung * RHO * C / At
+    Zt = (Kt[0, 0] * Zlung + Kt[0, 1]) / (Kt[1, 0] * Zlung + Kt[1, 1])
+    Zg = 10 ** log_zg
+    return Zg / (Zg + Zm + Zt)
+
+
+def head_sphere(f, radius_cm, theta_deg, mouth_area):
+    """Far-field sound of a small vibrating cap (his mouth) on a rigid sphere (his
+    head), heard at angle theta from where the mouth points (Morse & Ingard).
+    Includes the diffraction ripples a real round head makes. Returned relative to
+    an ideal source's j*omega so it can replace the plain radiation term."""
+    from scipy.special import spherical_jn, spherical_yn, eval_legendre
+    f = np.atleast_1d(np.asarray(f, float)); k = 2 * np.pi * f / 35000.0; ka = k * radius_cm
+    alpha = np.sqrt(max(mouth_area, 1e-4) / np.pi) / radius_cm
+    ca, ct = np.cos(alpha), np.cos(np.radians(theta_deg))
+    N = int(np.max(ka) * 2 + 25)
+    p = np.zeros_like(f, dtype=complex)
+    for n in range(N):
+        Pm = 1.0 if n == 0 else eval_legendre(n - 1, ca)
+        cn = (Pm - eval_legendre(n + 1, ca)) * eval_legendre(n, ct)
+        hd = spherical_jn(n, ka, derivative=True) + 1j * spherical_yn(n, ka, derivative=True)
+        p += (-1j) ** (n + 1) * cn / hd
+    p = p / k / mouth_area                   # per unit volume flow
+    return p / (1j * 2 * np.pi * f)          # the tube response already contains j*omega
+
+
 def unpack(z):
     pose9 = z[:9]; neck = z[9]; d = z[10:10 + ND]; q = tuple(z[10 + ND:15 + ND])
     a0, L = bun_tube40(pose9, neck, (z[24 + ND:28 + ND] if LARV else None))
@@ -125,6 +165,11 @@ if LARV:   # cavity length (ref mm), cavity width vs throat, inlet length, inlet
         LO = np.r_[LO, [9.0 - 1e-3, 1.0 - 1e-3, 4.0 - 1e-3, 0.08]]; HI = np.r_[HI, [9.0 + 1e-3, 1.0 + 1e-3, 4.0 + 1e-3, 0.35]]
     else:
         LO = np.r_[LO, [4.0, 0.5, 2.0, 0.08]]; HI = np.r_[HI, [11.0, 1.5, 6.0, 0.35]]
+if HEADX:  # listening angle from where the mouth points (deg); head radius is the existing head entry
+    LO = np.r_[LO, [0.0]]; HI = np.r_[HI, [100.0]]
+    LO[15 + ND], HI[15 + ND] = 2.0, 3.2
+if SUB:    # windpipe length (cm), area (cm^2), lung load (x rho c / A), log10 glottal resistance (cgs)
+    LO = np.r_[LO, [3.0, 0.15, 0.05, 1.0]]; HI = np.r_[HI, [8.0, 0.45, 3.0, 6.0]]
 
 
 def resid(z, t):
@@ -133,7 +178,12 @@ def resid(z, t):
     TH = (tube_H_nose(a, L, k, port_frac(z[:9], z[9]), z[16 + ND], z[17 + ND], z[18 + ND]) if NOSE else X.tube_H(a, L, k))
     if CHEEK:
         TH = cheek_H(a, L, k, *z[19 + ND:24 + ND])
-    Zc = X.puff_C(t["f0"], q) * TH * (head_baffle(k, z[15 + ND]) if HEAD else 1.0)
+    if SUB:
+        TH = TH * sub_factor(a, L, k, *z[28 + ND:32 + ND])
+    if HEADX:
+        Zc = X.puff_C(t["f0"], q) * TH * head_sphere(k, z[15 + ND], z[-1], a[-1])
+    else:
+        Zc = X.puff_C(t["f0"], q) * TH * (head_baffle(k, z[15 + ND]) if HEAD else 1.0)
     lv = 20 * np.log10(np.abs(Zc) + 1e-15); lv -= lv[0]
     ph = np.angle(np.exp(1j * (np.angle(Zc) - np.arange(1, NH + 1) * np.angle(Zc[0]))))
     r_lv = np.maximum(lv[1:], FLOOR) - np.maximum(t["level"][1:], FLOOR)
@@ -147,12 +197,25 @@ def resid(z, t):
 def fit_one(j):
     t = T[j]; prev = json.loads((ROOT / "models/ee_recipe.json").read_text()); rng = np.random.default_rng(j)
     best = None
-    for k in range(6):
+    warm = os.environ.get("WARM")
+    if warm:   # start from an earlier best solution; new parts start out (nearly) inactive
+        zw = np.array(json.loads((ROOT / warm).read_text())["per_ee"][j]["z"])
+        pad = {"SUB": [5.0, 0.28, 1.0, 5.9]}
+        z0 = np.r_[zw, pad["SUB"]] if (SUB and len(zw) == len(LO) - 4) else zw
+        if HEADX and len(z0) == len(LO) - 1:
+            z0 = np.r_[z0, float(os.environ.get("THETA0", "0"))]
+        if len(z0) == len(LO):
+            z0 = np.clip(z0, LO + 1e-6, HI - 1e-6)
+            r = least_squares(resid, z0, args=(t,), bounds=(LO, HI), method="trf", max_nfev=6000, diff_step=1e-3)
+            best = (float(np.sqrt(np.mean(r.fun[:NH - 1] ** 2))), r.x.tolist())
+            print(f"  warm start {t['f0']:.0f} Hz: from {float(np.sqrt(np.mean(resid(z0, t)[:NH - 1] ** 2))):.2f} to {best[0]:.2f} dB", flush=True)
+    for k in range(int(os.environ.get("NSTART", "6"))):
         p0 = np.array(prev["pose"][:9]) if k == 0 else np.array(prev["pose"][:9]) + rng.normal(0, 0.2, 9)
         z0 = np.r_[p0, rng.uniform(20, 40), np.zeros(ND), rng.uniform(0.6, 0.95), rng.uniform(0.4, 0.7), 1.0, 0.3, rng.uniform(0, 1), (HEAD_R if HEAD_R > 0 else 2.4), (rng.uniform(0.01, 0.08) if NOSE else 0.0), 1.0, 0.15,
                    *([rng.uniform(0.5, 0.75), 0.015, 0.25, 0.1, 1.2] if CHEEK else ([0.45, 0.004, 0.1, 0.03, 0.5] if LARV else [])),
                    *(([9.0, 1.0, 4.0, rng.uniform(0.1, 0.3)] if os.environ.get("LARV_GESTURE", "") == "1" else
-                     [rng.uniform(5, 10), rng.uniform(0.7, 1.3), rng.uniform(2.5, 5), rng.uniform(0.1, 0.3)]) if LARV else [])]
+                     [rng.uniform(5, 10), rng.uniform(0.7, 1.3), rng.uniform(2.5, 5), rng.uniform(0.1, 0.3)]) if LARV else []),
+                   *([rng.uniform(4, 7), 0.28, rng.uniform(0.2, 1.5), rng.uniform(1.5, 2.8)] if SUB else [])]
         z0 = np.clip(z0, LO + 1e-6, HI - 1e-6)
         r = least_squares(resid, z0, args=(t,), bounds=(LO, HI), method="trf", max_nfev=3000, diff_step=1e-3)
         e = float(np.sqrt(np.mean(r.fun[:NH - 1] ** 2)))
@@ -178,7 +241,16 @@ def main():
         if CHEEK:
             TH = cheek_H(a, L, kk, *z[19 + ND:24 + ND])
             print(f"  cheek pockets: at {z[19 + ND]:.2f} of the length, neck {z[20 + ND]:.3f} cm2 x {z[21 + ND]:.2f} cm, pocket {z[22 + ND]:.2f} cm2 x {z[23 + ND]:.2f} cm")
-        Zc = X.puff_C(t["f0"], q) * TH * (head_baffle(kk, z[15 + ND]) if HEAD else 1.0); lv = 20 * np.log10(np.abs(Zc)); lv -= lv[0]
+        if SUB:
+            TH = TH * sub_factor(a, L, kk, *z[28 + ND:32 + ND])
+            print(f"  windpipe: {z[28 + ND]:.1f} cm long, {z[29 + ND]:.2f} cm2 ({2 * np.sqrt(z[29 + ND] / np.pi) * 10:.1f} mm across), "
+                  f"lung load {z[30 + ND]:.2f}, glottal resistance {10 ** z[31 + ND]:.0f}")
+        if HEADX:
+            Zc = X.puff_C(t["f0"], q) * TH * head_sphere(kk, z[15 + ND], z[-1], a[-1])
+            print(f"  head: radius {z[15 + ND]:.2f} cm, heard {z[-1]:.0f} deg from where the mouth points")
+        else:
+            Zc = X.puff_C(t["f0"], q) * TH * (head_baffle(kk, z[15 + ND]) if HEAD else 1.0)
+        lv = 20 * np.log10(np.abs(Zc)); lv -= lv[0]
         if NOSE:
             print(f"  nose: port {z[16 + ND]:.3f} cm2, passage length x{z[17 + ND]:.2f}, turbinate damping {z[18 + ND]:.2f}")
         print(f"\n{t['f0']:.0f} Hz: tone error {e:.2f} dB | larynx {z[9] * 0.075:.2f} cm lower, tube {L:.2f} cm | "
@@ -199,11 +271,13 @@ def main():
         d = DC.decompose(x[int((s - 0.02) * sr): int((en + 0.02) * sr)], sr, f"b{j}")
         his_t = resample_poly(d["harm"], 1, 2); his_t = his_t / np.abs(his_t).max() * 0.7
         y = X.render(a, L, q, t["f0"], max(int((en - s) * 1000), 150), seed=j)
-        if HEAD or NOSE:   # the same physics (small head, nasal branch) applied to the model's sound
+        if HEAD or HEADX or NOSE or SUB or CHEEK:   # the same physics (small head, nasal branch) applied to the model's sound
             Y = np.fft.rfft(y); ff = np.maximum(np.fft.rfftfreq(len(y), 1 / X.SR), 1.0)
-            G = head_baffle(ff, z[15 + ND]) if HEAD else 1.0
+            G = head_sphere(ff, z[15 + ND], z[-1], a[-1]) if HEADX else (head_baffle(ff, z[15 + ND]) if HEAD else 1.0)
             if CHEEK:
                 G = G * cheek_H(a, L, ff, *z[19 + ND:24 + ND]) / X.tube_H(a, L, ff)
+            if SUB:
+                G = G * sub_factor(a, L, ff, *z[28 + ND:32 + ND])
             if NOSE:
                 G = G * tube_H_nose(a, L, ff, port_frac(z[:9], z[9]), z[16 + ND], z[17 + ND], z[18 + ND]) / X.tube_H(a, L, ff)
             y = np.fft.irfft(Y * G, len(y)); y = y / np.abs(y).max() * 0.7
