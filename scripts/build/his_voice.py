@@ -22,8 +22,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from build_catalogue import PHRASES  # noqa: E402
 
-FS = 24000            # his mouth's resonances reach ~10 kHz; 24 kHz keeps them
-P_VT = int(os.environ.get("P_VT", "24"))   # stand-in mouth detail (LPC order)
+FS = int(os.environ.get("FS", "48000"))   # the clip's own rate: keeps his top end (to 24 kHz)
+P_VT = int(os.environ.get("P_VT", str(FS // 1000 + 2)))   # stand-in mouth detail (LPC order)
+METHOD = os.environ.get("METHOD", "qcp")
 P_G = 4               # glottal tilt detail
 LEAK = 0.99
 
@@ -49,15 +50,53 @@ def iaif(s):
     return flow, a2
 
 
-def cycles(flow, f0):
+def wlpc(x, p, w):
+    """Weighted linear prediction (covariance form): minimise sum w(n) e(n)^2."""
+    n = len(x); X = np.array([x[p - i - 1: n - i - 1] for i in range(p)]).T; y = x[p:]; ww = w[p:]
+    A = (X * ww[:, None]).T @ X; b = (X * ww[:, None]).T @ y
+    A += 1e-9 * np.trace(A) / p * np.eye(p)
+    return np.r_[1.0, -np.linalg.solve(A, b)]
+
+
+def qcp(s, f0):
+    """Quasi-closed-phase analysis (Airaksinen et al. 2014): read the mouth mostly while the
+    vocal cords are shut, by down-weighting the instants they snap closed. Built inside IAIF."""
+    flow0, _ = iaif(s)
+    _, gci = cycles(flow0, f0, cut="gci")
+    P = FS / f0; w = np.ones(len(s)); d = 1e-5; PQ, DQ, ramp = 0.05, 0.7, max(2, int(0.07 * P))
+    w[:] = d
+    for g in gci:   # weight 1 over the quasi-closed stretch: from PQ*T after a closure for DQ*T
+        a = int(g + PQ * P); b = int(a + DQ * P)
+        for j in range(a, min(b, len(s))):
+            w[j] = 1.0
+        for j in range(ramp):
+            if a - ramp + j >= 0 and a - ramp + j < len(s): w[a - ramp + j] = max(w[a - ramp + j], d + (1 - d) * j / ramp)
+            if b + j < len(s): w[b + j] = max(w[b + j], 1 - (1 - d) * j / ramp)
+    if len(gci) == 0:
+        w[:] = 1.0
+    g1 = lpc(s, 1); y = lfilter(g1, 1, s)
+    a1 = wlpc(y, P_VT, w); g = integ(lfilter(a1, 1, s))
+    ag = lpc(g, P_G); y = integ(lfilter(ag, 1, s))
+    a2 = wlpc(y, P_VT, w); flow = integ(lfilter(a2, 1, s))
+    return flow, a2
+
+
+def cycles(flow, f0, cut="closed"):
     """Cut into single cycles at each closing instant (sharpest drop in flow)."""
     d = np.diff(flow); P = FS / f0; out = []; marks = []
     i = int(np.argmin(d[: int(P) + 1]))
     while i + 1.5 * P < len(d):
         j0, j1 = int(i + 0.7 * P), int(i + 1.3 * P)
         j = j0 + int(np.argmin(d[j0:j1])); marks.append(j); i = j
-    for a, b in zip(marks[:-1], marks[1:]):
-        out.append(flow[a:b].copy())
+    if cut == "gci":
+        return None, marks
+    # cut where the cords rest shut (the flow's lowest point just after each closure): flat, so
+    # cycles join seamlessly; each cycle's slow drift removed so it starts and ends at rest
+    rest = []
+    for m in marks:
+        j1 = min(len(flow), int(m + 0.45 * P)); rest.append(m + int(np.argmin(flow[m:j1])))
+    for a, b in zip(rest[:-1], rest[1:]):
+        c = flow[a:b + 1].copy(); c -= np.linspace(c[0], c[-1], len(c)); out.append(c[:-1])
     return out, marks
 
 
@@ -77,7 +116,7 @@ def main():
         if len(f0s) < 3:
             continue
         f0 = float(np.median(f0s))
-        flow, a2 = iaif(seg)
+        flow, a2 = qcp(seg, f0) if METHOD == "qcp" else iaif(seg)
         cyc, marks = cycles(flow, f0)
         # harmonic levels of the flow (rel. H1), from a pitch-synchronous stretch
         k = np.arange(1, int(8000 // f0) + 1)
@@ -138,26 +177,29 @@ def main():
     ax[2].set_title("IAIF stand-in mouth per sound (dB)"); ax[2].set_xlabel("Hz"); ax[2].set_xlim(0, 10000)
     fig.tight_layout(); fig.savefig(ROOT / "out/build/his_voice.png", dpi=110)
 
-    # listening: per phrase, old buzz | his recovered voice (both as airflow, same pitch)
+    # listening (slow): per clean sound, held 1.5 s: old buzz | his voice as airflow | his voice leaving the lips
     os.environ.setdefault("ZFILE", "models/mouth_inverse_P1.json"); os.environ.setdefault("SRC", "puff")
     sys.path.insert(0, str(ROOT / "scripts/build")); sys.argv = sys.argv[:1]
     import rebuild_tones as R
-    rng = np.random.default_rng(0); gap = np.zeros(int(0.35 * FS)); pieces = []
+    rng = np.random.default_rng(0); HOLD = 1.5; out = [np.zeros(int(0.5 * FS))]; t0 = 0.5; marks = []
+    fade = lambda v: v * np.minimum(1, np.minimum(np.arange(len(v)), len(v) - np.arange(len(v))) / (0.03 * FS))
     for r in res:
-        if not r["clean"]:
+        if not r["clean"] or len(r["cyc"]) < 3:
             continue
-        his = r["flow"] - np.median(r["flow"]); n = len(his)
-        P = int(round(48000 / r["f0"])); b = np.zeros(int(n * 2) + 4 * P); t = P / 48000
-        while t * 48000 + P < len(b):
-            c = int(t * 48000); b[c - P: c + P] += R.cycle(P, r["f0"], rng); t += 1 / r["f0"]
-        buzz = resample_poly(b, 1, 2)[:n]
-        fade = np.minimum(1, np.minimum(np.arange(n), n - np.arange(n)) / (0.01 * FS))
-        pieces += [buzz * fade / np.abs(buzz).max() * 0.6, gap[: len(gap) // 2], his * fade / np.abs(his).max() * 0.6, gap]
-    sf.write(ROOT / "out/build/his_voice_old_buzz_vs_his.wav", np.concatenate(pieces), FS)
-    his_all = np.concatenate([q for r in res if r["clean"] for q in
-                              ((r["flow"] - np.median(r["flow"])) / np.abs(r["flow"] - np.median(r["flow"])).max() * 0.6, gap[:2000])])
-    sf.write(ROOT / "out/build/his_voice_alone.wav", his_all, FS)
-
+        cyc = r["cyc"]; order = list(range(len(cyc))) + list(range(len(cyc) - 2, 0, -1)); his = []; k = 0
+        while sum(map(len, his)) < HOLD * FS:
+            his.append(cyc[order[k % len(order)]]); k += 1
+        his = np.concatenate(his)
+        P = int(round(48000 / r["f0"])); b = np.zeros(int(HOLD * 48000) + 4 * P); tt_ = P / 48000
+        while tt_ * 48000 + P < len(b):
+            c = int(tt_ * 48000); b[c - P: c + P] += R.cycle(P, r["f0"], rng); tt_ += 1 / r["f0"]
+        buzz = resample_poly(b, FS, 48000)[: int(HOLD * FS)]
+        for name, v, pause in (("old buzz (airflow)", buzz, 1.0), ("his voice (airflow)", his, 1.0),
+                               ("his voice leaving the lips", np.diff(his, prepend=his[0]), 2.5)):
+            marks.append(f"{t0:5.1f}s  {r['lab']} ({r['f0']:.0f} Hz): {name}")
+            v = v - np.mean(v); out += [fade(v / np.abs(v).max() * 0.6), np.zeros(int(pause * FS))]; t0 += len(v) / FS + pause
+    sf.write(ROOT / f"out/build/his_voice_{METHOD}_slow.wav", np.concatenate(out), FS)
+    print("\n".join(marks))
 
 if __name__ == "__main__":
     main()
