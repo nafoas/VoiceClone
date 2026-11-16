@@ -81,7 +81,7 @@ def main():
     snd = pm.Sound(x, SR); Pt = snd.to_pitch_ac(time_step=0.005, pitch_floor=150, pitch_ceiling=700)
     tt = Pt.xs(); ff0 = Pt.selected_array["frequency"]
     rng = np.random.default_rng(3)
-    outs = []
+    outs = []; srcs = []
     for pi, ph in enumerate(PHRASES):
         s0, e0 = ph[0][1] - 0.02, ph[-1][2] + 0.03; n = int((e0 - s0) * SR)
         vs = [dict(lab=l, s=s, e=e) for l, s, e, _ in ph if l in M.SOUNDS]
@@ -131,12 +131,16 @@ def main():
             ref = x[int(v["s"] * SR): int(v["e"] * SR)]
             gd.append(20 * np.log10(np.sqrt(np.mean(ref ** 2)) / (np.sqrt(np.mean(y1[a:b] ** 2)) + 1e-12)))
         gd = np.array(gd); print(f"  phrase {pi + 1} breath (dB, rel): " + " ".join(f"{v['lab']}{g - gd.max():+.0f}" for v, g in zip(vs, gd)))
-        y = mouth(build_src((mids, gd)))
-        outs.append((y, s0, e0, vs))
+        srcf = build_src((mids, gd)); y = mouth(srcf)
+        outs.append((y, s0, e0, vs)); srcs.append(srcf)
     gap = np.zeros(int(0.5 * 24000)); pieces = []
     for y, s0, e0, _ in outs:
         clip = x[int(s0 * SR): int(e0 * SR)]
         pieces += [resample_poly(clip / np.abs(clip).max() * 0.7, 1, 2), gap, resample_poly(y / np.abs(y).max() * 0.7, 1, 2), gap, gap]
+    nz = lambda v: resample_poly(v / np.abs(v).max() * 0.7, 1, 2)
+    sf.write(ROOT / f"out/build/rebuild_tones{TAG}_source.wav", np.concatenate([q for v in srcs for q in (nz(v), gap)]), 24000)
+    sf.write(ROOT / f"out/build/rebuild_tones{TAG}_source_then_mouth.wav",
+             np.concatenate([q for v, (y, *_ ) in zip(srcs, outs) for q in (nz(v), gap, nz(y), gap, gap)]), 24000)
     sf.write(ROOT / f"out/build/rebuild_tones{TAG}_clip_vs_model.wav", np.concatenate(pieces), 24000)
     sf.write(ROOT / f"out/build/rebuild_tones{TAG}_model.wav",
              np.concatenate([resample_poly(y / np.abs(y).max() * 0.7, 1, 2) for y, _, _, _ in outs]), 24000)
