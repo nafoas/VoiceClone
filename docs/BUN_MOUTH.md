@@ -460,3 +460,37 @@ Kept: his one adaptation (larynx ~1.6–2.5 cm lower), his small head (2.6 cm),
 the laryngeal cavity (~6.8 mm, inlet ~3 mm; shape changes a little per
 utterance as a gesture), a very close "ee" (narrow tongue channel), a puff that
 eases shut, closing moment varying ~0.1 ms.
+
+### Step 3j: where exactly is the miss, and what causes it (Da Boss: "Where is the miss, exactly? What is causing it?")
+
+**The misses** (best fit at the time, model minus his, tones above his floor):
+- consistent across "ee"s: the **2nd tone too weak at the lower pitches** (264:
+  −12, 350: −7, 331: −4 dB), and the **top (>5 kHz) too weak** (~−5 dB; −13 at
+  the very top)
+- 900 Hz–5 kHz: averages ~0; the individual misses flip sign tone to tone, the
+  signature of a resonance peak slightly off-frequency in that "ee"
+
+**The cause:** in all four best fits the model's first resonance sat at
+**~200 Hz, below his pitch**, with the tongue channel **sealed (0.000 cm²)**.
+That 200 Hz is the wall-vibration resonance of a sealed tube (Sondhi &
+Schroeter's closed-tract value, 406π rad/s = 203 Hz), not a mouth resonance.
+The fits made his hum from a sealed mouth, with sound leaking through a
+numerical crack, and bent the puff to compensate (at 389 Hz the puff alone cut
+the 2nd tone by 24 dB). That explains both consistent misses: a too-weak 2nd
+tone, and a puff that eases shut too gently, starving the top.
+- Why it happened: the guard against a shut channel cost under 2 dB of tone
+  error. Once the tongue touches the palate the bun's gap is clipped at zero,
+  so the search gets no signal back toward "open", and the natural-variation
+  terms scale width (zero stays zero). Every start came from the old sealed pose.
+
+**Honest open "ee"** (channel >= 0.02 cm², heavily enforced; open starting
+shapes): first resonance **496–628 Hz**, tone error **7.0–9.8 dB**. Widening the
+throat (x1.5–2.5) doesn't bring it to 362–408 (the fits keep 430–620 Hz;
+5.8–8.3 dB).
+
+**Doubt about the target:** his "F1 362–408 Hz" is Praat's estimate. In
+high-pitched voices Praat's F1 tends to latch onto a harmonic (at 389 Hz it
+reads 393). His tones (at 264 Hz: 2nd tone −10, 3rd −32) fit a first
+resonance near ~500 Hz. Next: measure his true first resonance a way that
+doesn't latch onto harmonics (combine the four "ee"s at four pitches, which
+sample the same mouth at different frequencies).

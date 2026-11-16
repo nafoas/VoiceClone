@@ -37,7 +37,9 @@ NOSE = os.environ.get("NOSE", "") == "1"         # the nasal passage as a side b
 LARV = os.environ.get("LARV", "") == "1"         # the laryngeal cavity's size may vary (natural variation)
 CHEEK = os.environ.get("CHEEK", "") == "1"
 SUB = os.environ.get("SUB", "") == "1"
-HEADX = os.environ.get("HEADX", "") == "1"       # exact radiation from a mouth on his round head (sphere), at a listening angle           # his windpipe and lungs below the folds (coupled while the folds are open)       # cheek pockets (between cheek teeth and cheeks), a pair of small bottles
+HEADX = os.environ.get("HEADX", "") == "1"
+F1W = float(os.environ.get("F1W", "0"))          # >0: the first resonance must sit where his does (dB per 5% off)
+HIS_F1 = {264: 362.0, 389: 393.0, 350: 373.0, 331: 408.0}   # his F1 per "ee" (Praat, fingerprint)       # exact radiation from a mouth on his round head (sphere), at a listening angle           # his windpipe and lungs below the folds (coupled while the folds are open)       # cheek pockets (between cheek teeth and cheeks), a pair of small bottles
 TAG = os.environ.get("TAG", "")
 SIGMA = 0.15            # natural variation of width (~15%)
 LARCAV = tuple(float(v) for v in os.environ.get("LARCAV", "7,1.0,4,0.15").split(","))
@@ -146,6 +148,9 @@ def head_sphere(f, radius_cm, theta_deg, mouth_area):
 def unpack(z):
     pose9 = z[:9]; neck = z[9]; d = z[10:10 + ND]; q = tuple(z[10 + ND:15 + ND])
     a0, L = bun_tube40(pose9, neck, (z[24 + ND:28 + ND] if LARV else None))
+    th = float(os.environ.get("THROAT", "1"))
+    if th != 1:   # the throat behind the tongue (back ~45% of the tube) wider by this factor
+        a0 = a0.copy(); a0[:int(0.45 * NS)] *= th
     dev = idct(np.r_[d, np.zeros(NS - ND)], norm="ortho")
     return a0 * np.exp(dev), L, q, dev
 
@@ -190,8 +195,13 @@ def resid(z, t):
     w = np.clip((t["coh"][1:] - 0.7) / 0.3, 0, 1)
     r_ph = 3.0 * w * np.angle(np.exp(1j * (ph[1:] - t["phase"][1:])))
     r_nat = NAT_W * dev[::4] / SIGMA                                   # natural variation: ~15% costs as much as ~1.5 dB
-    r_ch = [300 * max(0, 0.006 - a[4:].min())]
-    return np.r_[r_lv, r_ph, r_nat, r_ch]
+    r_ch = [float(os.environ.get("CHW", "300")) * max(0, float(os.environ.get("CHMIN", "0.006")) - a[4:].min())]
+    r_f1 = []
+    if F1W > 0:
+        ff = np.arange(150.0, 900.0, 4.0); Hd = np.abs(X.tube_H(a, L, ff) / (1j * 2 * np.pi * ff))
+        f1 = ff[int(np.argmax(Hd))]; tgt = HIS_F1[min(HIS_F1, key=lambda q: abs(q - t["f0"]))]
+        r_f1 = [F1W * (f1 - tgt) / tgt / 0.05]
+    return np.r_[r_lv, r_ph, r_nat, r_ch, r_f1]
 
 
 def fit_one(j):
@@ -210,7 +220,16 @@ def fit_one(j):
             best = (float(np.sqrt(np.mean(r.fun[:NH - 1] ** 2))), r.x.tolist())
             print(f"  warm start {t['f0']:.0f} Hz: from {float(np.sqrt(np.mean(resid(z0, t)[:NH - 1] ** 2))):.2f} to {best[0]:.2f} dB", flush=True)
     for k in range(int(os.environ.get("NSTART", "6"))):
-        p0 = np.array(prev["pose"][:9]) if k == 0 else np.array(prev["pose"][:9]) + rng.normal(0, 0.2, 9)
+        if os.environ.get("OPEN_STARTS", "") == "1":
+            # an open "ee": tongue high but not touching the palate (checked)
+            for _ in range(200):
+                p0 = np.r_[rng.uniform(0.1, 0.35), rng.uniform(0.3, 0.75), rng.uniform(0.4, 0.9), rng.uniform(0, 0.2),
+                           rng.uniform(0, 1), rng.uniform(0.5, 1), rng.uniform(0, 0.4), 0.0, rng.uniform(0, 1)]
+                a_try, _ = bun_tube40(p0, 25.0)
+                if a_try[4:].min() > float(os.environ.get("CHMIN", "0.006")) * 1.5:
+                    break
+        else:
+            p0 = np.array(prev["pose"][:9]) if k == 0 else np.array(prev["pose"][:9]) + rng.normal(0, 0.2, 9)
         z0 = np.r_[p0, rng.uniform(20, 40), np.zeros(ND), rng.uniform(0.6, 0.95), rng.uniform(0.4, 0.7), 1.0, 0.3, rng.uniform(0, 1), (HEAD_R if HEAD_R > 0 else 2.4), (rng.uniform(0.01, 0.08) if NOSE else 0.0), 1.0, 0.15,
                    *([rng.uniform(0.5, 0.75), 0.015, 0.25, 0.1, 1.2] if CHEEK else ([0.45, 0.004, 0.1, 0.03, 0.5] if LARV else [])),
                    *(([9.0, 1.0, 4.0, rng.uniform(0.1, 0.3)] if os.environ.get("LARV_GESTURE", "") == "1" else
@@ -253,7 +272,9 @@ def main():
         lv = 20 * np.log10(np.abs(Zc)); lv -= lv[0]
         if NOSE:
             print(f"  nose: port {z[16 + ND]:.3f} cm2, passage length x{z[17 + ND]:.2f}, turbinate damping {z[18 + ND]:.2f}")
-        print(f"\n{t['f0']:.0f} Hz: tone error {e:.2f} dB | larynx {z[9] * 0.075:.2f} cm lower, tube {L:.2f} cm | "
+        ffx = np.arange(150.0, 900.0, 2.0); f1m = ffx[int(np.argmax(np.abs(X.tube_H(a, L, ffx) / (1j * 2 * np.pi * ffx))))]
+        print(f"\n{t['f0']:.0f} Hz: first resonance {f1m:.0f} Hz (his {HIS_F1[min(HIS_F1, key=lambda q: abs(q - t['f0']))]:.0f}); narrowest channel {a[4:].min():.3f} cm2")
+        print(f"{t['f0']:.0f} Hz: tone error {e:.2f} dB | larynx {z[9] * 0.075:.2f} cm lower, tube {L:.2f} cm | "
               f"departures from the bun shape: up to {100 * (np.exp(np.abs(dev).max()) - 1):.0f}% (typical {100 * (np.exp(np.sqrt(np.mean(dev ** 2))) - 1):.0f}%)")
         print("  mouth: " + str({n: round(float(v), 2) for n, v in zip(names, z[:9])}))
         if HEAD:
