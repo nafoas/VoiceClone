@@ -30,6 +30,10 @@ from prince_voice.bunmouth import BunMouth, Pose  # noqa: E402
 
 NH = X.NH; FLOOR = X.FLOOR; T = X.T; NS = X.NS
 ND = 8                  # smooth departure terms
+HEAD = os.environ.get("HEAD", "") == "1"      # radiate from his small round head (sphere), not an infinite wall
+HEAD_R = float(os.environ.get("HEAD_R", "0"))  # >0: his head radius is fixed (cm)
+NAT_W = float(os.environ.get("NAT_W", "1.5"))  # cost of departing from the bun shape
+TAG = os.environ.get("TAG", "")
 SIGMA = 0.15            # natural variation of width (~15%)
 LARCAV = (7, 1.0, 4, 0.15)
 _cache = {}
@@ -38,7 +42,7 @@ _cache = {}
 def bun_tube40(pose9, neck):
     key = (tuple(np.round(pose9, 3)), round(neck, 1))
     if key not in _cache:
-        v = Pose().vec(); v[:9] = np.clip(pose9, E.EE_LO, E.EE_HI)
+        v = Pose().vec(); v[:9] = np.clip(pose9, E.EE_LO, _EE_HI)
         m = BunMouth(0.75, neck_mm=neck, larcav=LARCAV); ar, ln, _, _ = m.tube(Pose.from_vec(v))
         edges = np.r_[0, np.cumsum(ln)]; L = edges[-1]; e40 = np.linspace(0, L, NS + 1); a40 = np.empty(NS)
         for i in range(NS):
@@ -50,6 +54,14 @@ def bun_tube40(pose9, neck):
     return _cache[key]
 
 
+def head_baffle(f, radius_cm):
+    """A mouth on a small sphere: low frequencies wrap around the head and spread
+    everywhere (up to -6 dB on axis vs an infinite wall); highs beam forward.
+    First-order step between them, centred near c / (2 pi a)."""
+    s = 1j * 2 * np.pi * np.asarray(f, float) * radius_cm / 35000.0
+    return (1 + s) / (2 + s) * 2.0 / 2.0
+
+
 def unpack(z):
     pose9 = z[:9]; neck = z[9]; d = z[10:10 + ND]; q = tuple(z[10 + ND:15 + ND])
     a0, L = bun_tube40(pose9, neck)
@@ -57,19 +69,23 @@ def unpack(z):
     return a0 * np.exp(dev), L, q, dev
 
 
-LO = np.r_[E.EE_LO, 15.0, np.full(ND, -3.0), 0.3, 0.3, 0.3, 0.0, 0.0]
-HI = np.r_[E.EE_HI, 45.0, np.full(ND, 3.0), 0.97, 0.95, 4.0, 1.5, 1.0]
+_EE_HI = E.EE_HI.copy()
+if os.environ.get("ROUND", "") == "1":      # lips may round/push forward (how he says it, not anatomy)
+    _EE_HI[6] = 1.0
+LO = np.r_[E.EE_LO, 15.0, np.full(ND, -3.0), 0.3, 0.3, 0.3, 0.0, 0.0, (HEAD_R - 1e-3 if HEAD_R > 0 else 1.8)]
+HI = np.r_[_EE_HI, 45.0, np.full(ND, 3.0), 0.97, 0.95, 4.0, 1.5, 1.0, (HEAD_R + 1e-3 if HEAD_R > 0 else 3.0)]
 
 
 def resid(z, t):
     a, L, q, dev = unpack(z)
-    Zc = X.puff_C(t["f0"], q) * X.tube_H(a, L, np.arange(1, NH + 1) * t["f0"])
+    k = np.arange(1, NH + 1) * t["f0"]
+    Zc = X.puff_C(t["f0"], q) * X.tube_H(a, L, k) * (head_baffle(k, z[15 + ND]) if HEAD else 1.0)
     lv = 20 * np.log10(np.abs(Zc) + 1e-15); lv -= lv[0]
     ph = np.angle(np.exp(1j * (np.angle(Zc) - np.arange(1, NH + 1) * np.angle(Zc[0]))))
     r_lv = np.maximum(lv[1:], FLOOR) - np.maximum(t["level"][1:], FLOOR)
     w = np.clip((t["coh"][1:] - 0.7) / 0.3, 0, 1)
     r_ph = 3.0 * w * np.angle(np.exp(1j * (ph[1:] - t["phase"][1:])))
-    r_nat = 1.5 * dev[::4] / SIGMA                                   # natural variation: ~15% costs as much as ~1.5 dB
+    r_nat = NAT_W * dev[::4] / SIGMA                                   # natural variation: ~15% costs as much as ~1.5 dB
     r_ch = [300 * max(0, 0.006 - a[4:].min())]
     return np.r_[r_lv, r_ph, r_nat, r_ch]
 
@@ -79,7 +95,7 @@ def fit_one(j):
     best = None
     for k in range(6):
         p0 = np.array(prev["pose"][:9]) if k == 0 else np.array(prev["pose"][:9]) + rng.normal(0, 0.2, 9)
-        z0 = np.r_[p0, rng.uniform(20, 40), np.zeros(ND), rng.uniform(0.6, 0.95), rng.uniform(0.4, 0.7), 1.0, 0.3, rng.uniform(0, 1)]
+        z0 = np.r_[p0, rng.uniform(20, 40), np.zeros(ND), rng.uniform(0.6, 0.95), rng.uniform(0.4, 0.7), 1.0, 0.3, rng.uniform(0, 1), (HEAD_R if HEAD_R > 0 else 2.4)]
         z0 = np.clip(z0, LO + 1e-6, HI - 1e-6)
         r = least_squares(resid, z0, args=(t,), bounds=(LO, HI), method="trf", max_nfev=3000, diff_step=1e-3)
         e = float(np.sqrt(np.mean(r.fun[:NH - 1] ** 2)))
@@ -98,10 +114,13 @@ def main():
     names = ["jaw", "body", "front", "tip", "root", "lips", "round", "velum", "larynx"]
     for (j, (e, z)), t, (s, en) in zip(res, T, X.R.SPANS):
         z = np.array(z); a, L, q, dev = unpack(z); a0, _ = bun_tube40(z[:9], z[9])
-        Zc = X.puff_C(t["f0"], q) * X.tube_H(a, L, np.arange(1, NH + 1) * t["f0"]); lv = 20 * np.log10(np.abs(Zc)); lv -= lv[0]
+        kk = np.arange(1, NH + 1) * t["f0"]
+        Zc = X.puff_C(t["f0"], q) * X.tube_H(a, L, kk) * (head_baffle(kk, z[15 + ND]) if HEAD else 1.0); lv = 20 * np.log10(np.abs(Zc)); lv -= lv[0]
         print(f"\n{t['f0']:.0f} Hz: tone error {e:.2f} dB | larynx {z[9] * 0.075:.2f} cm lower, tube {L:.2f} cm | "
               f"departures from the bun shape: up to {100 * (np.exp(np.abs(dev).max()) - 1):.0f}% (typical {100 * (np.exp(np.sqrt(np.mean(dev ** 2))) - 1):.0f}%)")
         print("  mouth: " + str({n: round(float(v), 2) for n, v in zip(names, z[:9])}))
+        if HEAD:
+            print(f"  head radius {z[15 + ND]:.2f} cm")
         print(f"  puff: open {q[0]:.2f}, rise {q[1]:.2f}, roundness {q[2]:.2f}, smooth {q[3]:.2f} ms, eases shut {q[4]:.2f}")
         print("  his  " + " ".join(f"{v:4.0f}" for v in t["level"]))
         print("  model" + " ".join(f"{v:4.0f}" for v in lv))
@@ -115,12 +134,15 @@ def main():
         d = DC.decompose(x[int((s - 0.02) * sr): int((en + 0.02) * sr)], sr, f"b{j}")
         his_t = resample_poly(d["harm"], 1, 2); his_t = his_t / np.abs(his_t).max() * 0.7
         y = X.render(a, L, q, t["f0"], max(int((en - s) * 1000), 150), seed=j)
+        if HEAD:   # the same small-head radiation, applied to the model's sound (part of the physics, not an effect)
+            Y = np.fft.rfft(y); ff = np.fft.rfftfreq(len(y), 1 / X.SR)
+            y = np.fft.irfft(Y * head_baffle(np.maximum(ff, 1.0), z[15 + ND]), len(y)); y = y / np.abs(y).max() * 0.7
         pieces += [his_t, gap, resample_poly(y, 1, 2), gap, gap]
         out.append(dict(f0=t["f0"], err=e, z=z.tolist(), areas=a.tolist(), L=L, puff=list(q),
                         max_departure_pct=float(100 * (np.exp(np.abs(dev).max()) - 1))))
-    plt.tight_layout(); plt.savefig(ROOT / "analysis/physics/ee_bunfit.png", dpi=60)
-    sf.write(ROOT / "out/build/ee_bunfit_his_tones_vs_model.wav", np.concatenate(pieces), 24000)
-    (ROOT / "models/ee_bunfit.json").write_text(json.dumps(dict(ND=ND, SIGMA=SIGMA, per_ee=out), indent=1, default=float))
+    plt.tight_layout(); plt.savefig(ROOT / f"analysis/physics/ee_bunfit{TAG}.png", dpi=60)
+    sf.write(ROOT / f"out/build/ee_bunfit{TAG}_his_tones_vs_model.wav", np.concatenate(pieces), 24000)
+    (ROOT / f"models/ee_bunfit{TAG}.json").write_text(json.dumps(dict(ND=ND, SIGMA=SIGMA, per_ee=out), indent=1, default=float))
 
 
 if __name__ == "__main__":

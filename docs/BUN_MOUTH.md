@@ -350,3 +350,39 @@ Da Boss: "Is there any reason the tones can't exactly match? If not, that's my a
   mouth: his tones want more space near the lips than a bun's narrow front.
   Next: the real spaces beside the teeth (the vestibule between teeth and
   cheeks, every rabbit has it; not puffed cheeks).
+
+### Step 3g: staying bun (Da Boss: "the any-tube one sounds closer. But I am not satisfied with just accepting departure from Bnuy.")
+
+**What the any-tube's wide front was doing:** it barely moves the resonances
+(565/3235/3790/4595 vs 555/3185/3760/4620 without it). It lifts the high tones,
++3…+10 dB from ~3.5 to 7 kHz. That is **radiation**: how efficiently sound
+leaves the mouth.
+
+**Research: bun ways to do that job**
+- The lips and head dominate radiation; a sphere with lips matches a real head
+  (FDTD comparisons, arXiv 2102.04588; Forum Acusticum 2023).
+- **His small head.** The model assumed an infinite wall (the human default). On
+  a small sphere, low frequencies wrap around the head (up to −6 dB on axis);
+  highs beam forward. The crossover is near c/(π × head diameter): ~2.2–2.5 kHz
+  for a 5 cm bun head. Added as `head_baffle()`.
+- Rabbit lips: the upper lip is cleft; the corners of the mouth are small (gape
+  25–30°); the lips part and retract over the incisors (BSAVA manual; MSPCA
+  dental anatomy).
+- The nose reduces high frequencies (MIT 24.915 lecture 11): it can't do this job.
+
+**Results** (bun mouth + natural variation; tone error, dB):
+
+| | 264 | 389 | 350 | 331 |
+|---|---|---|---|---|
+| bun, infinite wall | 7.0 | 5.5 | 6.1 | 6.1 |
+| bun, head free (each "ee" chose 2.58 / 2.51 / 2.65 / 2.99 cm) | 5.5 | 3.8 | 6.0 | 5.0 |
+| **bun, his head fixed at 2.6 cm, departures held to natural variation** | **5.5** | **5.0** | 6.2 | 6.1 |
+| + lips free to round | 5.7 | 5.0 | 6.0 | 6.1 |
+| any tube (not bun-like) | 3.1 | 3.9 | 5.2 | 3.6 |
+
+- Three "ee"s independently chose almost the same head radius (2.5–2.65 cm):
+  his small head is real physics, now part of the model.
+- Lip rounding isn't the missing piece.
+- Still at their limits in every "ee": lips fully open, tongue root fully
+  forward, larynx at the top of its normal movement. Those limits are my first
+  guesses, not measured rabbit values. Next: research the real ranges.
