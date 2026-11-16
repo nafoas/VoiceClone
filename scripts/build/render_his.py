@@ -47,7 +47,8 @@ def mouth_ir(pose9, sealed):
             a = M.seal(a, "m")
         f = np.maximum(fH, 1.0)
         H = M.B.tube_H_nose(a, L, f, frac, port, Z[6], Z[7]) * M.B.head_baffle(f, Z[1])
-        H = H / (1 + (f / 8000.0) ** 8); H[0] = 0          # the tube model holds below ~8 kHz
+        fc = 1.84 * 35000 / (np.pi * 2 * np.sqrt(a.max() / np.pi))   # plane waves hold below the first cross-mode
+        H = H / (1 + (f / fc) ** 8); H[0] = 0
         h = np.fft.irfft(H, NFT); h *= np.r_[np.ones(NFT // 2), np.hanning(NFT)[NFT // 2:]]   # ring dies fully
         _ir[key] = h
     return _ir[key]
@@ -58,6 +59,7 @@ def bank():
     for i, cl in enumerate(d["clean"]):
         if cl:
             cyc = np.split(d[f"cyc_{i}"] * (SR / 48000), np.cumsum(d[f"len_{i}"])[:-1])
+            ref = np.median([np.ptp(c) for c in cyc]); cyc = [c / ref for c in cyc]   # common level: loudness is the breath's job
             B.append(dict(f0=float(d["f0"][i]), cyc=cyc, order=list(range(len(cyc))) + list(range(len(cyc) - 2, 0, -1)), k=0))
     return B
 
@@ -67,32 +69,107 @@ def at_period(c, P):
     return np.interp(np.linspace(0, 1, P, endpoint=False), np.linspace(0, 1, len(c), endpoint=False), c)
 
 
-def render_phrase(ph, x, tt, ff0, BK, gain_db=None):
+HOLD = float(os.environ.get("HOLD", "0.4"))   # share of each sound the mouth holds its position (the rest is glide)
+
+
+def pose_track(vs, s0, n, hop):
+    """Each sound's position held through its middle; smooth (raised-cosine) glides across each
+    boundary, from one held position to the next. The mouth never jumps."""
+    t = (np.arange(n // hop + 1) * hop) / SR + s0
+    knots = []
+    for v in vs:
+        mid, half = (v["s"] + v["e"]) / 2, (v["e"] - v["s"]) * HOLD / 2
+        knots += [(mid - half, Z[M.PO[v["lab"]]]), (mid + half, Z[M.PO[v["lab"]]])]
+    P = np.zeros((len(t), 9))
+    for i, ti in enumerate(t):
+        if ti <= knots[0][0]:
+            P[i] = knots[0][1]; continue
+        if ti >= knots[-1][0]:
+            P[i] = knots[-1][1]; continue
+        k = max(j for j in range(len(knots) - 1) if knots[j][0] <= ti)
+        (ta, pa), (tb, pb) = knots[k], knots[k + 1]
+        u = 0.0 if tb <= ta else (ti - ta) / (tb - ta); u = 0.5 - 0.5 * np.cos(np.pi * u)
+        P[i] = pa + u * (pb - pa)
+    return P
+
+
+def voiced_runs(vs):
+    runs = []
+    for v in vs:
+        if runs and abs(v["s"] - runs[-1][1]) < 0.003:
+            runs[-1][1] = v["e"]
+        else:
+            runs.append([v["s"], v["e"]])
+    return runs
+
+
+def render_phrase(ph, x, tt, ff0, BK, breath=None):
+    """breath: (times, dB) smooth breath-pressure contour; None = steady."""
     s0, e0 = ph[0][1] - 0.02, ph[-1][2] + 0.03; n = int((e0 - s0) * SR)
     vs = [dict(lab=l, s=s, e=e) for l, s, e, _ in ph if l in M.SOUNDS]
-    hop = 240; nfr = n // hop + 1; poses = np.zeros((nfr, 9)); w = np.zeros(nfr)
-    for v in vs:
-        a, b = int((v["s"] - s0) * SR / hop), int((v["e"] - s0) * SR / hop); poses[a:b] += Z[M.PO[v["lab"]]]; w[a:b] += 1
-    idx = np.where(w > 0)[0]
-    for j in range(9):
-        poses[:, j] = np.interp(np.arange(nfr), idx, poses[idx, j] / w[idx])
-    poses = uniform_filter1d(poses, int(os.environ.get("GLIDE", "3")), axis=0)   # short glides: every position is reached
+    hop = 240
+    if os.environ.get("TRANS"):   # fitted movement between sounds (transitions.py)
+        import transitions as TR
+        tr = json.loads((ROOT / os.environ["TRANS"]).read_text()).get(str(PHRASES.index(ph)))
+        if tr:
+            bnd = [(int(i), float(tb)) for i, tb in tr["bounds"]]; par = np.array(tr["par"])
+            poses = np.array([TR.pose_at(s0 + k * hop / SR, vs, bnd, par) for k in range(n // hop + 1)])
+        else:
+            poses = pose_track(vs, s0, n, hop)
+    else:
+        poses = pose_track(vs, s0, n, hop)
+    nfr = len(poses)
+    runs = voiced_runs(vs); RAMP = float(os.environ.get("RAMP", "0.012")); RAMP_OFF = float(os.environ.get("RAMP_OFF", "0.03"))
     y = np.zeros(n + NFT + 2000)
     for vi, v in enumerate(vs):
         ins = ff0[(tt >= v["s"]) & (tt <= v["e"]) & (ff0 > 0)]; v0 = float(np.median(ins)) if len(ins) else 250.0
-        g = 10 ** ((gain_db[vi] if gain_db is not None else 0.0) / 20)
         t = v["s"]
         src = min(BK, key=lambda b: abs(np.log(b["f0"] / v0)))              # one run of his own cycles per sound
         while t < v["e"]:
             f0 = np.interp(t, tt, np.where(ff0 > 0, ff0, np.nan)); f0 = f0 if np.isfinite(f0) and 100 < f0 < 900 else v0
             P = int(round(SR / f0)); c = int((t - s0) * SR)
             cyc = src["cyc"][src["order"][src["k"] % len(src["order"])]]; src["k"] += 1
+            g = 10 ** (np.interp(t, breath[0], breath[1]) / 20) if breath is not None else 1.0
+            for a, b in runs:   # the cords ease into and out of vibrating as the air starts and stops
+                if a - 1e-6 <= t <= b:
+                    g *= min(1.0, 0.5 - 0.5 * np.cos(np.pi * min(1.0, (t - a) / RAMP)), 0.5 - 0.5 * np.cos(np.pi * min(1.0, max(0.0, b - t) / RAMP_OFF)))
             pulse = at_period(cyc, P) * g
-            h = mouth_ir(poses[min(c // hop, nfr - 1)], v["lab"] == "m")
+            pz = poses[min(c // hop, nfr - 1)]
+            h = mouth_ir(pz, bool(pz[5] < 0.04))           # the lips seal as they actually close
             if c >= 0:
                 out = np.convolve(pulse, h); y[c: c + len(out)] += out[: len(y) - c]
             t += 1.0 / f0
     return y[:n], s0, e0, vs
+
+
+def envelope_db(sig, t0, times, win=0.025):
+    w = int(win * SR); out = []
+    for t in times:
+        c = int((t - t0) * SR); seg = sig[max(0, c - w // 2): c + w // 2]
+        out.append(10 * np.log10(np.mean(seg ** 2) + 1e-14) if len(seg) else -140.0)
+    return np.array(out)
+
+
+def frame_score(x, y, s0, vs, f0s):
+    """Whole-phrase likeness, transitions included: every 10 ms of voiced sound, his spectrum
+    shape vs the model's (third-octave bands 100 Hz-12 kHz, each frame's level removed), rms dB."""
+    edges = 200 * 2 ** (np.arange(0, 19) / 3); edges = edges[edges <= 12800]
+    N = 2048; f = np.fft.rfftfreq(N, 1 / SR); out = []
+    for v in vs:
+        for t in np.arange(v["s"] + 0.005, v["e"] - 0.005, 0.01):
+            def bands(sig, c):
+                seg = sig[c - N // 2: c + N // 2]
+                if len(seg) < N:
+                    return None
+                S = np.abs(np.fft.rfft(seg * np.hanning(N))) ** 2
+                b = np.array([10 * np.log10(S[(f >= lo) & (f < hi)].mean() + 1e-14) for lo, hi in zip(edges[:-1], edges[1:])])
+                return b - b.max()
+            bh = bands(x, int(t * SR)); bm = bands(y, int((t - s0) * SR))
+            if bh is None or bm is None:
+                continue
+            ok = bh > -50
+            out.append((v["lab"], t, float(np.sqrt(np.mean((np.maximum(bm, -50) - bh)[ok] ** 2)))))
+    return out
 
 
 def main():
@@ -103,13 +180,14 @@ def main():
     outs = []
     for pi, ph in enumerate(PHRASES):
         y1, s0, e0, vs = render_phrase(ph, x, tt, ff0, bank())
-        gd = []
-        for v in vs:   # breath pressure per sound, from the clip's loudness
-            a, b = int((v["s"] - s0) * SR), int((v["e"] - s0) * SR)
-            gd.append(20 * np.log10(np.sqrt(np.mean(x[int(v["s"] * SR): int(v["e"] * SR)] ** 2)) / (np.sqrt(np.mean(y1[a:b] ** 2)) + 1e-12)))
-        gd = np.array(gd) - max(gd)
-        print(f"  phrase {pi + 1} breath (dB): " + " ".join(f"{v['lab']}{g:+.0f}" for v, g in zip(vs, gd)))
-        y, s0, e0, vs = render_phrase(ph, x, tt, ff0, bank(), gd)
+        # breath pressure: follows his own loudness contour, as smooth as breath is (25 ms), over voiced stretches
+        bt = np.arange(vs[0]["s"], vs[-1]["e"] + 0.005, 0.005)
+        inside = np.array([any(v["s"] <= q <= v["e"] for v in vs) for q in bt])
+        bd = envelope_db(x, 0.0, bt) - envelope_db(y1, s0, bt); bd = bd[inside]; bt = bt[inside]
+        from scipy.ndimage import uniform_filter1d as uf
+        bd = uf(bd, 5); bd -= bd.max()
+        print(f"  phrase {pi + 1} breath range {bd.min():.0f}..0 dB")
+        y, s0, e0, vs = render_phrase(ph, x, tt, ff0, bank(), (bt, bd))
         outs.append((y, s0, e0, vs))
     nz = lambda v: v / np.abs(v).max() * 0.7
     gap = np.zeros(int(0.6 * SR)); pieces = []
@@ -138,6 +216,12 @@ def main():
             print(f"  {v['lab']:3} {v['s']:.2f}s: pitched {np.mean(p > 0) * 100:3.0f}%  clean-tone {np.median(h) if len(h) else np.nan:4.1f} dB (his {np.median(hc) if len(hc) else np.nan:4.1f})  tone error {es} dB")
     if errs:
         print(f"  overall tone error {np.sqrt(np.mean(np.square(errs))):.2f} dB")
+    fs = [q for y, s0, e0, vs in outs for q in frame_score(x, y, s0, vs, None)]
+    per = {}
+    for lab, t, e in fs:
+        per.setdefault(lab, []).append(e)
+    print("  whole-phrase likeness (every 10 ms, transitions included), rms dB: " + "  ".join(f"{k} {np.sqrt(np.mean(np.square(v))):.1f}" for k, v in per.items()))
+    print(f"  WHOLE-PHRASE: {np.sqrt(np.mean(np.square([e for *_, e in fs]))):.2f} dB over {len(fs)} frames")
 
 
 if __name__ == "__main__":

@@ -34,7 +34,8 @@ import ee_bunfit as B  # noqa: E402   (head_baffle, tube_H_nose)
 from build_catalogue import PHRASES  # noqa: E402
 from prince_voice.bunmouth import BunMouth, Pose  # noqa: E402
 
-NH = 20; FLOOR = -58.0; NS = 40; NF = 8
+NH = int(os.environ.get("NH", "20")); FLOOR = -58.0; NS = 40; NF = 8
+HUMW = float(os.environ.get("HUMW", "1"))   # weight on his 2nd and 3rd tones vs the 1st (the hum)
 VOICED = ["n", "ã", "ɐ˞", "ɹ", "m", "ũ", "iː"]
 #           jaw        body      front     tip       root      lips       round     velum     larynx
 BOUNDS = {
@@ -187,9 +188,10 @@ def resid(z):
     r = []
     for t in T:
         lv, ph, a = tones(z, t)
-        r.append(np.maximum(lv[1:], FLOOR) - np.maximum(t["level"][1:], FLOOR))
-        w = np.clip((t["coh"][1:] - 0.7) / 0.3, 0, 1)
-        r.append(3.0 * w * np.angle(np.exp(1j * (ph[1:] - t["phase"][1:]))))
+        wl = np.ones(NH - 1); wl[:2] = HUMW
+        r.append(wl * (np.maximum(lv[1:], FLOOR) - np.maximum(np.nan_to_num(t["level"][1:], nan=FLOOR), FLOOR)))
+        w = np.clip((np.nan_to_num(t["coh"][1:]) - 0.7) / 0.3, 0, 1)
+        r.append(3.0 * w * np.angle(np.exp(1j * (ph[1:] - np.nan_to_num(t["phase"][1:])))))
         if t["lab"] not in CLOSED:   # an open mouth, physically
             chmin = float(os.environ.get("CHMIN", "0.02"))
             r.append([3000 * max(0, chmin - a[4:].min())])
@@ -221,11 +223,11 @@ def report(z, tag=""):
         print(f"  {s:3} " + " ".join(f"{n}={v:.2f}" for n, v in zip(names, z[PO[s]])))
     errs = {}
     for t in T:
-        lv, ph, a = tones(z, t); el = np.maximum(lv[1:], FLOOR) - np.maximum(t["level"][1:], FLOOR)
+        lv, ph, a = tones(z, t); el = np.maximum(lv[1:], FLOOR) - np.maximum(np.nan_to_num(t["level"][1:], nan=FLOOR), FLOOR)
         e = float(np.sqrt(np.mean(el ** 2))); errs.setdefault(t["lab"], []).append(e)
         _, L_, fr_, po_, _ = sound_model(z, t["lab"]); ff = np.arange(120.0, 1200.0, 5.0)
         f1 = ff[int(np.argmax(np.abs(X.tube_H(a, L_, ff) / (1j * 2 * np.pi * ff))))]
-        print(f"  {t['lab']:3} {t['t'][0]:.2f}s {t['f0']:.0f} Hz: tone error {e:4.1f} dB; narrowest {a[4:].min():.3f} cm2; first resonance {f1:.0f} Hz")
+        print(f"  {t['lab']:3} {t['t'][0]:.2f}s {t['f0']:.0f} Hz: tone error {e:4.1f} dB; 1st over 2nd {-lv[1]:5.1f} (his {-t['level'][1]:5.1f}); narrowest {a[4:].min():.3f} cm2; first resonance {f1:.0f} Hz")
     allv = [v for vs in errs.values() for v in vs]
     print(f"overall: {np.sqrt(np.mean(np.square(allv))):.2f} dB rms over {len(allv)} sounds")
     return errs
