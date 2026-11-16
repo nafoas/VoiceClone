@@ -46,6 +46,7 @@ def mouth_ir(pose9, sealed):
         if sealed:
             a = M.seal(a, "m")
         f = np.maximum(fH, 1.0)
+        M.B.NOSE_SURF = float(Z[M.NV]) if len(Z) > M.NV else 1.0
         H = M.B.tube_H_nose(a, L, f, frac, port, Z[6], Z[7]) * M.B.head_baffle(f, Z[1])
         fc = 1.84 * 35000 / (np.pi * 2 * np.sqrt(a.max() / np.pi))   # plane waves hold below the first cross-mode
         H = H / (1 + (f / fc) ** 8); H[0] = 0

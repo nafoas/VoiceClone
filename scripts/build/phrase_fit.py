@@ -26,7 +26,8 @@ from build_catalogue import PHRASES  # noqa: E402
 
 SR = 48000; TAG = os.environ.get("TAG", "_F1")
 FW = float(os.environ.get("FW", "1.0"))      # weight of the whole-phrase frames vs the steady tones
-z0 = np.array(json.loads((ROOT / os.environ.get("ZWARM", "models/mouth_inverse_H3.json")).read_text())["z"])[: M.NP]
+z0 = np.array(json.loads((ROOT / os.environ.get("ZWARM", "models/mouth_inverse_H3.json")).read_text())["z"])
+z0 = np.r_[z0[: M.PU0], z0[M.PU0] if len(z0) > M.PU0 else M.Z0[M.NV]]
 tw = json.loads((ROOT / os.environ.get("TWARM", "models/transitions_H3.json")).read_text())
 
 
@@ -35,6 +36,7 @@ def mag(z, pose9, f):
     a = a0 * np.exp(idct(np.r_[z[M.SH["shape"]], np.zeros(M.NS - M.NF)], norm="ortho"))
     if pose9[TR.LIPS] < 0.04:
         a = M.seal(a, "m")
+    M.B.NOSE_SURF = float(z[M.NV])
     fc = 1.84 * 35000 / (np.pi * 2 * np.sqrt(a.max() / np.pi))
     return np.abs(M.B.tube_H_nose(a, L, f, frac, port, z[6], z[7]) * M.B.head_baffle(f, z[1]) / (1 + (f / fc) ** 8))
 

@@ -118,7 +118,7 @@ elif os.environ.get("SRC", "") == "puff":   # his one pair of vocal cords: one p
     PU = [slice(PU0, PU0 + 5)] * NI
     NP = PU0 + 5
 elif HIS_SRC:
-    PU = [None] * NI; NP = PU0; HISC = his_voice_tones()
+    PU = [None] * NI; HISC = his_voice_tones(); NV = PU0; NP = PU0 + 1   # + his nose's turbinate surface
 else:
     PU = [slice(PU0 + 5 * i, PU0 + 5 * i + 5) for i in range(NI)]
     NP = PU0 + 5 * NI
@@ -138,7 +138,9 @@ if SHARED_SRC:
         d = np.load(nv); Z0[GS] = np.interp(np.log(GK), np.log(np.maximum(d["fq"], 1)), d["G"])
     if SRC2:
         LO[GH], HI[GH], Z0[GH] = -30.0, 30.0, 0.0
-elif not HIS_SRC:
+if HIS_SRC:
+    LO[NV], HI[NV], Z0[NV] = 1.0, 25.0, 16.0   # turbinate channels: wall loss x1 (smooth tube) .. x25
+elif not SHARED_SRC:
     for p in PU:
         LO[p], HI[p], Z0[p] = [.3, .3, .3, 0, 0], [.97, .95, 4, 1.5, 1], [.8, .5, 1.0, .2, .5]
 _cache = {}
@@ -167,6 +169,8 @@ def sound_model(z, s):
 
 
 def tones(z, t):
+    if HIS_SRC:
+        B.NOSE_SURF = float(z[NV])
     a, L, frac, port, _ = sound_model(z, t["lab"]); k = np.arange(1, NH + 1) * t["f0"]
     H = B.tube_H_nose(a, L, k, frac, port, z[6], z[7]) * B.head_baffle(k, z[1])
     if HIS_SRC:      # his real voice (tones and their timing), the same for every sound
@@ -214,7 +218,7 @@ def resid(z):
 
 def report(z, tag=""):
     print(f"\n=== his mouth {tag} ===")
-    print(f"larynx {z[0] * 0.075:.2f} cm lower; head radius {z[1]:.2f} cm; laryngeal cavity {z[2] * .75:.1f} mm x{z[3]:.2f}, "
+    print((f"nose turbinate surface x{z[NV]:.1f}; " if HIS_SRC and len(z) > NV else "") + f"larynx {z[0] * 0.075:.2f} cm lower; head radius {z[1]:.2f} cm; laryngeal cavity {z[2] * .75:.1f} mm x{z[3]:.2f}, "
           f"inlet {z[4] * .75:.1f} mm x{z[5]:.2f}; nose length x{z[6]:.2f}, damping {z[7]:.2f}")
     dev = idct(np.r_[z[SH["shape"]], np.zeros(NS - NF)], norm="ortho")
     print("shape map (x normal bun width, vocal folds -> lips): " + " ".join(f"{np.exp(v):.2f}" for v in dev[::4]))
@@ -251,7 +255,7 @@ def main():
     if os.environ.get("WARM"):   # continue from an earlier solution
         zw = np.array(json.loads((ROOT / os.environ["WARM"]).read_text())["z"])
         if HIS_SRC:
-            zw = zw[:NP]
+            zw = np.r_[zw[:PU0], zw[PU0] if len(zw) > PU0 else Z0[NV]]
         if os.environ.get("SRC", "") == "puff" and len(zw) != NP:   # anatomy + positions kept; one puff from the median of theirs
             q = np.median(np.array(zw[PU0:]).reshape(-1, 5), 0) if (len(zw) - PU0) % 5 == 0 and len(zw) > PU0 else Z0[PU0:PU0 + 5]
             zw = np.r_[zw[:PU0], q]

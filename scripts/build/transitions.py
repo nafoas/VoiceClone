@@ -46,6 +46,7 @@ def mouth_mag(pose9, f):
         a = a0 * np.exp(idct(np.r_[Z[M.SH["shape"]], np.zeros(M.NS - M.NF)], norm="ortho"))
         if pose9[LIPS] < 0.04:
             a = M.seal(a, "m")
+        M.B.NOSE_SURF = float(Z[M.NV]) if len(Z) > M.NV else 1.0
         fc = 1.84 * 35000 / (np.pi * 2 * np.sqrt(a.max() / np.pi))
         H = M.B.tube_H_nose(a, L, f, frac, port, Z[6], Z[7]) * M.B.head_baffle(f, Z[1]) / (1 + (f / fc) ** 8)
         _H[key] = np.abs(H)

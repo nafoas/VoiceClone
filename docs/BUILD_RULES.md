@@ -188,6 +188,16 @@ Allowed, and encouraged:
 | Head | radius 2.6 cm (a small round bun head): sound radiates from a small sphere | three "ee" fits chose 2.5–2.65 cm independently |
 | Laryngeal cavity | ~6.8 mm long, about throat width, inlet ~3 mm (narrow ring); its shape changes a little per utterance (±12–17%) as a gesture | four "ee" fits chose it independently; the epilarynx is an articulator (Esling's Laryngeal Articulator Model; MRI: varies with vowel and pitch) |
 
+### Nose: turbinate surface (normal rabbit anatomy, made physical)
+His nasal hum is extremely pure (tones above the 1st are 40-75 dB down on "n"). The nose
+model damped only at the nostril, equally at all frequencies, so it let 10-24 dB too much
+through at 1-5 kHz. A rabbit's nasal passage is filled with turbinate scrolls: many narrow
+channels (fractions of a mm), roughly 10-15x the wall surface of a round tube of the same
+cross-section. Wall losses grow with surface and with frequency. The nasal passage now
+carries those losses (fitted factor, bounded 1-25x a smooth tube). This is NOT the rejected
+"tissue damping" (that was the mouth walls, for the ee); it is the nose, on new evidence:
+x16 alone took the nasal tone errors from 10.7 to 8.1 dB ("n") and 10.4 to 7.8 dB ("m").
+
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
 protrusion; 2.5 cm larynx travel; stamped hum; free per-frame poses; formant

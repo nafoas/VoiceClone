@@ -67,6 +67,9 @@ def port_frac(pose9, neck):
     return _cache[(tuple(np.round(pose9, 3)), round(neck, 1), LARCAV)][2]
 
 
+NOSE_SURF = 1.0   # turbinate surface: the nasal passage's wall losses vs a smooth round tube (set by the fit)
+
+
 def tube_H_nose(a, L, f, frac, port, nlen, damp):
     """The tube with the nasal passage branching off at the velum (frac of the
     length): sound leaves by the lips AND the nostrils. Nasal passage: the bun
@@ -77,7 +80,12 @@ def tube_H_nose(a, L, f, frac, port, nlen, damp):
     Kp = _chain(a[:br], ls[:br], w); Ko = _chain(a[br:], ls[br:], w)
     Zl = _radiation(a[-1], w); Ul = 1.0 / (Ko[0, 0] * Zl + Ko[0, 1]); Ub = (Ko[1, 0] * Zl + Ko[1, 1]) * Ul
     m = BunMouth(0.75); na, nl = m.nasal(); nl = nl * nlen
-    Kn = _chain(np.r_[port, na], np.r_[0.3, nl], w)
+    import prince_voice.mouth as _PM
+    _old = _PM.TISSUE["visc"]; _PM.TISSUE["visc"] = _old * NOSE_SURF ** 2   # loss ~ sqrt(q): q x s^2 = loss x s
+    try:
+        Kn = _chain(np.r_[port, na], np.r_[0.3, nl], w)
+    finally:
+        _PM.TISSUE["visc"] = _old
     Zn = _radiation(na[-1], w) + RHO * C / na[-1] * damp
     Un = 1.0 / (Kn[0, 0] * Zn + Kn[0, 1]); Ub = Ub + (Kn[1, 0] * Zn + Kn[1, 1]) * Un
     return 1j * w * (Ul + Un) / (Kp[1, 0] + Kp[1, 1] * Ub)
