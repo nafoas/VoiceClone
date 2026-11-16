@@ -37,3 +37,9 @@ no output processing. Consonants silent (phase C). Verdict: pending.
 Clip phrase, then model phrase. His real voice (cycles recovered from the clip by
 quasi-closed-phase inverse filtering), buzz by buzz through the one mouth refitted to
 that voice (mouth_inverse_H2: 9.5 dB fit, m sealed). Consonants silent. Verdict: pending.
+
+## listen2b_whole_phrase_fit.wav (step 3 tightening)
+Clip phrase, then model. His real voice buzz by buzz; mouth positions, anatomy and the
+movement between sounds fitted together on every 5 ms of the phrase (phrase_fit F1);
+smooth breath contour, voicing eases in/out, tube validity per shape. Whole-phrase
+likeness 7.28 dB (Listen 2: 8.62). Verdict: pending.
