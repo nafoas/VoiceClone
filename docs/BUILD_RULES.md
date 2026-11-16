@@ -1,5 +1,12 @@
 # Building Prince's voice: what changes are allowed
 
+> **RULE ZERO (Da Boss): "from now on, if you deviate from my idea, I need you to
+> actually tell me that first."** When Da Boss gives an approach and it fails or
+> I want to do something else, STOP and say so plainly, *before* doing it: what
+> his idea was, what went wrong, what I want to do instead, and ask. Never slide
+> into a substitute (e.g. a modeled buzz in place of his recovered voice) and
+> mention it in passing afterwards.
+
 > **Priority order (Da Boss, revised).** "A rabbit can't talk... I was using Bun
 > Realism as a stand-in for 'This needs to be objective and replicatable, using
 > only changes to his mouth, no post processing or anything that couldn't be
