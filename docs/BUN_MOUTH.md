@@ -418,3 +418,25 @@ a fixed 1.3–1.8 kHz: correction, not a puff effect), 3–5.2 kHz model −4.1 
   little from one "ee" to the next (±12–17%: laryngeal posture, a gesture),
   or must it be one fixed size (anatomy)? The first gives 3.9–5.6 dB; the
   second 4.6–6.5 dB.
+
+### Research: is a larynx that changes shape between utterances genuine? (Da Boss: "Does it have to be anatomy breaking?")
+
+- **The larynx above the folds is an articulator.** Esling's Laryngeal
+  Articulator Model treats the epilarynx (the space above the vocal folds:
+  aryepiglottic folds, false folds) as an articulator in its own right, used
+  in ordinary speech across languages, from wide open to tightly constricted.
+  Its state covaries with vowel quality (Esling; ICPhS 2019 MRI work).
+- **It varies with vowel, pitch and speaker.** MRI of sustained vowels: every
+  measure of the lower vocal tract varied significantly with vowel quality,
+  also in speech-like phonation (Dryad dataset, "Lower vocal tract
+  morphologic adjustments are relevant for voice timbre"). Larynx height varies
+  with vowel quality, and with pitch and speaker (Moisik et al., ICPhS 2019).
+- **Its resonance is its own** when its outlet is narrower than ~1:6 of the
+  pharynx (Delvaux & Howard 2014 and the works they review). His fitted inlet
+  ratios (0.11–0.19, about 1:5–1:9) sit right at that regime.
+- A wider lower throat (hypopharynx) correlates with more high-frequency
+  energy.
+
+**Conclusion:** the per-"ee" change in the laryngeal cavity (±12–17%) is an
+ordinary gesture of a normal larynx, not new anatomy. Logged in BUILD_RULES as
+a gesture.

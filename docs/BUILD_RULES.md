@@ -144,7 +144,7 @@ Allowed, and encouraged:
 | Laryngeal cavity | ~5 mm cavity, ~3 mm inlet at 15% of the throat | his "ee" F4 (~5 kHz); every larynx has one (Takemoto et al.) |
 | Larynx depth | "ee" asks ~1.6–2.5 cm (step 3h fits) | to be settled across all his sounds |
 | Head | radius 2.6 cm (a small round bun head): sound radiates from a small sphere | three "ee" fits chose 2.5–2.65 cm independently |
-| Laryngeal cavity | ~6.8 mm long, about throat width, inlet ~3 mm (narrow ring) | four "ee" fits chose it independently; per-"ee" shape change = Da Boss's call |
+| Laryngeal cavity | ~6.8 mm long, about throat width, inlet ~3 mm (narrow ring); its shape changes a little per utterance (±12–17%) as a gesture | four "ee" fits chose it independently; the epilarynx is an articulator (Esling's Laryngeal Articulator Model; MRI: varies with vowel and pitch) |
 
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
