@@ -198,6 +198,16 @@ carries those losses (fitted factor, bounded 1-25x a smooth tube). This is NOT t
 "tissue damping" (that was the mouth walls, for the ee); it is the nose, on new evidence:
 x16 alone took the nasal tone errors from 10.7 to 8.1 dB ("n") and 10.4 to 7.8 dB ("m").
 
+### Walls radiate (physics the model already implied)
+The model's walls yield (Sondhi & Schroeter's wall term, the ~200 Hz wall resonance), but the
+sound those moving walls give off was never added to the output. With the mouth shut ("m",
+"n"), much of a hum leaves through the cheeks and throat. Wall-radiated sound is naturally
+hum-heavy (a ~6 dB/octave tilt vs an opening), which is exactly the extra tilt his nasals
+needed (fitted voice tilt -4.5 to -6.5 dB/oct on "m"/"n", unrelated to loudness, r = -0.03).
+Now: output = lips + nostrils + walls. Not a new part; the motion was already modelled.
+Effect before refitting: overall 7.59 -> 7.03 dB; "m" 10.6 -> 8.2; "n" 7.7 -> 6.7.
+Tried and dropped: turbinate slits (Stinson slit-pore channels) changed almost nothing.
+
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
 protrusion; 2.5 cm larynx travel; stamped hum; free per-frame poses; formant

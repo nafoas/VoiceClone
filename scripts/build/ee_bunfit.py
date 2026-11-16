@@ -70,25 +70,42 @@ def port_frac(pose9, neck):
 NOSE_SURF = 1.0   # turbinate surface: the nasal passage's wall losses vs a smooth round tube (set by the fit)
 
 
+WALLS = True      # his yielding walls (cheeks, throat) radiate the sound that moves them
+
+
+def _wall_Y(area, w):
+    """Flow into the yielding wall per unit pressure, per cm of tube (Sondhi & Schroeter's wall term)."""
+    import prince_voice.mouth as _PM
+    a, b, w0sq = 130 * np.pi * _PM.TISSUE["wall_r"], (30 * np.pi) ** 2, (406 * np.pi) ** 2 * _PM.TISSUE["wall_m"] ** 2
+    jw = 1j * w[None, :]
+    return area[:, None] / (_PM.RHO * _PM.C ** 2) * jw * w0sq / ((jw + a) * jw + b)
+
+
 def tube_H_nose(a, L, f, frac, port, nlen, damp):
     """The tube with the nasal passage branching off at the velum (frac of the
-    length): sound leaves by the lips AND the nostrils. Nasal passage: the bun
-    model's (length x nlen), lined with turbinate scrolls (damping)."""
-    from prince_voice.mouth import _chain, _radiation, RHO, C
+    length): sound leaves by the lips AND the nostrils AND, through his yielding
+    walls, the cheeks and throat (they move with the pressure inside and radiate it).
+    Nasal passage: the bun model's (length x nlen), lined with turbinate scrolls
+    (wall losses x NOSE_SURF; damping at the nostril)."""
+    import prince_voice.mouth as _PM
+    from prince_voice.mouth import _section_matrices, _chain, _radiation, RHO, C
     w = 2 * np.pi * np.asarray(f, float); n = len(a); br = int(np.clip(round(frac * n), 1, n - 1))
     ls = np.full(n, L / n)
-    Kp = _chain(a[:br], ls[:br], w); Ko = _chain(a[br:], ls[br:], w)
-    Zl = _radiation(a[-1], w); Ul = 1.0 / (Ko[0, 0] * Zl + Ko[0, 1]); Ub = (Ko[1, 0] * Zl + Ko[1, 1]) * Ul
+    A, Bm, Cm, D = _section_matrices(a, ls, w); Yw = _wall_Y(a, w) * ls[:, None]
+    P = _radiation(a[-1], w) * (1.0 + 0j); U = np.ones_like(w, dtype=complex); Ul = U.copy(); Uw = np.zeros_like(U)
+    for s_ in range(n - 1, br - 1, -1):          # lips back to the velum
+        Pi = A[s_] * P + Bm[s_] * U; Ui = Cm[s_] * P + D[s_] * U; Uw += 0.5 * (P + Pi) * Yw[s_]; P, U = Pi, Ui
     m = BunMouth(0.75); na, nl = m.nasal(); nl = nl * nlen
-    import prince_voice.mouth as _PM
-    _old = _PM.TISSUE["visc"]; _PM.TISSUE["visc"] = _old * NOSE_SURF ** 2   # loss ~ sqrt(q): q x s^2 = loss x s
+    _old = _PM.TISSUE["visc"]; _PM.TISSUE["visc"] = _old * NOSE_SURF ** 2
     try:
         Kn = _chain(np.r_[port, na], np.r_[0.3, nl], w)
     finally:
         _PM.TISSUE["visc"] = _old
     Zn = _radiation(na[-1], w) + RHO * C / na[-1] * damp
-    Un = 1.0 / (Kn[0, 0] * Zn + Kn[0, 1]); Ub = Ub + (Kn[1, 0] * Zn + Kn[1, 1]) * Un
-    return 1j * w * (Ul + Un) / (Kp[1, 0] + Kp[1, 1] * Ub)
+    Un = P / (Kn[0, 0] * Zn + Kn[0, 1]); U = U + P * (Kn[1, 0] * Zn + Kn[1, 1]) / (Kn[0, 0] * Zn + Kn[0, 1])
+    for s_ in range(br - 1, -1, -1):             # velum back to the vocal folds
+        Pi = A[s_] * P + Bm[s_] * U; Ui = Cm[s_] * P + D[s_] * U; Uw += 0.5 * (P + Pi) * Yw[s_]; P, U = Pi, Ui
+    return 1j * w * (Ul + Un + (Uw if WALLS else 0)) / U
 
 
 def head_baffle(f, radius_cm):
