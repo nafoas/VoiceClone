@@ -48,6 +48,26 @@ Measured gaps in the current rebuild (onevoice_P1), which this plan is meant to 
 - Fit the timing and shape of each glide between positions to his clip, replacing the
   plain 30 ms smoothing.
 
+## Step 5b. Effort: loudness as part of his voice box (Da Boss)
+His loudness should not be copied from the clip, and not flat. It should come from one
+voice-box control, **effort** (how hard he pushes air), set by what he means. Excited or
+emphasising means more effort; tired or sneaky means less. Everything else follows from
+physics and from his own measured voice, never added afterwards:
+- **More effort:** more air, so louder; the cords snap shut more sharply, so brighter, with
+  more upper tones; pitch tends to rise a little.
+- **Less effort:** softer; the cords close less fully, so more breath in the voice and fewer
+  upper tones.
+- **Between sounds:** the mouth itself makes the loudness differences (an open "ã" is louder
+  than a closed "m" at the same effort).
+- **How his voice changes with effort comes from him:** his own cycles, from louder and
+  quieter moments of the clip, show how his pulse shape changes with push. The voice bank
+  picks cycles by effort as well as pitch.
+- **Check:** the clip's loudness must come out of a smooth, sensible effort track (a few
+  levels: a little emphasis here, trailing off there), replacing the copied loudness contour
+  used now.
+- **Playback:** one fixed listening level for everything he says, so his own loudness choices
+  are heard as they are.
+
 ## Step 6. The consonants (phase C)
 - The soft S, "p" and "t" made by the same mouth: air through a narrow gap for the S,
   a closure and release for the stops.
@@ -58,3 +78,9 @@ Measured gaps in the current rebuild (onevoice_P1), which this plan is meant to 
 ## Step 8. New things in the same voice
 - His real voice bank and the one mouth, saying sentences from VOICE_SPEC, with
   nothing re-tuned per sentence.
+
+## Pinned (come back later)
+- **The tube model's upper limit.** Above about 10-16 kHz (depending on the mouth shape),
+  sound stops travelling straight down his tube. The plane-wave model can't follow that, so
+  its response is faded out there. It is a gap in the physics, not physics, and part of why
+  his very top end ("air") is short. A model that handles those higher modes would remove it.
