@@ -386,3 +386,35 @@ leaves the mouth.
 - Still at their limits in every "ee": lips fully open, tongue root fully
   forward, larynx at the top of its normal movement. Those limits are my first
   guesses, not measured rabbit values. Next: research the real ranges.
+
+### Step 3h: pressing on, staying bun (Da Boss: "it sounds a lot better. Keep pressing at this.")
+
+**Real rabbit ranges** (to see whether my limits were too tight): maximum
+incisor gape ~10.5 mm in a medium rabbit (~8 mm in a small bun; the model
+reaches 7.7, right). The hyoid (which carries the larynx) is "relatively
+static", its movement "diminutive and irregular" (videofluorography), so the
+larynx limit stays. Tongue "highly adaptable", no numbers. No basis to loosen.
+
+**Where the misses were** (bun + head): 1.2–2 kHz model +5.6 dB (his dip sits at
+a fixed 1.3–1.8 kHz: correction, not a puff effect), 3–5.2 kHz model −4.1 dB.
+
+| candidate (all bun-real) | 264 | 389 | 350 | 331 | verdict |
+|---|---|---|---|---|---|
+| nasal passage as a side branch (velum slightly open) | 5.7 | 4.1 | 5.4 | 5.5 | **rejected**: bands unchanged (1.2–2k +4.0, 3–5k −4.9); pins the port open; the nose takes highs away |
+| tissue damping (walls, air friction) | | | | | **rejected**: moves both bands together |
+| cheek pockets (Helmholtz side branches) | 6.3 | 8.7 | 7.2 | 7.1 | **rejected**: worse; the fit shrinks them to nothing |
+| **laryngeal cavity sized per "ee"** (natural variation) | **5.6** | **4.5** | **4.0** | **3.9** | **best**; mouth departures down to 10–28% |
+| one shared larynx size (the four fits' average: 6.8 mm, inlet 3 mm) | 5.3 | 4.6 | 6.2 | 6.1 | partly holds |
+| shared size + inlet narrowing free per "ee" (the "twang" ring) | 5.5 | 4.6 | 5.7 | 6.5 | partly holds |
+
+- The four "ee"s independently chose nearly the same larynx: cavity 5.9–7.6 mm,
+  about as wide as the throat, inlet ~3 mm at 0.11–0.19 of the throat's
+  width. Like the head size, separate fits agreeing points to real anatomy.
+- Narrowing the larynx inlet (the aryepiglottic ring) is a voice-quality
+  gesture: singers do it in twang, belting and opera, and it clusters the
+  upper resonances into a peak (~3 kHz in humans; his 3–5 kHz) (UCLA 2025
+  epilaryngeal constriction; Sundberg on twang; NCVS laryngeal collar).
+- Open decision for Da Boss: may the space above his folds change shape a
+  little from one "ee" to the next (±12–17%: laryngeal posture, a gesture),
+  or must it be one fixed size (anatomy)? The first gives 3.9–5.6 dB; the
+  second 4.6–6.5 dB.

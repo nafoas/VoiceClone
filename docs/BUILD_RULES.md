@@ -142,13 +142,15 @@ Allowed, and encouraged:
 | Breath + roughness | **Da Boss's pick, step 1e ladder step 3**: breath 0.0375, cycle jitter 0.2%, shimmer 1.5% | none = "just a tone" (1c); 1b level = breathy/jittery |
 | Pitch micro-movement | slow smooth drift ~6 cents (<6 Hz) | his measured wobble |
 | Laryngeal cavity | ~5 mm cavity, ~3 mm inlet at 15% of the throat | his "ee" F4 (~5 kHz); every larynx has one (Takemoto et al.) |
-| Larynx depth | "ee" asks ~1.5 cm (step 1c; 2.2 in 1b) | to be settled across all his sounds |
+| Larynx depth | "ee" asks ~1.6–2.5 cm (step 3h fits) | to be settled across all his sounds |
+| Head | radius 2.6 cm (a small round bun head): sound radiates from a small sphere | three "ee" fits chose 2.5–2.65 cm independently |
+| Laryngeal cavity | ~6.8 mm long, about throat width, inlet ~3 mm (narrow ring) | four "ee" fits chose it independently; per-"ee" shape change = Da Boss's call |
 
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
 protrusion; 2.5 cm larynx travel; stamped hum; free per-frame poses; formant
 warping for new sounds; the intents prosody planner (v10–v16); ElevenLabs,
-Kokoro and Seed-VC as sources; breath to brighten his tone (1b: airy, shrill); random cycle-to-cycle jitter (rough); hand-added pitch scoops, falling tails and random drift ('phlegmatic', 'dying'); random variation layered on a crude renderer ('stuttery', 'computery').
+Kokoro and Seed-VC as sources; breath to brighten his tone (1b: airy, shrill); random cycle-to-cycle jitter (rough); hand-added pitch scoops, falling tails and random drift ('phlegmatic', 'dying'); random variation layered on a crude renderer ('stuttery', 'computery'); for his "ee" tones: a nose side branch, cheek pockets, and tissue damping (tested, no help).
 
 ## 7. Before every change: checklist
 1. **Which property of him does it serve?** Name it (PRINCE_IDENTITY.md /
