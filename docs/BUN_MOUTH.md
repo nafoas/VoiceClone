@@ -494,3 +494,35 @@ reads 393). His tones (at 264 Hz: 2nd tone −10, 3rd −32) fit a first
 resonance near ~500 Hz. Next: measure his true first resonance a way that
 doesn't latch onto harmonics (combine the four "ee"s at four pitches, which
 sample the same mouth at different frequencies).
+
+## Reverse-engineering the one mouth that made the clip (`scripts/build/mouth_inverse.py`)
+
+New angle (Da Boss): there is one little mouth that said "nannarmunis... peet
+teet tee" exactly like that; find it objectively. Every voiced sound in the
+clip constrains the same anatomy at once.
+
+**Phase A** (steady middles of all 12 voiced sounds: three n, ã, ɐ˞, ɹ, m, ũ,
+four iː; 139 unknowns, least squares):
+- shared anatomy: larynx depth, head radius, laryngeal cavity, nasal passage,
+  and a smooth **shape map** (his tube's width vs a normal bun's along its
+  length; a small cost per departure)
+- one mouth position per sound; one vocal-fold puff per instance
+- physics guards: open sounds must be **acoustically open** (first resonance
+  >= 290 Hz, clear of the ~200 Hz sealed-tube wall resonance; the channel may
+  be as narrow as needed, >= 0.005 cm²); m and n close the mouth with the nose
+  open
+
+| run | overall | notes |
+|---|---|---|
+| A1: 3 starts, channel >= 0.02 | 6.47 dB | the "ee"s sit on the 0.02 limit |
+| A3: 12 starts | 7.00 | rugged landscape; A1 stays best |
+| **A4: acoustic open-mouth guard, from A1** | **6.26 dB** | n 5.1/5.1/3.7, ã 6.7, ɐ˞ 6.8, ɹ 7.3, m 3.6, ũ 4.1, iː 9.2/7.4/7.2/6.4 |
+
+A4's mouth: larynx ~1.8 cm lower, head radius ~3.2 cm, laryngeal cavity
+~7 mm with a ~3 mm inlet, **a much wider throat behind the tongue than a
+normal bun's** (shape map up to ~3.4x) and a wider mouth opening (~1.9x). The
+"ee" is a very close vowel: channel 0.014 cm² (~1.3 mm), first resonance
+500 Hz. Remaining consistent misses: the "ee"s (valley too shallow, bright
+cluster too weak; one shared "ee" position serves four contexts) and the n's
+above 2 kHz. Next: Phase B (movement and context), C (hiss and bursts), D
+(render the whole phrase from the mouth alone).
