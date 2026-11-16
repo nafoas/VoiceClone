@@ -26,3 +26,9 @@ The gold standard itself is in `reference/gold/`, the source clip in
   computery" of the run; 1b breathy/jittery/shrill; 1c very computery (just a
   tone); 1d stuttery/phlegmatic/"dying"; engine check "dial-up". **1e ladder:
   Da Boss picked step 3** (`ee_tone_approved.json`).
+
+## onevoice_P1_clip_vs_model.wav
+Clip phrase, then model phrase. One physical puff voice (the same vocal cords for all
+12 voiced sounds) through the one reverse-engineered mouth (mouth_inverse_P1, 10.7 dB
+tone error), moving between sound positions. Loudness = breath pressure on the source,
+no output processing. Consonants silent (phase C). Verdict: pending.

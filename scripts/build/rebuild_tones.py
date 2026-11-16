@@ -85,18 +85,20 @@ def main():
     for pi, ph in enumerate(PHRASES):
         s0, e0 = ph[0][1] - 0.02, ph[-1][2] + 0.03; n = int((e0 - s0) * SR)
         vs = [dict(lab=l, s=s, e=e) for l, s, e, _ in ph if l in M.SOUNDS]
-        src = np.zeros(n)
-        for v in vs:
+        def build_src(gain_db):
+          src = np.zeros(n)
+          for vi, v in enumerate(vs):
             ins = ff0[(tt >= v["s"]) & (tt <= v["e"]) & (ff0 > 0)]; v0 = float(np.median(ins)) if len(ins) else 250.0
             t = v["s"]
             while t < v["e"]:
                 f0 = np.interp(t, tt, np.where(ff0 > 0, ff0, np.nan))
                 f0 = f0 if np.isfinite(f0) and 100 < f0 < 900 else v0
                 P = int(round(SR / f0)); c = int((t - s0) * SR)
-                g = cycle(P, f0, rng)
+                g = cycle(P, f0, rng) * 10 ** (np.interp(t, gain_db[0], gain_db[1]) / 20)   # breath pressure
                 if c - P >= 0 and c + P < n:
                     src[c - P: c + P] += g
                 t += 1.0 / f0
+          return src
         hop = 240; nfr = n // hop + 1; poses = np.zeros((nfr, 9)); w = np.zeros(nfr)
         for v in vs:
             a, b = int((v["s"] - s0) * SR / hop), int((v["e"] - s0) * SR / hop); poses[a:b] += Z[M.PO[v["lab"]]]; w[a:b] += 1
@@ -104,24 +106,32 @@ def main():
         for j in range(9):
             poses[:, j] = np.interp(np.arange(nfr), idx, poses[idx, j] / w[idx])
         poses = uniform_filter1d(poses, 6, axis=0)
-        NFT = 4096; fH = np.fft.rfftfreq(NFT, 1 / SR); win = np.hanning(2 * hop + 1)[:-1]
-        y = np.zeros(n + NFT); cache = {}
-        for k in range(nfr):
+        NFT = 4096; fH = np.fft.rfftfreq(NFT, 1 / SR); win = np.hanning(2 * hop + 1)[:-1]; cache = {}
+
+        def mouth(src):
+          y = np.zeros(n + NFT)
+          for k in range(nfr):
             key = tuple(np.round(poses[k], 2))
             if key not in cache:
                 H = mouth_H(poses[k], fH); H[0] = 0
                 cache[key] = np.fft.irfft(H, NFT) * np.hanning(2 * NFT)[NFT:]
-            a = max(0, k * hop - hop); seg = src[a: a + 2 * hop]
-            if len(seg) < 2 * hop:
-                break
+            a = k * hop - hop; seg = src[max(a, 0): a + 2 * hop]
+            if a < 0 or len(seg) < 2 * hop:
+                continue
             y[a: a + 2 * hop + NFT - 1] += fftconvolve(seg * win, cache[key])
-        y = y[:n]
-        mask = np.zeros(n)
-        for v in vs:   # loudness per sound from the clip (the voice box's), voiced sounds only
+          return y[:n]
+        # loudness = breath pressure behind the voice, set per sound from the clip (smooth, on the source only)
+        mids = np.array([(v["s"] + v["e"]) / 2 for v in vs])
+        st = np.random.get_state(); rs = rng.bit_generator.state
+        y1 = mouth(build_src((mids, np.zeros(len(vs)))))
+        rng.bit_generator.state = rs
+        gd = []
+        for v in vs:
             a, b = int((v["s"] - s0) * SR), int((v["e"] - s0) * SR)
             ref = x[int(v["s"] * SR): int(v["e"] * SR)]
-            y[a:b] *= np.sqrt(np.mean(ref ** 2)) / (np.sqrt(np.mean(y[a:b] ** 2)) + 1e-15); mask[a:b] = 1
-        k8 = int(0.008 * SR); mask = np.convolve(mask, np.ones(k8) / k8, "same"); y = y * mask
+            gd.append(20 * np.log10(np.sqrt(np.mean(ref ** 2)) / (np.sqrt(np.mean(y1[a:b] ** 2)) + 1e-12)))
+        gd = np.array(gd); print(f"  phrase {pi + 1} breath (dB, rel): " + " ".join(f"{v['lab']}{g - gd.max():+.0f}" for v, g in zip(vs, gd)))
+        y = mouth(build_src((mids, gd)))
         outs.append((y, s0, e0, vs))
     gap = np.zeros(int(0.5 * 24000)); pieces = []
     for y, s0, e0, _ in outs:
