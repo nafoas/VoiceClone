@@ -96,7 +96,10 @@ def his_voice_tones(path=ROOT / "models/his_voice.npz", nh=NH):
         for c in np.split(d[f"cyc_{i}"], np.cumsum(d[f"len_{i}"])[:-1]):
             C = np.fft.rfft(np.interp(np.linspace(0, 1, 1024, endpoint=False), np.linspace(0, 1, len(c), endpoint=False), c))[1: nh + 1]
             k = np.arange(1, nh + 1); acc.append(C / np.abs(C[0]) * np.exp(-1j * k * np.angle(C[0])))
-    return np.mean(acc, 0)
+    acc = np.array(acc)
+    # strength and timing averaged separately (averaging the waves lets out-of-step cycles cancel)
+    lev = np.median(20 * np.log10(np.abs(acc) + 1e-12), 0)
+    return 10 ** (lev / 20) * np.exp(1j * np.angle(np.mean(acc / (np.abs(acc) + 1e-15), 0)))
 
 
 def seal(a, lab):

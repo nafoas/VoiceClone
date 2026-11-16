@@ -76,7 +76,7 @@ def render_phrase(ph, x, tt, ff0, BK, gain_db=None):
     idx = np.where(w > 0)[0]
     for j in range(9):
         poses[:, j] = np.interp(np.arange(nfr), idx, poses[idx, j] / w[idx])
-    poses = uniform_filter1d(poses, 6, axis=0)
+    poses = uniform_filter1d(poses, int(os.environ.get("GLIDE", "3")), axis=0)   # short glides: every position is reached
     y = np.zeros(n + NFT + 2000)
     for vi, v in enumerate(vs):
         ins = ff0[(tt >= v["s"]) & (tt <= v["e"]) & (ff0 > 0)]; v0 = float(np.median(ins)) if len(ins) else 250.0
