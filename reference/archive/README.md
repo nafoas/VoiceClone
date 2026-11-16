@@ -32,3 +32,8 @@ Clip phrase, then model phrase. One physical puff voice (the same vocal cords fo
 12 voiced sounds) through the one reverse-engineered mouth (mouth_inverse_P1, 10.7 dB
 tone error), moving between sound positions. Loudness = breath pressure on the source,
 no output processing. Consonants silent (phase C). Verdict: pending.
+
+## listen2_his_voice_his_mouth.wav (PLAN step 3, Listen 2)
+Clip phrase, then model phrase. His real voice (cycles recovered from the clip by
+quasi-closed-phase inverse filtering), buzz by buzz through the one mouth refitted to
+that voice (mouth_inverse_H2: 9.5 dB fit, m sealed). Consonants silent. Verdict: pending.
