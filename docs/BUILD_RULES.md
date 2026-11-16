@@ -1,5 +1,33 @@
 # Building Prince's voice: what changes are allowed
 
+> **Priority order (Da Boss, revised).** "A rabbit can't talk... I was using Bun
+> Realism as a stand-in for 'This needs to be objective and replicatable, using
+> only changes to his mouth, no post processing or anything that couldn't be
+> replicated with just the mouth model itself'. What matters here is that all
+> our changes contribute to a mouth where saying 'nannarmunis... peet teet tee'
+> isn't a fluke of editing, it'll be a little bnuy mouth that actually sounds
+> like that." Biology roots his abilities; it never blocks them.
+>
+> 1. **Sounds like him.** The gold standard is the judge; Da Boss's ear is final.
+> 2. **Made entirely by one mouth model.** His voice box + his tube + his head:
+>    every sound comes from moving that one mouth. No editing, no
+>    post-processing, no effects, nothing from the clip in the output.
+>    Reproducible: the same mouth and the same movements give the same sound.
+> 3. **Physically valid.** The model has to work as physics: sound leaves
+>    through an open mouth (no sealed-mouth leaks), no exploits of numerical
+>    limits. Departures in shape and size are allowed; impossible physics is not.
+> 4. **Rooted in bun biology, preferably.** Start from a small bun with his one
+>    adaptation. Where a sound he makes needs his mouth to go beyond a normal
+>    rabbit's, it may, and the departure is **logged with the ability it
+>    serves**. Prefer the explanation that keeps him "just a little guy", but
+>    never refuse a sound he really makes because a normal rabbit couldn't.
+> 5. **One anatomy, many movements.** His anatomy (sizes, cavities) is shared
+>    by every sound; only articulation (how the mouth moves) differs per sound.
+>
+> Where older sections below are stricter about anatomy (e.g. the ±15% natural
+> variation as a hard limit), this priority order wins: ±15% is now a
+> preference with a cost, not a wall.
+
 My own rulebook. **Read it before making any change to how Prince sounds**, and
 check every proposed change against it. When a change is not clearly
 acceptable, ask Da Boss first. Da Boss's ear is the final judge; this guide
