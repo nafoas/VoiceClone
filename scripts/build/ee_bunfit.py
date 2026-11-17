@@ -70,6 +70,9 @@ def port_frac(pose9, neck):
 NOSE_SURF = 1.0   # turbinate surface: the nasal passage's wall losses vs a smooth round tube (set by the fit)
 
 
+GLOTTIS_AG = 0.0  # mean opening of the vocal-cord gap while voicing (cm^2); 0 = cords as a closed wall
+PS_SOFT = 8000.0  # lung pressure behind the cords, dyn/cm^2 (0.8 kPa: soft, relaxed voice; later set by effort)
+FOLD_T = 0.15     # depth of the gap through the cords (cm), small-bun folds
 WALLS = True      # his yielding walls (cheeks, throat) radiate the sound that moves them
 
 
@@ -105,7 +108,11 @@ def tube_H_nose(a, L, f, frac, port, nlen, damp):
     Un = P / (Kn[0, 0] * Zn + Kn[0, 1]); U = U + P * (Kn[1, 0] * Zn + Kn[1, 1]) / (Kn[0, 0] * Zn + Kn[0, 1])
     for s_ in range(br - 1, -1, -1):             # velum back to the vocal folds
         Pi = A[s_] * P + Bm[s_] * U; Ui = Cm[s_] * P + D[s_] * U; Uw += 0.5 * (P + Pi) * Yw[s_]; P, U = Pi, Ui
-    return 1j * w * (Ul + Un + (Uw if WALLS else 0)) / U
+    Hm = 1j * w * (Ul + Un + (Uw if WALLS else 0)) / U
+    if GLOTTIS_AG > 0:   # the cords' gap is a real opening (Flanagan): its resistance and air mass load the tube
+        Zg = RHO * np.sqrt(2 * PS_SOFT / RHO) / GLOTTIS_AG + 1j * w * RHO * FOLD_T / GLOTTIS_AG
+        Hm = Hm * Zg / (Zg + P / U)
+    return Hm
 
 
 def head_baffle(f, radius_cm):

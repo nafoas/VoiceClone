@@ -46,7 +46,7 @@ def mouth_ir(pose9, sealed):
         if sealed:
             a = M.seal(a, "m")
         f = np.maximum(fH, 1.0)
-        M.B.NOSE_SURF = float(Z[M.NV]) if len(Z) > M.NV else 1.0
+        M.body(Z)
         H = M.B.tube_H_nose(a, L, f, frac, port, Z[6], Z[7]) * M.B.head_baffle(f, Z[1])
         fc = 1.84 * 35000 / (np.pi * 2 * np.sqrt(a.max() / np.pi))   # plane waves hold below the first cross-mode
         H = H / (1 + (f / fc) ** 8); H[0] = 0
@@ -196,6 +196,7 @@ def main():
         pieces += [nz(x[int(s0 * SR): int(e0 * SR)]), gap, nz(y), gap, gap]
     sf.write(ROOT / f"out/build/render_his{TAG}_clip_vs_model.wav", np.concatenate(pieces), SR)
     sf.write(ROOT / f"out/build/render_his{TAG}_model.wav", np.concatenate([q for y, *_ in outs for q in (nz(y), gap)]), SR)
+    np.save(ROOT / f"out/build/render_his{TAG}_outs.npy", np.array([dict(y=y, s0=s0, e0=e0, vs=vs) for y, s0, e0, vs in outs], dtype=object), allow_pickle=True)
     # checks
     errs = []
     for y, s0, e0, vs in outs:
