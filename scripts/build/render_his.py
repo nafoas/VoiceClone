@@ -59,7 +59,7 @@ def bank():
     d = np.load(ROOT / "models/his_voice.npz"); B = []
     for i, cl in enumerate(d["clean"]):
         if cl:
-            cyc = np.split(d[f"cyc_{i}"] * (SR / 48000), np.cumsum(d[f"len_{i}"])[:-1])
+            cyc = M.his_cycles(d, i)   # his cycles, recovery error averaged away (Da Boss approved)
             ref = np.median([np.ptp(c) for c in cyc]); cyc = [c / ref for c in cyc]   # common level: loudness is the breath's job
             B.append(dict(f0=float(d["f0"][i]), cyc=cyc, order=list(range(len(cyc))) + list(range(len(cyc) - 2, 0, -1)), k=0))
     return B

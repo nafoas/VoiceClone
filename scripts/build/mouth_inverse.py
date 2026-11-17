@@ -87,6 +87,20 @@ SHARED_SRC = os.environ.get("SRC", "") in ("shared", "shared2")
 HIS_SRC = os.environ.get("SRC", "") == "his"     # his real voice, recovered from the clip (PLAN step 1), held fixed
 
 
+CYC_AVG = int(os.environ.get("CYC_AVG", "3"))   # Da Boss approved: each cycle averaged with its neighbours
+
+
+def his_cycles(d, i, L=1024):
+    """Bank sound i's cycles, each at a common length, each averaged with its CYC_AVG-1 nearest
+    neighbours: recovery error changes from cycle to cycle and averages away; his own changes are
+    slower and stay. 3 matches the clarity of his upper tones in the clip (2-5 kHz 16.7 dB vs 18.9;
+    5-9 kHz 4.7 vs 7.1; as recovered 13.6 / 0.2)."""
+    C = np.array([np.interp(np.linspace(0, 1, L, endpoint=False), np.linspace(0, 1, len(c), endpoint=False), c)
+                  for c in np.split(d[f"cyc_{i}"], np.cumsum(d[f"len_{i}"])[:-1])])
+    h = CYC_AVG // 2
+    return [C[max(0, j - h): j + h + 1].mean(0) for j in range(len(C))]
+
+
 def his_voice_bank_tones(path=ROOT / "models/his_voice.npz", nh=NH):
     """Per bank sound (his cycles at that pitch): (pitch, tones). The render draws each sound's
     cycles from the bank sound nearest in pitch; the fit uses the same."""
@@ -104,8 +118,8 @@ def his_voice_tones(path=ROOT / "models/his_voice.npz", nh=NH, only=None):
     for i, cl in enumerate(d["clean"]):
         if not cl or (only is not None and i != only):
             continue
-        for c in np.split(d[f"cyc_{i}"], np.cumsum(d[f"len_{i}"])[:-1]):
-            C = np.fft.rfft(np.interp(np.linspace(0, 1, 1024, endpoint=False), np.linspace(0, 1, len(c), endpoint=False), c))[1: nh + 1]
+        for c in his_cycles(d, i):
+            C = np.fft.rfft(c)[1: nh + 1]
             k = np.arange(1, nh + 1); acc.append(C / np.abs(C[0]) * np.exp(-1j * k * np.angle(C[0])))
     acc = np.array(acc)
     # strength and timing averaged separately (averaging the waves lets out-of-step cycles cancel)
