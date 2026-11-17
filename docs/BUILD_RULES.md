@@ -208,6 +208,17 @@ Now: output = lips + nostrils + walls. Not a new part; the motion was already mo
 Effect before refitting: overall 7.59 -> 7.03 dB; "m" 10.6 -> 8.2; "n" 7.7 -> 6.7.
 Tried and dropped: turbinate slits (Stinson slit-pore channels) changed almost nothing.
 
+### The vocal-cord gap is an opening (physics the model left out)
+Da Boss heard listen2c as "a little tinny". Measured: a sharp ring near 6 kHz (bandwidth
+~200 Hz) in nearly every sound (n, ɹ, m, ũ, iː), living in the short laryngeal cavity just
+above the cords (its pressure peaks at the cords). The model treated the cords as a closed
+wall, but they are open for part of every buzz, and that gap soaks up exactly this ring
+(Flanagan's glottal impedance; Fant's glottal damping). Now the gap loads the tube with
+its resistance and air mass, both from one fitted setting (its mean opening) plus physics:
+air speed from a soft-voice lung pressure (0.8 kPa, later set by effort, PLAN 5b) and a
+small-bun fold depth (1.5 mm). A zero opening is the old model exactly. Before refitting:
+whole phrase 6.77 -> 6.52 dB at 0.002 cm2; the 6 kHz ring is gone.
+
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
 protrusion; 2.5 cm larynx travel; stamped hum; free per-frame poses; formant

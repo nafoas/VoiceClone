@@ -50,3 +50,11 @@ the nose's turbinate surface (fitted x10.9 viscous loss) and the yielding walls 
 mouth and throat radiating sound (output = lips + nostrils + walls). Refit on the whole
 phrase (phrase_fit F4). Whole-phrase likeness 6.77 dB (listen2b 7.28, Listen 2 8.62);
 tone error 8.1 dB. Verdict: pending.
+
+## ladder_voice_cleanness.wav (step 3, a question for Da Boss)
+Per phrase: the clip, then the model three times (mouth F4, no cord gap yet):
+1. his recovered cycles as they are (listen2c);
+2. each cycle averaged with its two neighbours (his clarity of upper tones measured
+   2-5 kHz 16.7 dB / 5-9 kHz 4.7 dB; this gives 18.9 / 7.1; as-is gives 13.6 / 0.2);
+3. averaged over five cycles (21.1 / 9.4, cleaner than him).
+Whole-phrase 6.77 / 6.41 / 6.47 dB. Verdict: pending.
