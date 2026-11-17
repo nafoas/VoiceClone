@@ -43,3 +43,10 @@ Clip phrase, then model. His real voice buzz by buzz; mouth positions, anatomy a
 movement between sounds fitted together on every 5 ms of the phrase (phrase_fit F1);
 smooth breath contour, voicing eases in/out, tube validity per shape. Whole-phrase
 likeness 7.28 dB (Listen 2: 8.62). Verdict: pending.
+
+## listen2c_walls_radiate.wav (step 3 tightening)
+Clip phrase, then model. Same as listen2b, plus two physical additions to the one mouth:
+the nose's turbinate surface (fitted x10.9 viscous loss) and the yielding walls of his
+mouth and throat radiating sound (output = lips + nostrils + walls). Refit on the whole
+phrase (phrase_fit F4). Whole-phrase likeness 6.77 dB (listen2b 7.28, Listen 2 8.62);
+tone error 8.1 dB. Verdict: pending.
