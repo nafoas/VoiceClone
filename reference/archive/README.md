@@ -58,3 +58,10 @@ Per phrase: the clip, then the model three times (mouth F4, no cord gap yet):
    2-5 kHz 16.7 dB / 5-9 kHz 4.7 dB; this gives 18.9 / 7.1; as-is gives 13.6 / 0.2);
 3. averaged over five cycles (21.1 / 9.4, cleaner than him).
 Whole-phrase 6.77 / 6.41 / 6.47 dB. Verdict: pending.
+
+## listen2d_cord_gap_clean_cycles.wav (step 3 tightening)
+Clip phrase, then model. Since listen2c: the vocal-cord gap loads the tube (fitted mean
+opening 0.0018 cm2; removes the sharp 6 kHz ring heard as "tinny"), and his cycles are each
+averaged with their two neighbours (Da Boss approved; recovery error removed, upper tones
+as clean as his). Whole-phrase refit (F5). Whole-phrase likeness 6.04 dB (listen2c 6.77);
+tone error 8.0 dB; "ee" 7.3 -> 6.0, "ã" 4.3 -> 3.4. Verdict: pending.
