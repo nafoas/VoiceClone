@@ -28,6 +28,7 @@ for p in (ROOT, ROOT / "scripts", ROOT / "scripts/build", ROOT / "analysis/physi
     sys.path.insert(0, str(p))
 sys.argv = sys.argv[:1]
 import mouth_inverse as M  # noqa: E402
+import transitions as TR  # noqa: E402
 import ee_decompose as DC  # noqa: E402
 from build_catalogue import PHRASES  # noqa: E402
 
@@ -169,7 +170,9 @@ def frame_score(x, y, s0, vs, f0s):
             if bh is None or bm is None:
                 continue
             ok = bh > -50
-            out.append((v["lab"], t, float(np.sqrt(np.mean((np.maximum(bm, -50) - bh)[ok] ** 2)))))
+            old = float(np.sqrt(np.mean((np.maximum(bm, -50) - bh)[ok] ** 2)))
+            fl = TR.clip_floor(x, t); ok = bh > fl   # judged wherever his sound stands above the hiss
+            out.append((v["lab"], t, float(np.sqrt(np.mean((np.maximum(bm, fl) - bh)[ok] ** 2))), old))
     return out
 
 
@@ -220,10 +223,11 @@ def main():
         print(f"  overall tone error {np.sqrt(np.mean(np.square(errs))):.2f} dB")
     fs = [q for y, s0, e0, vs in outs for q in frame_score(x, y, s0, vs, None)]
     per = {}
-    for lab, t, e in fs:
+    for lab, t, e, _ in fs:
         per.setdefault(lab, []).append(e)
     print("  whole-phrase likeness (every 10 ms, transitions included), rms dB: " + "  ".join(f"{k} {np.sqrt(np.mean(np.square(v))):.1f}" for k, v in per.items()))
-    print(f"  WHOLE-PHRASE: {np.sqrt(np.mean(np.square([e for *_, e in fs]))):.2f} dB over {len(fs)} frames")
+    print(f"  WHOLE-PHRASE: {np.sqrt(np.mean(np.square([q[2] for q in fs]))):.2f} dB over {len(fs)} frames "
+          f"(judged above the hiss; old judge, bands within 50 dB of the loudest: {np.sqrt(np.mean(np.square([q[3] for q in fs]))):.2f})")
 
 
 if __name__ == "__main__":

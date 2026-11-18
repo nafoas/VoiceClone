@@ -62,7 +62,7 @@ def setup():
         layout.append((vs, bnd, nb)); nb += len(bnd)
         for v in vs:
             for t in np.arange(v["s"] + 0.005, v["e"] - 0.005, 0.005):
-                F.append(dict(pi=pi, t=t, f0=float(np.interp(t, tt[ff0 > 0], ff0[ff0 > 0])), clip=TR.clip_bands(x, t)))
+                F.append(dict(pi=pi, t=t, f0=float(np.interp(t, tt[ff0 > 0], ff0[ff0 > 0])), clip=TR.clip_bands(x, t), floor=TR.clip_floor(x, t)))
     return F, layout, nb
 
 
@@ -83,8 +83,11 @@ def frame_resid(q):
         pose = TR.pose_at(fr["t"], vs, bnd, tp[b0: b0 + len(bnd)]) if bnd else z[M.PO[vs[0]["lab"]]]
         if not bnd:   # sounds separated by consonants: each holds its own position
             pose = z[M.PO[[v for v in vs if v["s"] <= fr["t"] <= v["e"]][0]["lab"]]]
-        ch = fr["clip"]; ok = ch > -50
-        r.append((np.maximum(bands(z, pose, fr["f0"]), -50) - ch)[ok] / np.sqrt(ok.sum()))
+        ch, fl = fr["clip"], fr["floor"]
+        if os.environ.get("JUDGE", "hiss") == "old":
+            fl = np.full_like(ch, -50.0)
+        ok = ch > fl          # judged where his sound stands above the recording's hiss
+        r.append((np.maximum(bands(z, pose, fr["f0"]), fl) - ch)[ok] / np.sqrt(ok.sum()))
     return np.concatenate(r)
 
 

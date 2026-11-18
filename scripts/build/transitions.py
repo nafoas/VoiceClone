@@ -96,6 +96,30 @@ def clip_bands(x, t):
     return b - b.max()
 
 
+_NOISE = {}
+
+
+def noise_bands(x):
+    """The recording's own hiss per band (absolute): the median of its quietest 5% of frames."""
+    if "n" not in _NOISE:
+        N = 2048; f = np.fft.rfftfreq(N, 1 / SR); B = []; L = []
+        for c in range(N // 2, len(x) - N // 2, 480):
+            S = np.abs(np.fft.rfft(x[c - N // 2: c + N // 2] * np.hanning(N))) ** 2
+            B.append([10 * np.log10(S[(f >= lo) & (f < hi)].mean() + 1e-14) for lo, hi in zip(EDGES[:-1], EDGES[1:])])
+            L.append(10 * np.log10(np.mean(x[c - N // 2: c + N // 2] ** 2) + 1e-20))
+        B, L = np.array(B), np.array(L); _NOISE["n"] = np.median(B[L <= np.percentile(L, 5)], 0)
+    return _NOISE["n"]
+
+
+def clip_floor(x, t, margin=6.0):
+    """Per band, the level (relative to this frame's loudest band) below which the clip is hiss:
+    bands under it are not judged, and the model is not asked to go lower than it."""
+    N = 2048; seg = x[int(t * SR) - N // 2: int(t * SR) + N // 2]; f = np.fft.rfftfreq(N, 1 / SR)
+    S = np.abs(np.fft.rfft(seg * np.hanning(N))) ** 2
+    top = max(10 * np.log10(S[(f >= lo) & (f < hi)].mean() + 1e-14) for lo, hi in zip(EDGES[:-1], EDGES[1:]))
+    return np.maximum(noise_bands(x) - top + margin, -90.0)
+
+
 def main():
     x, sr = sf.read(ROOT / "reference/source/prince_reference.wav"); x = x.mean(1)
     Pt = pm.Sound(x, SR).to_pitch_ac(time_step=0.005, pitch_floor=150, pitch_ceiling=700)
