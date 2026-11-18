@@ -65,3 +65,10 @@ opening 0.0018 cm2; removes the sharp 6 kHz ring heard as "tinny"), and his cycl
 averaged with their two neighbours (Da Boss approved; recovery error removed, upper tones
 as clean as his). Whole-phrase refit (F5). Whole-phrase likeness 6.04 dB (listen2c 6.77);
 tone error 8.0 dB; "ee" 7.3 -> 6.0, "ã" 4.3 -> 3.4. Verdict: pending.
+
+## listen2e_top_end.wav (step 3 tightening)
+Clip phrase, then model. Since listen2d: the fit's judge now scores every band that stands
+above the recording's hiss (the old -50 dB cut hid his 7-11 kHz "air"). Refit F6.
+Average gap at 7.2 / 9 / 11.4 kHz: listen2d -18 / -14 / -9 dB, now +2 / -2 / +1.
+Whole phrase, new judge 8.41 -> 7.42 dB; old judge 6.04 -> 6.65 (the low mids, 450-900 Hz,
+came out 1-2 dB fuller); tone error 8.0 -> 7.8. Head radius 4.0 -> 3.46 cm. Verdict: pending.
