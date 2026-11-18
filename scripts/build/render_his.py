@@ -172,7 +172,9 @@ def frame_score(x, y, s0, vs, f0s):
             ok = bh > -50
             old = float(np.sqrt(np.mean((np.maximum(bm, -50) - bh)[ok] ** 2)))
             fl = TR.clip_floor(x, t); ok = bh > fl   # judged wherever his sound stands above the hiss
-            out.append((v["lab"], t, float(np.sqrt(np.mean((np.maximum(bm, fl) - bh)[ok] ** 2))), old))
+            w = np.clip((bh - fl) / 40.0, 0.05, 1.0)[ok]   # each band counts as much as it is audible
+            d = (np.maximum(bm, fl) - bh)[ok]
+            out.append((v["lab"], t, float(np.sqrt(np.sum(w * d ** 2) / np.sum(w))), old, float(np.sqrt(np.mean(d ** 2)))))
     return out
 
 
@@ -223,11 +225,12 @@ def main():
         print(f"  overall tone error {np.sqrt(np.mean(np.square(errs))):.2f} dB")
     fs = [q for y, s0, e0, vs in outs for q in frame_score(x, y, s0, vs, None)]
     per = {}
-    for lab, t, e, _ in fs:
+    for lab, t, e, *_ in fs:
         per.setdefault(lab, []).append(e)
     print("  whole-phrase likeness (every 10 ms, transitions included), rms dB: " + "  ".join(f"{k} {np.sqrt(np.mean(np.square(v))):.1f}" for k, v in per.items()))
     print(f"  WHOLE-PHRASE: {np.sqrt(np.mean(np.square([q[2] for q in fs]))):.2f} dB over {len(fs)} frames "
-          f"(judged above the hiss; old judge, bands within 50 dB of the loudest: {np.sqrt(np.mean(np.square([q[3] for q in fs]))):.2f})")
+          f"(bands weighted by audibility; all bands above the hiss equally: {np.sqrt(np.mean(np.square([q[4] for q in fs]))):.2f}; "
+          f"old judge, bands within 50 dB of the loudest: {np.sqrt(np.mean(np.square([q[3] for q in fs]))):.2f})")
 
 
 if __name__ == "__main__":
