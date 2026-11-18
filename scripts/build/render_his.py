@@ -123,24 +123,29 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
     nfr = len(poses)
     runs = voiced_runs(vs); RAMP = float(os.environ.get("RAMP", "0.012")); RAMP_OFF = float(os.environ.get("RAMP_OFF", "0.03"))
     y = np.zeros(n + NFT + 2000)
-    for vi, v in enumerate(vs):
-        ins = ff0[(tt >= v["s"]) & (tt <= v["e"]) & (ff0 > 0)]; v0 = float(np.median(ins)) if len(ins) else 250.0
-        t = v["s"]
-        src = min(BK, key=lambda b: abs(np.log(b["f0"] / v0)))              # one run of his own cycles per sound
-        while t < v["e"]:
-            f0 = np.interp(t, tt, np.where(ff0 > 0, ff0, np.nan)); f0 = f0 if np.isfinite(f0) and 100 < f0 < 900 else v0
-            P = int(round(SR / f0)); c = int((t - s0) * SR)
+    for v in vs:                                    # one run of his own cycles per sound
+        ins = ff0[(tt >= v["s"]) & (tt <= v["e"]) & (ff0 > 0)]; v["f0"] = float(np.median(ins)) if len(ins) else 250.0
+        v["src"] = min(BK, key=lambda b: abs(np.log(b["f0"] / v["f0"])))
+    for a, b in runs:
+        # the folds keep one continuous rhythm through a voiced stretch; each buzz starts at its exact
+        # instant (between samples where it falls), so no rounding jitter and no restart at sound joins
+        i0, i1 = int(np.ceil((a - s0) * SR)), int((b - s0) * SR)
+        tn = s0 + np.arange(i0, i1) / SR
+        who = np.array([next((j for j, v in enumerate(vs) if v["s"] - 1e-6 <= q <= v["e"] + 1e-6), 0) for q in tn])
+        f0 = np.interp(tn, tt, np.where(ff0 > 0, ff0, np.nan))
+        bad = ~(np.isfinite(f0) & (f0 > 100) & (f0 < 900)); f0[bad] = np.array([vs[j]["f0"] for j in who])[bad]
+        ph = np.cumsum(f0 / SR); k = np.floor(ph).astype(int)
+        cut = np.r_[0, np.flatnonzero(np.diff(k)) + 1, len(k)]
+        for c0, c1 in zip(cut[:-1], cut[1:]):
+            t = tn[c0]; v = vs[who[c0]]; src = v["src"]
             cyc = src["cyc"][src["order"][src["k"] % len(src["order"])]]; src["k"] += 1
             g = 10 ** (np.interp(t, breath[0], breath[1]) / 20) if breath is not None else 1.0
-            for a, b in runs:   # the cords ease into and out of vibrating as the air starts and stops
-                if a - 1e-6 <= t <= b:
-                    g *= min(1.0, 0.5 - 0.5 * np.cos(np.pi * min(1.0, (t - a) / RAMP)), 0.5 - 0.5 * np.cos(np.pi * min(1.0, max(0.0, b - t) / RAMP_OFF)))
-            pulse = at_period(cyc, P) * g
-            pz = poses[min(c // hop, nfr - 1)]
+            g *= min(1.0, 0.5 - 0.5 * np.cos(np.pi * min(1.0, (t - a) / RAMP)), 0.5 - 0.5 * np.cos(np.pi * min(1.0, max(0.0, b - t) / RAMP_OFF)))
+            u = ph[c0: c1] - k[c0]
+            pulse = np.interp(u, np.linspace(0, 1, len(cyc), endpoint=False), cyc) * g
+            c = i0 + c0; pz = poses[min(c // hop, nfr - 1)]
             h = mouth_ir(pz, bool(pz[5] < 0.04))           # the lips seal as they actually close
-            if c >= 0:
-                out = np.convolve(pulse, h); y[c: c + len(out)] += out[: len(y) - c]
-            t += 1.0 / f0
+            out = np.convolve(pulse, h); y[c: c + len(out)] += out[: len(y) - c]
     return y[:n], s0, e0, vs
 
 
