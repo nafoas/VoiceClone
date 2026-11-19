@@ -30,7 +30,7 @@ import mouth_inverse as M  # noqa: E402
 from build_catalogue import PHRASES  # noqa: E402
 
 SR = 48000
-Z = np.array(json.loads((ROOT / os.environ.get("ZFILE", "models/mouth_inverse_H3.json")).read_text())["z"])
+Z = M.pad(json.loads((ROOT / os.environ.get("ZFILE", "models/mouth_inverse_H3.json")).read_text())["z"])   # brought up to the current layout
 TAG = os.environ.get("TAG", "")
 EDGES = 200 * 2 ** (np.arange(0, 19) / 3); EDGES = EDGES[EDGES <= 12800]
 LIPS, VELUM, TIP = 5, 7, 3

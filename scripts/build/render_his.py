@@ -33,7 +33,7 @@ import ee_decompose as DC  # noqa: E402
 from build_catalogue import PHRASES  # noqa: E402
 
 SR = 48000; NFT = 8192
-Z = np.array(json.loads((ROOT / os.environ.get("ZFILE", "models/mouth_inverse_H1.json")).read_text())["z"])
+Z = M.pad(json.loads((ROOT / os.environ.get("ZFILE", "models/mouth_inverse_H1.json")).read_text())["z"])   # brought up to the current layout
 TAG = os.environ.get("TAG", "")
 fH = np.fft.rfftfreq(NFT, 1 / SR)
 _ir = {}
