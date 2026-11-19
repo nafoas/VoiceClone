@@ -7,8 +7,9 @@ whether their absence is what sounds babyish and choppy). Made by the same mouth
               vocal cords through the mouth as it opens toward the vowel
   p:          a short burst at the lips, then breath through the opening mouth (his p is weak)
 
-PROVISIONAL: how loud each noise is over time is matched to the clip (as the voice's loudness still
-is until the effort step); the noise itself is a fixed seeded source (same mouth, same sound).
+PROVISIONAL: how hard the air blows through each gap over time is set so the result matches the
+clip's loudness (as the voice's breath still is until the effort step). It scales the noise SOURCE,
+before the mouth; nothing is done to the sound after it. The noise is a fixed seeded source.
 """
 import numpy as np
 
@@ -73,21 +74,22 @@ def layer(ph, s0, n, x, M, Z, ref, seed=7):
             parts = [(s - 0.003, s + 0.03, "fric"), (s + 0.03, b, "asp")]   # before "ee" the blade lets go at the front palate: hiss (~30 ms), then breath
         else:
             parts = [(s + 0.01, b, "asp_p")]   # his p is weak: breath through the opening lips, barely a burst
-        seg = np.zeros(n + NFT)
-        for pa, pb, kind in parts:
+        for pa, pb, kind in parts:   # each part's airflow set on its own, over its own stretch of time
             i0, i1 = max(0, int((pa - s0) * SR)), min(n, int((pb - s0) * SR))
             if i1 <= i0:
                 continue
-            src = rng.standard_normal(i1 - i0 + 2 * hop)
-            out = np.convolve(src, R[kind])[: i1 - i0 + 2 * hop + NFT]
-            seg[i0: i0 + len(out)] += out[: len(seg) - i0]
-        # loudness over time matched to his (provisional), 10 ms frames, above 1 kHz
-        i0, i1 = max(0, int((a - s0) * SR)), min(n, int((b - s0) * SR))
-        hb = _band(x[int((s0) * SR) + i0: int((s0) * SR) + i1]) * kk; mb = _band(seg[i0:i1])
-        sm = lambda q: np.convolve(q ** 2, np.hanning(4 * hop) / np.hanning(4 * hop).sum(), mode="same")   # ~20 ms energy
-        eh, em = sm(hb), sm(mb)
-        g = np.sqrt(eh / np.maximum(em, 1e-3 * em.max()))               # never divide by a near-silent edge
-        g = np.minimum(g, 4 * np.sqrt(eh.max() / em.max()))
-        fade = np.minimum(1, np.minimum(np.arange(i1 - i0), np.arange(i1 - i0)[::-1]) / (0.004 * SR))
-        y[i0:i1] += seg[i0:i1] * g * fade
+            src = rng.standard_normal(i1 - i0)
+            L_ = i1 - i0; fade = np.minimum(1, np.minimum(np.arange(L_), np.arange(L_)[::-1]) / (0.003 * SR))
+
+            def through_mouth(gain):
+                """The noise source (scaled by how hard the air blows: at the SOURCE) through his mouth."""
+                out = np.zeros(n + NFT); o = np.convolve(src * gain, R[kind]); out[i0: i0 + len(o)] += o[: len(out) - i0]
+                return out
+            seg = through_mouth(fade)
+            # how hard the air blows: set (provisionally) so the result matches his loudness over this part
+            hb = _band(x[int(s0 * SR) + i0: int(s0 * SR) + i1]) * kk; mb = _band(seg[i0:i1])
+            sm = lambda q: np.convolve(q ** 2, np.hanning(4 * hop) / np.hanning(4 * hop).sum(), mode="same")   # ~20 ms
+            eh, em = sm(hb), sm(mb)
+            g = np.sqrt(eh / np.maximum(em, 1e-2 * em.max()))               # never divide by a near-silent edge
+            y += through_mouth(fade * g)
     return y[:n]
