@@ -130,3 +130,9 @@ movements (inversion tool, SPARC: jaw, tongue height, tongue forward, lips, roun
 movements; the mouth's anatomy and conversions fitted around them; refit T2). Both with consonants.
 Scores say the new one is worse (whole phrase 6.1 -> 7.9 dB; the "i" of "munis" nearly closes, the
 middle "n" and "ũ" worse). Your ear decides. Verdict: pending.
+
+## abc_previous_movements_combined.wav (A/B/C for Da Boss)
+Per phrase: the clip, then (1) previous mouth (listen3c), (2) driven by his measured movements (T2),
+(3) combined: his measured movements set each sound, each may fine-tune within +-0.15 (costed),
+glides refitted (T3). All with consonants. Whole phrase: 6.1 / 7.7 / 6.4 dB. In (3) the "i" of
+"munis" opens again (0.2 mm gap; 10.6 -> 7.1 dB). Verdict: pending.
