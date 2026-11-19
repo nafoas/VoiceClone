@@ -111,7 +111,11 @@ KC = int(os.environ.get("KC", "0"))
 #   control index : feature (from the tool's 12 channels, per sound, mean over the sound)
 ART_MAP = {0: "jaw", 1: "tbody_y", 2: "tbody_fwd", 5: "lip_gap", 6: "lip_fwd"}   # tip not mapped: the tool's tip rides with the tongue body
 ARTW = float(os.environ.get("ARTW", "8"))
-ARTW_LIP = float(os.environ.get("ARTW_LIP", "1"))   # extra weight on the lips (both tools agree on them)   # per-sound free bends: off (compensations; the inversion tools give real targets)     # his real voice, recovered from the clip (PLAN step 1), held fixed
+ARTW_LIP = float(os.environ.get("ARTW_LIP", "1"))
+# TOOL=1: the mapped controls ARE his measured movements (control = offset + scale x tool reading);
+# the fit adapts his mouth (anatomy, conversions) around them instead of overriding them.
+TOOL = os.environ.get("TOOL", "1") == "1"
+GAPW = float(os.environ.get("GAPW", "60")); GAPMIN = float(os.environ.get("GAPMIN", "0.6"))   # open sounds keep a real gap (mm)   # extra weight on the lips (both tools agree on them)   # per-sound free bends: off (compensations; the inversion tools give real targets)     # his real voice, recovered from the clip (PLAN step 1), held fixed
 
 
 CYC_AVG = int(os.environ.get("CYC_AVG", "3"))   # Da Boss approved: each cycle averaged with its neighbours
@@ -188,7 +192,8 @@ elif HIS_SRC:
     SC = {s_: slice(NC0 + KC * i_, NC0 + KC * i_ + KC) for i_, s_ in enumerate(SOUNDS)}   # + KC smooth shape terms per sound
     NM0 = NC0 + KC * len(SOUNDS)
     NLW = NM0 + 2 * len(ART_MAP)   # + per mapped control: offset and scale from the inversion tool's units
-    NP = NLW + 1                   # + his mouth opening's width (anatomy, shared): a rabbit's mouth is a narrow slit
+    NPAL = NLW + 1                 # + his mouth opening's width (anatomy, shared): a rabbit's mouth is a narrow slit
+    NP = NPAL + 1                  # + his palate's arch height (anatomy, shared; mm)
 else:
     PU = [slice(PU0 + 5 * i, PU0 + 5 * i + 5) for i in range(NI)]
     NP = PU0 + 5 * NI
@@ -216,13 +221,23 @@ if HIS_SRC:
         LO[SC[s_]], HI[SC[s_]], Z0[SC[s_]] = -2.5, 2.5, 0.0
         LO[EX[s_].start + 2], HI[EX[s_].start + 2] = -1e-4, 1e-4   # no lip spread: both tools say his lips narrow or round, never spread
     LO[NLW], HI[NLW], Z0[NLW] = np.log(0.1), np.log(1.2), 0.0   # log width factor of the lip opening
+    LO[NPAL], HI[NPAL], Z0[NPAL] = 0.0, 3.0, 0.0                 # palate arch raised, mm (reference animal)
     for j_ in range(len(ART_MAP)):
-        LO[NM0 + 2 * j_], HI[NM0 + 2 * j_], Z0[NM0 + 2 * j_] = -3.0, 3.0, 0.3
-        LO[NM0 + 2 * j_ + 1], HI[NM0 + 2 * j_ + 1], Z0[NM0 + 2 * j_ + 1] = 0.15, 1.0, 0.25   # a real scale: his differences must show
+        LO[NM0 + 2 * j_], HI[NM0 + 2 * j_], Z0[NM0 + 2 * j_] = -6.0, 6.0, 0.0
+        LO[NM0 + 2 * j_ + 1], HI[NM0 + 2 * j_ + 1], Z0[NM0 + 2 * j_ + 1] = 0.05, 4.0, 1.0   # how strongly his movement moves the bun control
 elif not SHARED_SRC:
     for p in PU:
         LO[p], HI[p], Z0[p] = [.3, .3, .3, 0, 0], [.97, .95, 4, 1.5, 1], [.8, .5, 1.0, .2, .5]
 _cache = {}
+_rawgap = {}
+
+
+def raw_gap(pose9, neck, lar, z=None):
+    """The narrowest oral gap (mm) before clamping: negative = the tongue pressing into the roof."""
+    if z is not None:
+        PALATE[0] = float(z[NPAL]) if HIS_SRC and len(z) >= NP else 0.0
+    tube(pose9, neck, lar)
+    return _rawgap[(tuple(np.round(pose9, 6)), round(float(neck), 6), tuple(np.round(lar, 6)), round(PALATE[0], 6))]
 
 
 def pad(z):
@@ -257,12 +272,15 @@ def body(z):
         B.GLOTTIS_AG = float(10 ** z[NG]) if len(z) > NG else 0.0
 
 
+PALATE = [0.0]
+
+
 def tube(pose9, neck, lar):
     # fine rounding: a coarse key erased the fit's small test steps, freezing the larynx depth and cavity
-    key = (tuple(np.round(pose9, 6)), round(float(neck), 6), tuple(np.round(lar, 6)))
+    key = (tuple(np.round(pose9, 6)), round(float(neck), 6), tuple(np.round(lar, 6)), round(PALATE[0], 6))
     if key not in _cache:
         v = Pose().vec(); v[:9] = pose9
-        m = BunMouth(0.75, neck_mm=float(neck), larcav=tuple(float(q) for q in lar))
+        m = BunMouth(0.75, neck_mm=float(neck), larcav=tuple(float(q) for q in lar), palate_mm=PALATE[0])
         ar, ln, port, br = m.tube(Pose.from_vec(v))
         edges = np.r_[0, np.cumsum(ln)]; L = edges[-1]; e40 = np.linspace(0, L, NS + 1); a40 = np.empty(NS)
         for i in range(NS):
@@ -271,6 +289,7 @@ def tube(pose9, neck, lar):
         if len(_cache) > 50000:
             _cache.clear()
         _cache[key] = (np.maximum(a40, 1e-4), L, float(np.sum(ln[:br]) / L), max(float(port), 1e-4))
+        _rawgap[key] = float(np.min(m._raw_gap))
     return _cache[key]
 
 
@@ -291,15 +310,30 @@ EXNAMES = ["throat", "soft palate", "lip spread"]
 LIPW = _win(0.965, 1.0, 0.02)
 
 
+def tool_pose(z, p9, feats):
+    """The mapped controls set from his measured movements through the fitted conversions."""
+    p9 = np.array(p9, float)
+    if TOOL and HIS_SRC and len(z) >= NP and feats is not None:
+        for j_, (ci, fn) in enumerate(ART_MAP.items()):   # S-shaped: near the ends, never past them (his order kept)
+            lo_, hi_ = CRANGE[ci]
+            p9[ci] = lo_ + (hi_ - lo_) / (1 + np.exp(-(z[NM0 + 2 * j_] + z[NM0 + 2 * j_ + 1] * feats[fn])))
+    return p9
+
+
+CRANGE = {0: (0.0, 1.0), 1: (-1.0, 1.0), 2: (0.0, 1.0), 5: (0.0, 1.0), 6: (0.0, 1.0)}
+
+
 def pose_full(z, s):
-    """A sound's whole position: the 9 bun controls + the 3 anatomical controls."""
+    """A sound's whole position: the 9 bun controls (the mapped ones from his measured movements)
+    + the 3 anatomical controls."""
     ex = z[EX[s]] if HIS_SRC and len(z) >= NC0 else np.zeros(3)
     sc = z[SC[s]] if HIS_SRC and KC and len(z) >= NP else np.zeros(KC)
-    return np.r_[z[PO[s]], ex, sc]
+    return np.r_[tool_pose(z, z[PO[s]], SPF.get(s)), ex, sc]
 
 
 def area_of(z, p):
     """His tube for a position p (9 or 12 controls): anatomy, shape map, then the anatomical controls."""
+    PALATE[0] = float(z[NPAL]) if HIS_SRC and len(z) >= NP else 0.0
     a0, L, frac, port = tube(p[:9], z[0], z[SH["lar"]])
     dev = idct(np.r_[z[SH["shape"]], np.zeros(NS - NF)], norm="ortho")
     a = a0 * np.exp(dev)
@@ -348,6 +382,9 @@ def resid(z):
         if t["lab"] not in CLOSED:   # an open mouth, physically
             chmin = float(os.environ.get("CHMIN", "0.02"))
             r.append([3000 * max(0, chmin - a[4:].min())])
+            # and a slope back to open even when the tongue is pressed into the roof (gap >= 0.4 mm)
+            g_ = raw_gap(pose_full(z, t["lab"])[:9], z[0], z[SH["lar"]], z)
+            r.append([GAPW * max(0.0, GAPMIN - g_)])
             if os.environ.get("F1GUARD", "") == "1":
                 # acoustically open: the first resonance must stay clear of the sealed-tube
                 # wall resonance (~200 Hz); a sealed mouth collapses onto it
@@ -373,7 +410,7 @@ def resid(z):
             Hm = 20 * np.log10(np.abs(B.tube_H_nose(a, L, RF, frac, port, z[6], z[7]) * B.head_baffle(RF, z[1])) + 1e-12)
             Hm = np.convolve(Hm, RK, mode="same")[RSEL]; d = (Hm - Hm.mean()) - rt
             r.append(RESPW * d / np.sqrt(len(d)) * np.sqrt(NH))
-    if HIS_SRC and ARTW > 0 and len(z) >= NP:   # his articulators as the inversion tool reads them
+    if HIS_SRC and ARTW > 0 and not TOOL and len(z) >= NP:   # his articulators as the inversion tool reads them
         for s_ in SOUNDS:
             f_ = SPF.get(s_)
             if f_ is None:
@@ -387,7 +424,7 @@ def resid(z):
     if HIS_SRC and KC and len(z) >= NP:   # the free shape terms cost more (no named muscle)
         r.append(0.5 * z[NC0:NP])
     dev = idct(np.r_[z[SH["shape"]], np.zeros(NS - NF)], norm="ortho")
-    r.append(float(os.environ.get("SHAPEW", "3")) * dev[::4] / 0.15)     # departures from a normal bun cost (no widened throat as a compensation)
+    r.append(float(os.environ.get("SHAPEW", "1")) * dev[::4] / 0.15)     # departures from a normal bun cost (no widened throat as a compensation)
     if SHARED_SRC:   # his voice's spectrum is smooth
         r.append(0.5 * np.diff(z[GS], 2))
     if SRC2:         # the puff shape may dip, but stays modest
@@ -468,7 +505,7 @@ def _sparc_features():
     return {lab: {k_: float(np.mean([q[k_] for q in v])) for k_ in v[0]} for lab, v in feats.items()}
 
 
-SPF = _sparc_features() if (HIS_SRC and ARTW > 0) else {}
+SPF = _sparc_features() if (HIS_SRC and (ARTW > 0 or TOOL)) else {}
 
 
 def report(z, tag=""):
@@ -483,7 +520,7 @@ def report(z, tag=""):
     print("shape map (x normal bun width, vocal folds -> lips): " + " ".join(f"{np.exp(v):.2f}" for v in dev[::4]))
     names = ["jaw", "body", "front", "tip", "root", "lips", "round", "velum", "larynx"]
     for s in SOUNDS:
-        print(f"  {s:3} " + " ".join(f"{n}={v:.2f}" for n, v in zip(names, z[PO[s]])))
+        print(f"  {s:3} " + " ".join(f"{n}={v:.2f}" for n, v in zip(names, pose_full(z, s)[:9])))
     errs = {}
     for t in T:
         lv, ph, a = tones(z, t); el = np.maximum(lv[1:], FLOOR) - np.maximum(np.nan_to_num(t["level"][1:], nan=FLOOR), FLOOR)

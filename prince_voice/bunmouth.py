@@ -115,6 +115,7 @@ def _g(s, mu, sd):
 @dataclass
 class BunMouth:
     size: float = 1.0                       # x the reference rabbit
+    palate_mm: float = 0.0                  # palate arch raised (mm, added along the hard palate): anatomy, varies between animals
     neck_mm: float = 0.0                    # larynx lower in the neck (reference mm): his ONE adaptation
     extras: bool = False                    # the rejected extra adaptations (cheeks, wider jaw/lips, mobile larynx)
     vestibule_mm: float = 0.0               # laryngeal vestibule (above the folds, below the epiglottis), ref mm
@@ -145,6 +146,8 @@ class BunMouth:
         # tongue torus: a big hump on the back of the tongue (pos 40..56 mm)
         mu = 40.0 + 16.0 * p.front
         gap = gap - p.body * (5.0 if self.extras else 4.2) * _g(mid, mu, 6.5)
+        # the palate's arch: a higher vault over the tongue body and front (anatomy)
+        gap = gap + self.palate_mm * np.clip((mid - 36.0) / 6.0, 0, 1) * np.clip((64.0 - mid) / 4.0, 0, 1)
         # tongue root forward/back widens/narrows the throat
         gap = gap + (p.root * 3.0 * _g(mid, 14.0, 7.0) if self.extras else p.root * 2.5 * _g(mid, 12.0, 6.0))
         # tongue tip up to the ridge behind the incisors
@@ -160,6 +163,7 @@ class BunMouth:
         lipz = mid > REF_LEN - 3.0
         gap = np.where(lipz, 0.2 + (6.5 * p.lips * (0.6 + 0.6 * p.jaw) if self.extras else 4.5 * p.lips), gap)
         width = np.where(lipz, width * (1 - (0.7 if self.extras else 0.45) * p.round), width)
+        self._raw_gap = np.where(lipz, np.inf, gap)   # before clamping: how far the tongue presses into the roof (mm, <0)
         gap = np.maximum(gap, 0.0)
         length = np.diff(s)
         length[-3:] += s_lips_extra / 3
