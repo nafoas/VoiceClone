@@ -122,6 +122,21 @@ def tube_H_nose(a, L, f, frac, port, nlen, damp):
     return Hm
 
 
+def tube_H_from(a, L, f, k, zc_area=None):
+    """Sound at the lips from a noise (pressure) source at section k: turbulence where the air
+    is squeezed. The part of the mouth in front of the source shapes it; behind it, the narrow
+    gap itself (resistance rho*c/area) loads it. Output as flow at the lips x j*omega (radiated)."""
+    import prince_voice.mouth as _PM
+    from prince_voice.mouth import _section_matrices, _radiation, RHO, C
+    w = 2 * np.pi * np.asarray(f, float); n = len(a); ls = np.full(n, L / n)
+    A, Bm, Cm, D = _section_matrices(a, ls, w)
+    P = _radiation(a[-1], w) * (1.0 + 0j); U = np.ones_like(w, dtype=complex)
+    for s_ in range(n - 1, k - 1, -1):
+        P, U = A[s_] * P + Bm[s_] * U, Cm[s_] * P + D[s_] * U
+    Zc = RHO * C / max(zc_area if zc_area else a[max(k - 1, 0)], 1e-4)
+    return 1j * w / (P + Zc * U)
+
+
 def head_baffle(f, radius_cm):
     """A mouth on a small sphere: low frequencies wrap around the head and spread
     everywhere (up to -6 dB on axis vs an infinite wall); highs beam forward.

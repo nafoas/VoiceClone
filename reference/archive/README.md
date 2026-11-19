@@ -88,3 +88,18 @@ soft palate lowered into the passage, lip spread; BUILD_RULES ledger), the "i" o
 its own position, and each recovered cycle's slow level drift removed (his old loudness swells
 no longer replayed). Refit F12. Whole phrase (audibility judge) 6.19 -> 5.87 dB; all bands
 6.94 -> 6.60; old judge 5.96 -> 5.58. Verdict: pending.
+
+## listen3_provisional_consonants.wav (PROVISIONAL: the whole phrase with consonants)
+Da Boss: "provisionally reconstruct the whole thing with consonants ... maybe that's why I'm
+hearing this." Clip phrase, then model. Mouth F13 (anatomical controls + per-sound shape terms +
+measured-mouth guide). New, all from the same mouth (scripts/build/consonants.py):
+- voiced closures: his voice hums on (as long as the clip shows pitch) while the tongue tip closes
+  for "t" (the "n" position, nose shut), heard through the walls; tails match his (~-35 dB)
+- soft s: turbulence at the tongue-front gap, shaped by the mouth in front of it
+- t: a burst where the tip lets go, then breath from the cords through the opening mouth
+- p: his weak p, breath through the lips opening wide
+- noise spectrum from the jet (Strouhal frequency from the soft-voice lung pressure and gap width),
+  plane-wave limit applied as for the voice
+PROVISIONAL: each consonant's loudness over time is matched to the clip (relative to his vowels).
+Brightness centre his/model: t 4.1-4.9/4.5-5 kHz; soft s 4.4-5.2/~7 kHz; p ~2/~4.5 kHz.
+Voiced-sound whole-phrase likeness 5.56 dB. Verdict: pending.

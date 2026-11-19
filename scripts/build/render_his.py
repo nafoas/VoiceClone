@@ -75,6 +75,8 @@ def at_period(c, P):
     return np.interp(np.linspace(0, 1, P, endpoint=False), np.linspace(0, 1, len(c), endpoint=False), c)
 
 
+CONS = os.environ.get("CONS", "1") == "1"   # the consonants (provisional, Da Boss: test whether their absence is the problem)
+TR_VEL = 7
 XF = int(os.environ.get("XF", "4"))   # cycles over which the voice blends when it changes pool
 HOLD = float(os.environ.get("HOLD", "0.4"))   # share of each sound the mouth holds its position (the rest is glide)
 
@@ -127,6 +129,27 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
         poses = pose_track(vs, s0, n, hop)
     nfr = len(poses)
     runs = voiced_runs(vs); RAMP = float(os.environ.get("RAMP", "0.012")); RAMP_OFF = float(os.environ.get("RAMP_OFF", "0.03"))
+    if CONS:   # voiced closures: his voice keeps humming while the mouth closes for the next consonant
+        labs = [q[0] for q in ph]
+        for r_ in runs:
+            b = r_[1]; te = b
+            while te - b < 0.1 and np.interp(te + 0.005, tt, ff0) > 0:
+                te += 0.005
+            if te - b < 0.015:
+                continue
+            v = [q for q in vs if abs(q["e"] - b) < 0.003][0]
+            j = next((i for i, q in enumerate(ph) if q[1] >= b - 0.003 and q[0] not in M.SOUNDS), None)
+            nxt = ph[j][0] if j is not None else None
+            close = M.pose_full(Z, v["lab"]).copy()
+            if nxt in ("_", "tʰ"):            # tongue tip seals at the ridge (the "n" position, nose shut)
+                close = M.pose_full(Z, "n").copy(); close[TR_VEL] = 0.0
+            k0 = int((b - s0) * SR) // hop; k1 = min(nfr - 1, int((te - s0) * SR) // hop)
+            p0 = poses[min(k0, nfr - 1)].copy()
+            for k in range(k0, k1 + 1):
+                u = min(1.0, (k - k0) * hop / SR / 0.015); u = 0.5 - 0.5 * np.cos(np.pi * u)
+                poses[k] = p0 + u * (close - p0)
+            r_[1] = te
+    y = np.zeros(n + NFT + 2000)
     y = np.zeros(n + NFT + 2000)
     for v in vs:                                    # one run of his own cycles per sound
         ins = ff0[(tt >= v["s"]) & (tt <= v["e"]) & (ff0 > 0)]; v["f0"] = float(np.median(ins)) if len(ins) else 250.0
@@ -136,7 +159,7 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
         # instant (between samples where it falls), so no rounding jitter and no restart at sound joins
         i0, i1 = int(np.ceil((a - s0) * SR)), int((b - s0) * SR)
         tn = s0 + np.arange(i0, i1) / SR
-        who = np.array([next((j for j, v in enumerate(vs) if v["s"] - 1e-6 <= q <= v["e"] + 1e-6), 0) for q in tn])
+        who = np.array([max([j for j, v in enumerate(vs) if v["s"] - 1e-6 <= q] or [0]) for q in tn])
         f0 = np.interp(tn, tt, np.where(ff0 > 0, ff0, np.nan))
         bad = ~(np.isfinite(f0) & (f0 > 100) & (f0 < 900)); f0[bad] = np.array([vs[j]["f0"] for j in who])[bad]
         ph = np.cumsum(f0 / SR); k = np.floor(ph).astype(int)
@@ -211,6 +234,9 @@ def main():
         bd = uf(bd, 5); bd -= bd.max()
         print(f"  phrase {pi + 1} breath range {bd.min():.0f}..0 dB")
         y, s0, e0, vs = render_phrase(ph, x, tt, ff0, bank(), (bt, bd))
+        if CONS:   # his consonants, from the same mouth (provisional)
+            import consonants as CN
+            y = y + CN.layer(ph, s0, len(y), x, M, Z, y)
         outs.append((y, s0, e0, vs))
     nz = lambda v: v / np.abs(v).max() * 0.7
     gap = np.zeros(int(0.6 * SR)); pieces = []
