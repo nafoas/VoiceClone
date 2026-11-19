@@ -37,6 +37,15 @@ from prince_voice.bunmouth import BunMouth, Pose  # noqa: E402
 NH = int(os.environ.get("NH", "20")); FLOOR = -58.0; NS = 40; NF = 8
 HUMW = float(os.environ.get("HUMW", "1"))   # weight on his 2nd and 3rd tones vs the 1st (the hum)
 VOICED = ["n", "ã", "ɐ˞", "ɹ", "m", "ũ", "iː"]
+# The "i" ending "munis" (0.79 s, unstressed) is not the stressed "ee" of "peet teet tee": it wants
+# a clearly lower first resonance (his hum there), the ee's do not. SPLIT_I=1 gives it its own position.
+SPLIT_I = os.environ.get("SPLIT_I", "1") == "1"
+if SPLIT_I:
+    VOICED.append("i")
+    for _ph in PHRASES:
+        for _j, _q in enumerate(_ph):
+            if _q[0] == "iː" and abs(_q[1] - 0.79) < 0.005:
+                _ph[_j] = ("i",) + tuple(_q[1:])
 #           jaw        body      front     tip       root      lips       round     velum     larynx
 BOUNDS = {
     "iː": [(0, .45), (.3, 1), (.4, 1), (0, .35), (-1, 1), (.3, 1), (0, 1), (0, .3), (0, 1)],
@@ -47,12 +56,14 @@ BOUNDS = {
     "n":  [(0, .6), (-1, 1), (0, 1), (.92, 1), (-1, 1), (.25, 1), (0, 1), (.3, 1), (0, 1)],
     "m":  [(0, .6), (-1, 1), (0, 1), (0, .5), (-1, 1), (0, .03), (0, 1), (.3, 1), (0, 1)],
 }
+BOUNDS["i"] = BOUNDS["iː"]
 START = {
     "iː": [.2, .6, .6, .05, .8, .9, .3, 0, .8], "ã": [.9, .4, .2, .05, -.6, 1, .1, .3, .3],
     "ɐ˞": [.8, .5, .3, .5, -.5, .6, .1, .05, .5], "ɹ": [.4, .6, .5, .6, 0, .6, .2, .05, .5],
     "ũ": [.15, .75, .1, .05, .5, .2, .9, .2, .5], "n": [.2, .4, .6, 1.0, 0, .5, .2, .6, .5],
     "m": [.2, .4, .5, .05, 0, .0, .3, .6, .5],
 }
+START["i"] = START["iː"]
 CLOSED = {"n", "m"}
 
 
@@ -187,6 +198,8 @@ _cache = {}
 def pad(z):
     """An older solution, extended with the newer body settings at their starting values."""
     z = np.asarray(z, float)
+    if SPLIT_I and len(z) in (NP - 9, NP - 10) and len(z) > PU0 - 9:   # older layout: the "i" starts as the ee
+        z = np.r_[z[: PU0 - 9], z[PO["iː"]], z[PU0 - 9:]]
     return np.r_[z[:NP], Z0[len(z):NP]] if len(z) < NP else z[:NP] if HIS_SRC else z
 
 
@@ -258,6 +271,15 @@ def resid(z):
                 Hd = np.abs(X.tube_H(a, L, ff) / (1j * 2 * np.pi * ff))
                 f1 = ff[int(np.argmax(Hd))]
                 r.append([40.0 * max(0.0, 290.0 - f1) / 290.0])
+    if RESPW > 0:   # his measured mouth response (from the voice recovery), at every frequency, 1/3-octave smooth
+        for t in T:
+            rt = RESP.get((t["lab"], round(t["t"][0], 3)))
+            if rt is None:
+                continue
+            a, L, frac, port, _ = sound_model(z, t["lab"])
+            Hm = 20 * np.log10(np.abs(B.tube_H_nose(a, L, RF, frac, port, z[6], z[7]) * B.head_baffle(RF, z[1])) + 1e-12)
+            Hm = np.convolve(Hm, RK, mode="same")[RSEL]; d = (Hm - Hm.mean()) - rt
+            r.append(RESPW * d / np.sqrt(len(d)) * np.sqrt(NH))
     dev = idct(np.r_[z[SH["shape"]], np.zeros(NS - NF)], norm="ortho")
     r.append(1.0 * dev[::4] / 0.15)     # departures from a normal bun cost a little (preference, not a wall)
     if SHARED_SRC:   # his voice's spectrum is smooth
@@ -265,6 +287,15 @@ def resid(z):
     if SRC2:         # the puff shape may dip, but stays modest
         r.append(0.15 * z[GH])
     return np.concatenate([np.atleast_1d(x) for x in r])
+
+
+RESPW = float(os.environ.get("RESPW", "0"))
+RESP = {}
+if RESPW > 0:
+    _rd = json.loads((ROOT / "models/his_mouth_response.json").read_text())
+    RF = np.array(_rd["f"]); RK = np.ones(13) / 13; RSEL = slice(8, -8, 3)   # ~1/3 octave smoothing
+    for _s in _rd["sounds"]:
+        _T = np.convolve(np.array(_s["T"]), RK, mode="same")[RSEL]; RESP[(_s["lab"], round(_s["s"], 3))] = _T - _T.mean()
 
 
 def report(z, tag=""):

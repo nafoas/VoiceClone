@@ -62,7 +62,11 @@ def bank():
         cyc = []
         for i in ii:
             c = M.his_cycles(d, i)   # his cycles, recovery error averaged away (Da Boss approved)
-            ref = np.median([np.ptp(q) for q in c]); cyc += [q / ref for q in c]   # common level: loudness is the breath's job
+            # loudness is the breath's job: each cycle's slow level drift (from where it was recorded,
+            # ~9 cycles) is taken out; its fast cycle-to-cycle flicker (his shimmer) stays
+            lv = np.log(np.array([np.ptp(q) for q in c]))
+            slow = np.convolve(np.pad(lv, 4, mode="edge"), np.ones(9) / 9, mode="valid")
+            cyc += [q / np.exp(sl) for q, sl in zip(c, slow)]
         B.append(dict(f0=f0, cyc=cyc, order=list(range(len(cyc))) + list(range(len(cyc) - 2, 0, -1)), k=0))
     return B
 
