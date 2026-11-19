@@ -244,6 +244,15 @@ narrows the oropharyngeal isthmus; English /r/ uses throat, palate and lip const
 Also: the "i" ending "munis" (unstressed) now has its own position, separate from the stressed
 "ee" of "peet teet tee": it wants a much lower first resonance (his hum), they do not.
 
+### Per-sound smooth shape terms (Da Boss approved: "Both")
+On top of the bun controls and the three anatomical controls, each sound may bend its tube with
+6 slow smooth terms (log-area DCT along the tube), stored once per sound and gliding between
+sounds like every other control. Not post-processing: it is the shape of his mouth for that
+sound. They cost more than named controls (no muscle named yet), so the fit uses them only where
+they clearly help. To do: find the pattern behind them (which muscles) so they carry over to
+sounds not in the clip. Steady-sound fit: 4.15 -> 4.04 dB. His measured mouth response (from
+the voice recovery, every frequency, 1/3-octave smooth) is an extra guide in the fit (weight 0.3).
+
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
 protrusion; 2.5 cm larynx travel; stamped hum; free per-frame poses; formant
