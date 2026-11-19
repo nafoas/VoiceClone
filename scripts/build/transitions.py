@@ -33,7 +33,8 @@ SR = 48000
 Z = np.array(json.loads((ROOT / os.environ.get("ZFILE", "models/mouth_inverse_H3.json")).read_text())["z"])
 TAG = os.environ.get("TAG", "")
 EDGES = 200 * 2 ** (np.arange(0, 19) / 3); EDGES = EDGES[EDGES <= 12800]
-LIPS, VELUM = 5, 7
+LIPS, VELUM, TIP = 5, 7, 3
+FAST = float(os.environ.get("FAST", "0.015"))   # s: how quickly the tongue tip and lips open or close
 LO = np.array([-0.03, 0.008, -0.03, -0.04]); HI = np.array([0.03, 0.08, 0.03, 0.04]); X0 = np.array([0.0, 0.03, 0.0, 0.0])
 HIS = M.his_voice_tones(nh=60)
 HISB = M.his_voice_bank_tones(nh=60)
@@ -68,7 +69,9 @@ def pose_at(t, vs, bnd, par):
     for b, (i, tb) in enumerate(bnd):
         c, w, dl, dv = par[b]; d = M.pose_full(Z, vs[i + 1]["lab"]) - M.pose_full(Z, vs[i]["lab"])
         lead = np.zeros(len(P)); lead[LIPS] = dl; lead[VELUM] = dv
-        P = P + d * step((t - tb - c - lead) / w)
+        wv = np.full(len(P), w)
+        wv[[TIP, LIPS]] = min(w, FAST)   # tongue tip and lips are fast: closures open and shut in ~15 ms
+        P = P + d * step((t - tb - c - lead) / wv)
     return P
 
 

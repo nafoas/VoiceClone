@@ -314,6 +314,14 @@ def resid(z):
                 Hd = np.abs(X.tube_H(a, L, ff) / (1j * 2 * np.pi * ff))
                 f1 = ff[int(np.argmax(Hd))]
                 r.append([40.0 * max(0.0, 290.0 - f1) / 290.0])
+    if FMTW > 0:   # his resonances (F1, F2) per sound, read the same way from his measured mouth and the tube
+        for t in T:
+            ft = FMT.get((t["lab"], round(t["t"][0], 3)))
+            if ft is None:
+                continue
+            fm = model_formants(z, t["lab"])
+            for j in range(2):
+                r.append([FMTW * (bark(fm[j]) - bark(ft[j])) if len(fm) > j else FMTW * 3.0])
     if RESPW > 0:   # his measured mouth response (from the voice recovery), at every frequency, 1/3-octave smooth
         for t in T:
             rt = RESP.get((t["lab"], round(t["t"][0], 3)))
@@ -336,6 +344,48 @@ def resid(z):
     return np.concatenate([np.atleast_1d(x) for x in r])
 
 
+FMTW = float(os.environ.get("FMTW", "6"))   # weight per Bark of F1/F2 error (vowel identity)
+FMT_SOUNDS = ("ã", "ɐ˞", "ɹ", "ũ", "i", "iː")
+
+
+def his_formants():
+    """His F1, F2 per vowel target: Praat (Burg, 5 formants to 5.5 kHz), median over its middle."""
+    import parselmouth as _pm
+    x, sr = sf.read(ROOT / "reference/source/prince_reference.wav"); x = x.mean(1)
+    Fo = _pm.Sound(x, sr).to_formant_burg(time_step=0.005, max_number_of_formants=5, maximum_formant=5500)
+    out = {}
+    for t in T:
+        if t["lab"] in FMT_SOUNDS:
+            s_, e_ = t["t"]; m_ = (e_ - s_) * 0.25; ts = np.arange(s_ + m_, e_ - m_, 0.005)
+            out[(t["lab"], round(s_, 3))] = [float(np.nanmedian([Fo.get_value_at_time(k, q) for q in ts])) for k in (1, 2)]
+    return out
+
+
+def _lpc_formants(f, P, order=10, fmax=5500.0):
+    """Formants of a power spectrum (as Praat reads them): LPC on 0..fmax, roots."""
+    g = np.linspace(0, fmax, 512); Pg = np.interp(g, f, P)
+    r = np.fft.irfft(Pg)[: order + 1]
+    from scipy.linalg import solve_toeplitz
+    a = np.r_[1, -solve_toeplitz(r[:order], r[1: order + 1])]
+    z_ = np.roots(a); z_ = z_[np.imag(z_) > 0]
+    fr = np.angle(z_) * fmax / np.pi; bw = -np.log(np.abs(z_)) * 2 * fmax / np.pi
+    fr = np.sort(fr[(bw < 700) & (fr > 150)])
+    return fr
+
+
+_FF = np.linspace(20, 5500, 600)
+
+
+def model_formants(z, s):
+    a, L, frac, port, _ = sound_model(z, s)
+    H = B.tube_H_nose(a, L, _FF, frac, port, z[6], z[7]) * B.head_baffle(_FF, z[1])
+    return _lpc_formants(_FF, np.abs(H) ** 2)
+
+
+def bark(f):
+    return 26.81 * f / (1960 + f) - 0.53
+
+
 RESPW = float(os.environ.get("RESPW", "0"))
 RESP = {}
 if RESPW > 0:
@@ -345,8 +395,18 @@ if RESPW > 0:
         _T = np.convolve(np.array(_s["T"]), RK, mode="same")[RSEL]; RESP[(_s["lab"], round(_s["s"], 3))] = _T - _T.mean()
 
 
+FMT = {}
+if FMTW > 0 and HIS_SRC:
+    _fd = json.loads((ROOT / "models/his_mouth_response.json").read_text()); _ff = np.array(_fd["f"])
+    for _s in _fd["sounds"]:
+        _lab = "i" if (SPLIT_I and _s["lab"] == "iː" and abs(_s["s"] - 0.79) < 0.01) else _s["lab"]
+        FMT[(_lab, round(_s["s"], 3))] = _lpc_formants(_ff, 10 ** (np.array(_s["T"]) / 10))[:2].tolist()
+
+
 def report(z, tag=""):
     print(f"\n=== his mouth {tag} ===")
+    if FMT:
+        print("resonances F1/F2 model (his): " + "; ".join(f"{t['lab']} {t['t'][0]:.2f} " + "/".join(f"{q:.0f}" for q in model_formants(z, t['lab'])[:2]) + " (" + "/".join(f"{q:.0f}" for q in FMT[(t['lab'], round(t['t'][0], 3))]) + ")" for t in T if (t['lab'], round(t['t'][0], 3)) in FMT))
     if HIS_SRC and len(z) >= NC0:
         print("anatomical controls (x width): " + "; ".join(f"{s_} " + ", ".join(f"{n} {np.exp(v):.2f}" for n, v in zip(EXNAMES, z[EX[s_]])) for s_ in SOUNDS))
     print((f"nose turbinate surface x{z[NV]:.1f}; " if HIS_SRC and len(z) > NV else "") + f"larynx {z[0] * 0.075:.2f} cm lower; head radius {z[1]:.2f} cm; laryngeal cavity {z[2] * .75:.1f} mm x{z[3]:.2f}, "

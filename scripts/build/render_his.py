@@ -211,9 +211,10 @@ def frame_score(x, y, s0, vs, f0s):
                 continue
             ok = bh > -50
             old = float(np.sqrt(np.mean((np.maximum(bm, -50) - bh)[ok] ** 2)))
-            fl = TR.clip_floor(x, t); ok = bh > fl   # judged wherever his sound stands above the hiss
-            w = np.clip((bh - fl) / 40.0, 0.05, 1.0)[ok]   # each band counts as much as it is audible
-            d = (np.maximum(bm, fl) - bh)[ok]
+            fl = TR.clip_floor(x, t); mb = np.maximum(bm, fl)
+            ok = (bh > fl) | (mb > fl + 3)   # judged where his sound, or the model's, stands above the hiss
+            w = np.clip((np.maximum(bh, mb) - fl) / 40.0, 0.05, 1.0)[ok]   # audible: his or the model's
+            d = (mb - np.maximum(bh, fl))[ok]
             out.append((v["lab"], t, float(np.sqrt(np.sum(w * d ** 2) / np.sum(w))), old, float(np.sqrt(np.mean(d ** 2)))))
     return out
 
