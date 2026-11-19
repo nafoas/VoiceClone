@@ -72,3 +72,12 @@ above the recording's hiss (the old -50 dB cut hid his 7-11 kHz "air"). Refit F6
 Average gap at 7.2 / 9 / 11.4 kHz: listen2d -18 / -14 / -9 dB, now +2 / -2 / +1.
 Whole phrase, new judge 8.41 -> 7.42 dB; old judge 6.04 -> 6.65 (the low mids, 450-900 Hz,
 came out 1-2 dB fuller); tone error 8.0 -> 7.8. Head radius 4.0 -> 3.46 cm. Verdict: pending.
+
+## listen2f_size_losses_pooled_voice.wav (step 3 tightening)
+Clip phrase, then model. Since listen2e: (1) tube losses grow as his small tubes narrow
+(boundary-layer physics; no new setting); (2) the fit's judge weights each band by how far it
+stands above the hiss (the flat judge had traded his hum for faint air); (3) buzzes rendered at
+their exact instants with one continuous fold rhythm (jitter roughly halved where worst); (4) his
+cycles pooled by pitch (three pools), blending over 4 cycles at pool changes, so no voice jumps at
+sound joins. Refit F9. Whole phrase (audibility judge) 6.66 -> 6.19 dB; old judge 6.41 -> 5.96;
+ee hum up 2-5 dB, ee F1 down 30-45 Hz. Verdict: pending.
