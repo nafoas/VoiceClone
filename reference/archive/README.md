@@ -81,3 +81,10 @@ their exact instants with one continuous fold rhythm (jitter roughly halved wher
 cycles pooled by pitch (three pools), blending over 4 cycles at pool changes, so no voice jumps at
 sound joins. Refit F9. Whole phrase (audibility judge) 6.66 -> 6.19 dB; old judge 6.41 -> 5.96;
 ee hum up 2-5 dB, ee F1 down 30-45 Hz. Verdict: pending.
+
+## listen2g_anatomical_controls.wav (step 3 tightening)
+Clip phrase, then model. Since listen2f: three anatomical controls per sound (throat width,
+soft palate lowered into the passage, lip spread; BUILD_RULES ledger), the "i" of "munis" with
+its own position, and each recovered cycle's slow level drift removed (his old loudness swells
+no longer replayed). Refit F12. Whole phrase (audibility judge) 6.19 -> 5.87 dB; all bands
+6.94 -> 6.60; old judge 5.96 -> 5.58. Verdict: pending.
