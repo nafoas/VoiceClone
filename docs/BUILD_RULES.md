@@ -228,6 +228,22 @@ sqrt(3 cm2 / its area). No new setting. Fast capacity tests (everything free): h
 ee's 4.51 -> 4.28; all 12 steady sounds 5.33 -> 5.00 dB tone error; ee upper tones
 (4.5-7 kHz) no longer starved; head radius returns to a small bun's 2.6 cm.
 
+### Three anatomical controls per sound (biology he has; Da Boss: "rooted in biology")
+A test let each sound bend its tube shape freely; the bends it chose fell into three places,
+each a real muscle system. They are now controls of his mouth, set per sound like the jaw and
+tongue, moving smoothly between sounds, with a small cost for using them:
+| Control | Where | Mechanism | Used for |
+|---|---|---|---|
+| throat width | lower/mid throat (12-45% of the tube) | pharyngeal constrictors narrow it; the hyoid lowering widens it (rabbits move the hyoid a lot when chewing and swallowing) | "ã" (tongue root back, x0.5), nasals (wider) |
+| soft palate into the passage | behind the tongue (45-62%) | palatoglossus draws the soft palate down, narrowing the passage between mouth and throat; a rabbit's long soft palate rests low (the epiglottis tucks over it) | "m", "ũ" (x0.4-0.5) |
+| lip spread | lips (88-100%) | levator labii, zygomaticus draw the lips wide | "ee", "i" (x1.4-1.8) |
+Steady-sound fit (everything free): 4.32 -> 4.15 dB. Free per-sound shape corrections (not
+adopted) reached about 0.3 dB further; the rest of their gain has no named mechanism yet.
+Sources: rabbit epiglottis over the soft palate (obligate nose breathing); palatoglossus
+narrows the oropharyngeal isthmus; English /r/ uses throat, palate and lip constrictions (MRI).
+Also: the "i" ending "munis" (unstressed) now has its own position, separate from the stressed
+"ee" of "peet teet tee": it wants a much lower first resonance (his hum), they do not.
+
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
 protrusion; 2.5 cm larynx travel; stamped hum; free per-frame poses; formant

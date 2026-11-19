@@ -166,7 +166,9 @@ elif os.environ.get("SRC", "") == "puff":   # his one pair of vocal cords: one p
     PU = [slice(PU0, PU0 + 5)] * NI
     NP = PU0 + 5
 elif HIS_SRC:
-    PU = [None] * NI; HISC = his_voice_tones(); HISB = his_voice_bank_tones(); NV = PU0; NG = PU0 + 1; NP = PU0 + 2   # + nose turbinate surface, cord-gap opening
+    PU = [None] * NI; HISC = his_voice_tones(); HISB = his_voice_bank_tones(); NV = PU0; NG = PU0 + 1; NX = PU0 + 2   # + nose turbinate surface, cord-gap opening
+    EX = {s_: slice(NX + 3 * i_, NX + 3 * i_ + 3) for i_, s_ in enumerate(SOUNDS)}   # + 3 anatomical controls per sound
+    NP = NX + 3 * len(SOUNDS)
 else:
     PU = [slice(PU0 + 5 * i, PU0 + 5 * i + 5) for i in range(NI)]
     NP = PU0 + 5 * NI
@@ -189,6 +191,8 @@ if SHARED_SRC:
 if HIS_SRC:
     LO[NV], HI[NV], Z0[NV] = 1.0, 25.0, 16.0   # turbinate channels: wall loss x1 (smooth tube) .. x25
     LO[NG], HI[NG], Z0[NG] = -3.5, -1.0, -2.7  # log10 mean cord-gap opening, cm^2 (0.0003 .. 0.1)
+    for s_ in SOUNDS:   # log factors: throat width, soft palate into the passage, lip spread (0 = none)
+        LO[EX[s_]], HI[EX[s_]], Z0[EX[s_]] = [-1.6, -1.6, -0.7], [1.0, 0.3, 1.0], 0.0
 elif not SHARED_SRC:
     for p in PU:
         LO[p], HI[p], Z0[p] = [.3, .3, .3, 0, 0], [.97, .95, 4, 1.5, 1], [.8, .5, 1.0, .2, .5]
@@ -198,7 +202,7 @@ _cache = {}
 def pad(z):
     """An older solution, extended with the newer body settings at their starting values."""
     z = np.asarray(z, float)
-    if SPLIT_I and len(z) in (NP - 9, NP - 10) and len(z) > PU0 - 9:   # older layout: the "i" starts as the ee
+    if SPLIT_I and len(z) in (NX - 9, NX - 10) and len(z) > PU0 - 9:   # older layout: the "i" starts as the ee
         z = np.r_[z[: PU0 - 9], z[PO["iː"]], z[PU0 - 9:]]
     return np.r_[z[:NP], Z0[len(z):NP]] if len(z) < NP else z[:NP] if HIS_SRC else z
 
@@ -227,10 +231,42 @@ def tube(pose9, neck, lar):
     return _cache[key]
 
 
-def sound_model(z, s):
-    a0, L, frac, port = tube(z[PO[s]], z[0], z[SH["lar"]])
+_x = (np.arange(NS) + 0.5) / NS
+
+
+def _win(a, b, e=0.05):
+    return np.clip((_x - a + e) / (2 * e), 0, 1) * np.clip((b + e - _x) / (2 * e), 0, 1)
+
+
+# Where each anatomical control acts along his tube (vocal folds = 0, lips = 1):
+#  soft palate: his long soft palate lowered into the passage behind the tongue (palatoglossus;
+#               a rabbit's palate rests low, sealing the mouth from the airway)
+#  throat:      pharyngeal constrictors narrow it, the hyoid lowering widens it
+#  lip spread:  the lips drawn wide (levator labii, zygomaticus), as for "ee"
+EXW = [_win(0.12, 0.45), _win(0.45, 0.62), _win(0.88, 1.0)]
+EXNAMES = ["throat", "soft palate", "lip spread"]
+
+
+def pose_full(z, s):
+    """A sound's whole position: the 9 bun controls + the 3 anatomical controls."""
+    ex = z[EX[s]] if HIS_SRC and len(z) >= NP else np.zeros(3)
+    return np.r_[z[PO[s]], ex]
+
+
+def area_of(z, p):
+    """His tube for a position p (9 or 12 controls): anatomy, shape map, then the anatomical controls."""
+    a0, L, frac, port = tube(p[:9], z[0], z[SH["lar"]])
     dev = idct(np.r_[z[SH["shape"]], np.zeros(NS - NF)], norm="ortho")
-    return seal(a0 * np.exp(dev), s), L, frac, port, dev
+    a = a0 * np.exp(dev)
+    if len(p) > 9:
+        a = a * np.exp(sum(v * w for v, w in zip(p[9:12], EXW)))
+    return a, L, frac, port
+
+
+def sound_model(z, s):
+    a, L, frac, port = area_of(z, pose_full(z, s))
+    dev = idct(np.r_[z[SH["shape"]], np.zeros(NS - NF)], norm="ortho")
+    return seal(a, s), L, frac, port, dev
 
 
 def tones(z, t):
@@ -280,6 +316,8 @@ def resid(z):
             Hm = 20 * np.log10(np.abs(B.tube_H_nose(a, L, RF, frac, port, z[6], z[7]) * B.head_baffle(RF, z[1])) + 1e-12)
             Hm = np.convolve(Hm, RK, mode="same")[RSEL]; d = (Hm - Hm.mean()) - rt
             r.append(RESPW * d / np.sqrt(len(d)) * np.sqrt(NH))
+    if HIS_SRC and len(z) >= NP:   # each anatomical control costs a little: used only where it earns it
+        r.append(0.3 * z[NX:NP])
     dev = idct(np.r_[z[SH["shape"]], np.zeros(NS - NF)], norm="ortho")
     r.append(1.0 * dev[::4] / 0.15)     # departures from a normal bun cost a little (preference, not a wall)
     if SHARED_SRC:   # his voice's spectrum is smooth
@@ -300,6 +338,8 @@ if RESPW > 0:
 
 def report(z, tag=""):
     print(f"\n=== his mouth {tag} ===")
+    if HIS_SRC and len(z) >= NP:
+        print("anatomical controls (x width): " + "; ".join(f"{s_} " + ", ".join(f"{n} {np.exp(v):.2f}" for n, v in zip(EXNAMES, z[EX[s_]])) for s_ in SOUNDS))
     print((f"nose turbinate surface x{z[NV]:.1f}; " if HIS_SRC and len(z) > NV else "") + f"larynx {z[0] * 0.075:.2f} cm lower; head radius {z[1]:.2f} cm; laryngeal cavity {z[2] * .75:.1f} mm x{z[3]:.2f}, "
           f"inlet {z[4] * .75:.1f} mm x{z[5]:.2f}; nose length x{z[6]:.2f}, damping {z[7]:.2f}")
     dev = idct(np.r_[z[SH["shape"]], np.zeros(NS - NF)], norm="ortho")

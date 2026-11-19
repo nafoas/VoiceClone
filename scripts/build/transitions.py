@@ -48,8 +48,7 @@ _H = {}
 def mouth_mag(pose9, f):
     key = (tuple(np.round(pose9, 2)), round(float(f[0]), 1), len(f))
     if key not in _H:
-        a0, L, frac, port = M.tube(pose9, Z[0], Z[M.SH["lar"]])
-        a = a0 * np.exp(idct(np.r_[Z[M.SH["shape"]], np.zeros(M.NS - M.NF)], norm="ortho"))
+        a, L, frac, port = M.area_of(Z, pose9)
         if pose9[LIPS] < 0.04:
             a = M.seal(a, "m")
         M.body(Z)
@@ -65,10 +64,10 @@ def step(u):
 
 def pose_at(t, vs, bnd, par):
     """Articulator positions at time t: first sound's position + each boundary's smooth step."""
-    P = Z[M.PO[vs[0]["lab"]]].copy()
+    P = M.pose_full(Z, vs[0]["lab"]).copy()
     for b, (i, tb) in enumerate(bnd):
-        c, w, dl, dv = par[b]; d = Z[M.PO[vs[i + 1]["lab"]]] - Z[M.PO[vs[i]["lab"]]]
-        lead = np.zeros(9); lead[LIPS] = dl; lead[VELUM] = dv
+        c, w, dl, dv = par[b]; d = M.pose_full(Z, vs[i + 1]["lab"]) - M.pose_full(Z, vs[i]["lab"])
+        lead = np.zeros(len(P)); lead[LIPS] = dl; lead[VELUM] = dv
         P = P + d * step((t - tb - c - lead) / w)
     return P
 

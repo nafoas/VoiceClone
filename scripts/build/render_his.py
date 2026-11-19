@@ -42,8 +42,7 @@ _ir = {}
 def mouth_ir(pose9, sealed):
     key = (tuple(np.round(pose9, 2)), sealed)
     if key not in _ir:
-        a0, L, frac, port = M.tube(pose9, Z[0], Z[M.SH["lar"]])
-        a = a0 * np.exp(idct(np.r_[Z[M.SH["shape"]], np.zeros(M.NS - M.NF)], norm="ortho"))
+        a, L, frac, port = M.area_of(Z, pose9)
         if sealed:
             a = M.seal(a, "m")
         f = np.maximum(fH, 1.0)
@@ -87,8 +86,8 @@ def pose_track(vs, s0, n, hop):
     knots = []
     for v in vs:
         mid, half = (v["s"] + v["e"]) / 2, (v["e"] - v["s"]) * HOLD / 2
-        knots += [(mid - half, Z[M.PO[v["lab"]]]), (mid + half, Z[M.PO[v["lab"]]])]
-    P = np.zeros((len(t), 9))
+        knots += [(mid - half, M.pose_full(Z, v["lab"])), (mid + half, M.pose_full(Z, v["lab"]))]
+    P = np.zeros((len(t), len(knots[0][1])))
     for i, ti in enumerate(t):
         if ti <= knots[0][0]:
             P[i] = knots[0][1]; continue

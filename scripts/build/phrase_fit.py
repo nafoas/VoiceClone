@@ -32,8 +32,7 @@ tw = json.loads((ROOT / os.environ.get("TWARM", "models/transitions_H3.json")).r
 
 
 def mag(z, pose9, f):
-    a0, L, frac, port = M.tube(pose9, z[0], z[M.SH["lar"]])
-    a = a0 * np.exp(idct(np.r_[z[M.SH["shape"]], np.zeros(M.NS - M.NF)], norm="ortho"))
+    a, L, frac, port = M.area_of(z, pose9)
     if pose9[TR.LIPS] < 0.04:
         a = M.seal(a, "m")
     M.body(z)
@@ -80,9 +79,9 @@ def frame_resid(q):
     for fr in F:
         vs, bnd, b0 = LAYOUT[fr["pi"]]
         TR.Z = z
-        pose = TR.pose_at(fr["t"], vs, bnd, tp[b0: b0 + len(bnd)]) if bnd else z[M.PO[vs[0]["lab"]]]
+        pose = TR.pose_at(fr["t"], vs, bnd, tp[b0: b0 + len(bnd)]) if bnd else M.pose_full(z, vs[0]["lab"])
         if not bnd:   # sounds separated by consonants: each holds its own position
-            pose = z[M.PO[[v for v in vs if v["s"] <= fr["t"] <= v["e"]][0]["lab"]]]
+            pose = M.pose_full(z, [v for v in vs if v["s"] <= fr["t"] <= v["e"]][0]["lab"])
         ch, fl = fr["clip"], fr["floor"]
         if os.environ.get("JUDGE", "hiss") == "old":
             fl = np.full_like(ch, -50.0)
