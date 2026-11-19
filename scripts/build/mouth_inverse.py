@@ -40,6 +40,15 @@ VOICED = ["n", "ã", "ɐ˞", "ɹ", "m", "ũ", "iː"]
 # The "i" ending "munis" (0.79 s, unstressed) is not the stressed "ee" of "peet teet tee": it wants
 # a clearly lower first resonance (his hum there), the ee's do not. SPLIT_I=1 gives it its own position.
 SPLIT_I = os.environ.get("SPLIT_I", "1") == "1"
+# The final open "tee" (2.09 s, long, phrase-final) is more open (his F1 ~530 Hz) than the "ee" of
+# "peet" and "teet" (closed by t, F1 ~400 Hz). SPLIT_E=1 gives it its own position ("iːf").
+SPLIT_E = os.environ.get("SPLIT_E", "0") == "1"
+if SPLIT_E:
+    VOICED.append("iːf")
+    for _ph in PHRASES:
+        for _j, _q in enumerate(_ph):
+            if _q[0] == "iː" and abs(_q[1] - 2.09) < 0.005:
+                _ph[_j] = ("iːf",) + tuple(_q[1:])
 if SPLIT_I:
     VOICED.append("i")
     for _ph in PHRASES:
@@ -56,14 +65,14 @@ BOUNDS = {
     "n":  [(0, .6), (-1, 1), (0, 1), (.92, 1), (-1, 1), (.25, 1), (0, 1), (.3, 1), (0, 1)],
     "m":  [(0, .6), (-1, 1), (0, 1), (0, .5), (-1, 1), (0, .03), (0, 1), (.3, 1), (0, 1)],
 }
-BOUNDS["i"] = BOUNDS["iː"]
+BOUNDS["i"] = BOUNDS["iː"]; BOUNDS["iːf"] = BOUNDS["iː"]
 START = {
     "iː": [.2, .6, .6, .05, .8, .9, .3, 0, .8], "ã": [.9, .4, .2, .05, -.6, 1, .1, .3, .3],
     "ɐ˞": [.8, .5, .3, .5, -.5, .6, .1, .05, .5], "ɹ": [.4, .6, .5, .6, 0, .6, .2, .05, .5],
     "ũ": [.15, .75, .1, .05, .5, .2, .9, .2, .5], "n": [.2, .4, .6, 1.0, 0, .5, .2, .6, .5],
     "m": [.2, .4, .5, .05, 0, .0, .3, .6, .5],
 }
-START["i"] = START["iː"]
+START["i"] = START["iː"]; START["iːf"] = START["iː"]
 CLOSED = {"n", "m"}
 
 
@@ -206,6 +215,17 @@ _cache = {}
 def pad(z):
     """An older solution, extended with the newer body settings at their starting values."""
     z = np.asarray(z, float)
+    if HIS_SRC and SPLIT_E:   # a layout from before the final "tee" had its own position: it starts as the ee
+        old = [q for q in SOUNDS if q != "iːf"]; no = len(old)
+        if len(z) == NSH + 9 * no + 2 + 3 * no + KC * no:
+            po = lambda q: z[NSH + 9 * old.index(q): NSH + 9 * old.index(q) + 9]
+            ex = lambda q: z[NSH + 11 * no + 2 + 3 * old.index(q) - 2 * no: NSH + 11 * no + 2 + 3 * old.index(q) - 2 * no + 3]
+            nx0 = NSH + 9 * no + 2; sc0 = nx0 + 3 * no
+            ex = lambda q: z[nx0 + 3 * old.index(q): nx0 + 3 * old.index(q) + 3]
+            sc = lambda q: z[sc0 + KC * old.index(q): sc0 + KC * old.index(q) + KC]
+            m = lambda q: "iː" if q == "iːf" else q
+            z = np.r_[z[:NSH], np.concatenate([po(m(q)) for q in SOUNDS]), z[NSH + 9 * no: nx0],
+                      np.concatenate([ex(m(q)) for q in SOUNDS]), np.concatenate([sc(m(q)) for q in SOUNDS])]
     if SPLIT_I and len(z) in (NX - 9, NX - 10) and len(z) > PU0 - 9:   # older layout: the "i" starts as the ee
         z = np.r_[z[: PU0 - 9], z[PO["iː"]], z[PU0 - 9:]]
     return np.r_[z[:NP], Z0[len(z):NP]] if len(z) < NP else z[:NP] if HIS_SRC else z
@@ -345,7 +365,7 @@ def resid(z):
 
 
 FMTW = float(os.environ.get("FMTW", "6"))   # weight per Bark of F1/F2 error (vowel identity)
-FMT_SOUNDS = ("ã", "ɐ˞", "ɹ", "ũ", "i", "iː")
+FMT_SOUNDS = ("ã", "ɐ˞", "ɹ", "ũ", "i", "iː", "iːf")
 
 
 def his_formants():
@@ -400,6 +420,7 @@ if FMTW > 0 and HIS_SRC:
     _fd = json.loads((ROOT / "models/his_mouth_response.json").read_text()); _ff = np.array(_fd["f"])
     for _s in _fd["sounds"]:
         _lab = "i" if (SPLIT_I and _s["lab"] == "iː" and abs(_s["s"] - 0.79) < 0.01) else _s["lab"]
+        _lab = "iːf" if (SPLIT_E and _s["lab"] == "iː" and abs(_s["s"] - 2.09) < 0.01) else _lab
         FMT[(_lab, round(_s["s"], 3))] = _lpc_formants(_ff, 10 ** (np.array(_s["T"]) / 10))[:2].tolist()
 
 

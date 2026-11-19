@@ -103,3 +103,15 @@ measured-mouth guide). New, all from the same mouth (scripts/build/consonants.py
 PROVISIONAL: each consonant's loudness over time is matched to the clip (relative to his vowels).
 Brightness centre his/model: t 4.1-4.9/4.5-5 kHz; soft s 4.4-5.2/~7 kHz; p ~2/~4.5 kHz.
 Voiced-sound whole-phrase likeness 5.56 dB. Verdict: pending.
+
+## listen3b_consonants_resonances.wav (PROVISIONAL, with consonants)
+After Da Boss on listen3 ("La La Lillies", "Kekeke", higher/tinny/monotone, static buzz, no warmth):
+- fast tongue tip and lips (closures open/shut in ~15 ms; the slow 40-70 ms glides made n sound like l)
+- "t" before "ee": hiss where the tongue blade lets go at the front palate, then breath (was breath
+  shaped by the "ee" into one mid peak, heard as "k"); turbulence falls ~12 dB/octave above its jet
+  frequency; t centre 5.3-6.2 kHz (his 4.7-4.9), soft s 4.8-5.9 (3.6-5.2), p 2.2-3.3 (~2)
+- the fit now targets his resonances (F1/F2, read the same way from his measured mouth and the tube)
+- the judge counts audible excess (a buzz where he is quiet) as well as shortfall
+Refit F14. Pitch identical to his. Whole phrase (current judge) listen3 6.33 -> 6.12 dB.
+NOT fixed: nasal buzz (his voice in hums has weak upper tones; the model's voice is recovered from
+open vowels only), warmth of the first "ee" and "ã". Verdict: pending.
