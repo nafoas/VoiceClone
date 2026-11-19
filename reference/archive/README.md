@@ -123,3 +123,10 @@ spike in the first "t" hiss ~30 dB above everything; the file scales each phrase
 are now played at the same loudness (rms over his voiced sounds) instead of the same peak (the
 model's voice is a little peakier, so it always played 1-2 dB quieter than the clip). Same mouth
 (F14) as listen3b. Verdict: pending.
+
+## ab_previous_vs_his_movements.wav (A/B for Da Boss)
+Per phrase: the clip, then the previous mouth (listen3c, F14), then the mouth driven by his measured
+movements (inversion tool, SPARC: jaw, tongue height, tongue forward, lips, rounding come from his
+movements; the mouth's anatomy and conversions fitted around them; refit T2). Both with consonants.
+Scores say the new one is worse (whole phrase 6.1 -> 7.9 dB; the "i" of "munis" nearly closes, the
+middle "n" and "ũ" worse). Your ear decides. Verdict: pending.
