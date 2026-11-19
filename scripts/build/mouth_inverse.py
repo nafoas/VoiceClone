@@ -105,7 +105,13 @@ PO = {s: slice(NSH + 9 * i, NSH + 9 * i + 9) for i, s in enumerate(SOUNDS)}
 PU0 = NSH + 9 * len(SOUNDS)
 SHARED_SRC = os.environ.get("SRC", "") in ("shared", "shared2")
 HIS_SRC = os.environ.get("SRC", "") == "his"
-KC = int(os.environ.get("KC", "6"))   # per-sound smooth shape terms (Da Boss approved); 0 = none     # his real voice, recovered from the clip (PLAN step 1), held fixed
+KC = int(os.environ.get("KC", "0"))
+# The inversion tool (SPARC, docs/INVERSION_FINDINGS.md) reads his articulators from the clip. Each
+# mapped bun control follows its pattern across sounds: control = offset + scale * feature (scale >= 0).
+#   control index : feature (from the tool's 12 channels, per sound, mean over the sound)
+ART_MAP = {0: "jaw", 1: "tbody_y", 2: "tbody_fwd", 5: "lip_gap", 6: "lip_fwd"}   # tip not mapped: the tool's tip rides with the tongue body
+ARTW = float(os.environ.get("ARTW", "8"))
+ARTW_LIP = float(os.environ.get("ARTW_LIP", "1"))   # extra weight on the lips (both tools agree on them)   # per-sound free bends: off (compensations; the inversion tools give real targets)     # his real voice, recovered from the clip (PLAN step 1), held fixed
 
 
 CYC_AVG = int(os.environ.get("CYC_AVG", "3"))   # Da Boss approved: each cycle averaged with its neighbours
@@ -180,7 +186,9 @@ elif HIS_SRC:
     EX = {s_: slice(NX + 3 * i_, NX + 3 * i_ + 3) for i_, s_ in enumerate(SOUNDS)}   # + 3 anatomical controls per sound
     NC0 = NX + 3 * len(SOUNDS)
     SC = {s_: slice(NC0 + KC * i_, NC0 + KC * i_ + KC) for i_, s_ in enumerate(SOUNDS)}   # + KC smooth shape terms per sound
-    NP = NC0 + KC * len(SOUNDS)
+    NM0 = NC0 + KC * len(SOUNDS)
+    NLW = NM0 + 2 * len(ART_MAP)   # + per mapped control: offset and scale from the inversion tool's units
+    NP = NLW + 1                   # + his mouth opening's width (anatomy, shared): a rabbit's mouth is a narrow slit
 else:
     PU = [slice(PU0 + 5 * i, PU0 + 5 * i + 5) for i in range(NI)]
     NP = PU0 + 5 * NI
@@ -206,6 +214,11 @@ if HIS_SRC:
     for s_ in SOUNDS:   # log factors: throat width, soft palate into the passage, lip spread (0 = none)
         LO[EX[s_]], HI[EX[s_]], Z0[EX[s_]] = [-1.6, -1.6, -0.7], [1.0, 0.3, 1.0], 0.0
         LO[SC[s_]], HI[SC[s_]], Z0[SC[s_]] = -2.5, 2.5, 0.0
+        LO[EX[s_].start + 2], HI[EX[s_].start + 2] = -1e-4, 1e-4   # no lip spread: both tools say his lips narrow or round, never spread
+    LO[NLW], HI[NLW], Z0[NLW] = np.log(0.1), np.log(1.2), 0.0   # log width factor of the lip opening
+    for j_ in range(len(ART_MAP)):
+        LO[NM0 + 2 * j_], HI[NM0 + 2 * j_], Z0[NM0 + 2 * j_] = -3.0, 3.0, 0.3
+        LO[NM0 + 2 * j_ + 1], HI[NM0 + 2 * j_ + 1], Z0[NM0 + 2 * j_ + 1] = 0.15, 1.0, 0.25   # a real scale: his differences must show
 elif not SHARED_SRC:
     for p in PU:
         LO[p], HI[p], Z0[p] = [.3, .3, .3, 0, 0], [.97, .95, 4, 1.5, 1], [.8, .5, 1.0, .2, .5]
@@ -226,6 +239,12 @@ def pad(z):
             m = lambda q: "iː" if q == "iːf" else q
             z = np.r_[z[:NSH], np.concatenate([po(m(q)) for q in SOUNDS]), z[NSH + 9 * no: nx0],
                       np.concatenate([ex(m(q)) for q in SOUNDS]), np.concatenate([sc(m(q)) for q in SOUNDS])]
+    if HIS_SRC and len(z) == NC0 + 6 * len(SOUNDS) and KC == 0:   # layout with 6 free bends per sound: dropped
+        z = z[:NC0]
+    if HIS_SRC and len(z) >= NC0:   # lip spread off
+        z = z.copy()
+        for s_ in SOUNDS:
+            z[EX[s_].start + 2] = 0.0
     if SPLIT_I and len(z) in (NX - 9, NX - 10) and len(z) > PU0 - 9:   # older layout: the "i" starts as the ee
         z = np.r_[z[: PU0 - 9], z[PO["iː"]], z[PU0 - 9:]]
     return np.r_[z[:NP], Z0[len(z):NP]] if len(z) < NP else z[:NP] if HIS_SRC else z
@@ -269,6 +288,7 @@ def _win(a, b, e=0.05):
 #  lip spread:  the lips drawn wide (levator labii, zygomaticus), as for "ee"
 EXW = [_win(0.12, 0.45), _win(0.45, 0.62), _win(0.88, 1.0)]
 EXNAMES = ["throat", "soft palate", "lip spread"]
+LIPW = _win(0.965, 1.0, 0.02)
 
 
 def pose_full(z, s):
@@ -285,6 +305,8 @@ def area_of(z, p):
     a = a0 * np.exp(dev)
     if len(p) > 9:
         a = a * np.exp(sum(v * w for v, w in zip(p[9:12], EXW)))
+    if HIS_SRC and len(z) >= NP:   # his mouth opening's width (anatomy): the last ~3 mm of the tube
+        a = a * np.exp(z[NLW] * LIPW)
     if len(p) > 12 and np.any(p[12:]):   # the sound's own smooth shape (a few slow bends along the tube)
         a = a * np.exp(idct(np.r_[p[12:], np.zeros(NS - len(p[12:]))], norm="ortho"))
     return a, L, frac, port
@@ -351,12 +373,21 @@ def resid(z):
             Hm = 20 * np.log10(np.abs(B.tube_H_nose(a, L, RF, frac, port, z[6], z[7]) * B.head_baffle(RF, z[1])) + 1e-12)
             Hm = np.convolve(Hm, RK, mode="same")[RSEL]; d = (Hm - Hm.mean()) - rt
             r.append(RESPW * d / np.sqrt(len(d)) * np.sqrt(NH))
+    if HIS_SRC and ARTW > 0 and len(z) >= NP:   # his articulators as the inversion tool reads them
+        for s_ in SOUNDS:
+            f_ = SPF.get(s_)
+            if f_ is None:
+                continue
+            p_ = z[PO[s_]]
+            for j_, (ci, fn) in enumerate(ART_MAP.items()):
+                a_, b_ = z[NM0 + 2 * j_], z[NM0 + 2 * j_ + 1]
+                r.append([ARTW * (ARTW_LIP if ci in (5, 6) else 1.0) * (p_[ci] - (a_ + b_ * f_[fn]))])
     if HIS_SRC and len(z) >= NC0:   # each anatomical control costs a little: used only where it earns it
         r.append(0.3 * z[NX:NC0])
     if HIS_SRC and KC and len(z) >= NP:   # the free shape terms cost more (no named muscle)
         r.append(0.5 * z[NC0:NP])
     dev = idct(np.r_[z[SH["shape"]], np.zeros(NS - NF)], norm="ortho")
-    r.append(1.0 * dev[::4] / 0.15)     # departures from a normal bun cost a little (preference, not a wall)
+    r.append(float(os.environ.get("SHAPEW", "3")) * dev[::4] / 0.15)     # departures from a normal bun cost (no widened throat as a compensation)
     if SHARED_SRC:   # his voice's spectrum is smooth
         r.append(0.5 * np.diff(z[GS], 2))
     if SRC2:         # the puff shape may dip, but stays modest
@@ -422,6 +453,22 @@ if FMTW > 0 and HIS_SRC:
         _lab = "i" if (SPLIT_I and _s["lab"] == "iː" and abs(_s["s"] - 0.79) < 0.01) else _s["lab"]
         _lab = "iːf" if (SPLIT_E and _s["lab"] == "iː" and abs(_s["s"] - 2.09) < 0.01) else _lab
         FMT[(_lab, round(_s["s"], 3))] = _lpc_formants(_ff, 10 ** (np.array(_s["T"]) / 10))[:2].tolist()
+
+
+def _sparc_features():
+    d = np.load(ROOT / "models/sparc_articulation.npz"); E = d["ema"]; t = np.arange(len(E)) * 0.02
+    feats = {}
+    for tg in T:
+        s_, e_ = tg["t"]; k = (t >= s_) & (t < e_)
+        if not k.any():
+            continue
+        m = E[k].mean(0)
+        f = dict(jaw=-m[7], tbody_y=m[3], tbody_fwd=-m[2], ttip_y=m[5], lip_gap=m[9] - m[11], lip_fwd=-(m[8] + m[10]) / 2)
+        feats.setdefault(tg["lab"], []).append(f)
+    return {lab: {k_: float(np.mean([q[k_] for q in v])) for k_ in v[0]} for lab, v in feats.items()}
+
+
+SPF = _sparc_features() if (HIS_SRC and ARTW > 0) else {}
 
 
 def report(z, tag=""):

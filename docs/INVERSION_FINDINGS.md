@@ -45,3 +45,19 @@ vowel colouring ("ee" -> "eh", "r"/"m" -> "l"). Next, with Da Boss's go-ahead:
 2. Keep the throat from being widened as a compensation.
 3. Use SPARC's timing (when each closure and release happens) for the movement between sounds.
 4. Refit only within those limits, and check each vowel by ear before anything else.
+
+## Trying to use it (2026-11-19)
+- Tying all mapped bun controls to the tool's readings (jaw, tongue height, tongue forward, lip opening,
+  rounding) with a straight-line conversion: the fit squeezes the conversion to ~0 for rounding and
+  tongue forward/back and overrides the tool (rounds the lips for "ee"). Forcing real scales: it still
+  overrides. Setting the controls to the tool's values outright, or within +-0.15: the "i" of "munis" and
+  the "ɹ" seal shut against the palate, "ũ" loses its hum; steady-sound error 4.2 -> 6.3-7.1 dB.
+- Reading: the tool reads a human mouth in human units; the bun mouth's tongue torus, jaw and palate
+  interact differently, so tongue readings do not convert by a straight line. Lips are the most
+  comparable articulator, and both tools agree on them.
+- Recommendation (awaiting Da Boss): use the tool only where it is trustworthy (the lip rules as firm
+  constraints; its timing of closures and releases); leave the tongue to the fit within the bun's
+  geometry; check by ear.
+- Code: mouth_inverse ARTW (tool-following weight; 0 = off), lip spread removed, free bends off (KC=0),
+  shape-map preference x3, shared mouth-opening width (fit left it at x0.95). The rendering mouth is
+  unchanged (F14).
