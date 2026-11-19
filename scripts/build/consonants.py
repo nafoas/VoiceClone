@@ -84,11 +84,10 @@ def layer(ph, s0, n, x, M, Z, ref, seed=7):
         # loudness over time matched to his (provisional), 10 ms frames, above 1 kHz
         i0, i1 = max(0, int((a - s0) * SR)), min(n, int((b - s0) * SR))
         hb = _band(x[int((s0) * SR) + i0: int((s0) * SR) + i1]) * kk; mb = _band(seg[i0:i1])
-        g = np.zeros(i1 - i0)
-        for c in range(0, i1 - i0, hop):
-            w = slice(max(0, c - hop), min(i1 - i0, c + hop))
-            g[c: c + hop] = np.sqrt(np.mean(hb[w] ** 2) / (np.mean(mb[w] ** 2) + 1e-20))
-        g = np.convolve(g, np.ones(hop) / hop, mode="same")            # smooth (5 ms)
+        sm = lambda q: np.convolve(q ** 2, np.hanning(4 * hop) / np.hanning(4 * hop).sum(), mode="same")   # ~20 ms energy
+        eh, em = sm(hb), sm(mb)
+        g = np.sqrt(eh / np.maximum(em, 1e-3 * em.max()))               # never divide by a near-silent edge
+        g = np.minimum(g, 4 * np.sqrt(eh.max() / em.max()))
         fade = np.minimum(1, np.minimum(np.arange(i1 - i0), np.arange(i1 - i0)[::-1]) / (0.004 * SR))
         y[i0:i1] += seg[i0:i1] * g * fade
     return y[:n]

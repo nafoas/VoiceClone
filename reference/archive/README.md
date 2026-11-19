@@ -115,3 +115,11 @@ After Da Boss on listen3 ("La La Lillies", "Kekeke", higher/tinny/monotone, stat
 Refit F14. Pitch identical to his. Whole phrase (current judge) listen3 6.33 -> 6.12 dB.
 NOT fixed: nasal buzz (his voice in hums has weak upper tones; the model's voice is recovered from
 open vowels only), warmth of the first "ee" and "ã". Verdict: pending.
+
+## listen3c_fixed_spike_same_loudness.wav (listen3b, repaired)
+listen3b had a bug: the consonant loudness matching divided by a near-silent frame edge and made a
+spike in the first "t" hiss ~30 dB above everything; the file scales each phrase by its peak, so
+"peet teet tee" played ~30 dB too quiet. Fixed (smoothed energies, capped gain). Also, clip and model
+are now played at the same loudness (rms over his voiced sounds) instead of the same peak (the
+model's voice is a little peakier, so it always played 1-2 dB quieter than the clip). Same mouth
+(F14) as listen3b. Verdict: pending.

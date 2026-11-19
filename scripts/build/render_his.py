@@ -241,8 +241,12 @@ def main():
         outs.append((y, s0, e0, vs))
     nz = lambda v: v / np.abs(v).max() * 0.7
     gap = np.zeros(int(0.6 * SR)); pieces = []
-    for y, s0, e0, _ in outs:
-        pieces += [nz(x[int(s0 * SR): int(e0 * SR)]), gap, nz(y), gap, gap]
+    for y, s0, e0, vs_ in outs:   # played at the same loudness (rms over his voiced sounds), not the same peak
+        xs = x[int(s0 * SR): int(e0 * SR)]
+        rx = np.sqrt(np.mean(np.concatenate([x[int(v["s"] * SR): int(v["e"] * SR)] for v in vs_]) ** 2))
+        ry = np.sqrt(np.mean(np.concatenate([y[int((v["s"] - s0) * SR): int((v["e"] - s0) * SR)] for v in vs_]) ** 2))
+        k = 0.7 / max(np.abs(xs).max(), np.abs(y).max() * rx / ry)
+        pieces += [xs * k, gap, y * rx / ry * k, gap, gap]
     sf.write(ROOT / f"out/build/render_his{TAG}_clip_vs_model.wav", np.concatenate(pieces), SR)
     sf.write(ROOT / f"out/build/render_his{TAG}_model.wav", np.concatenate([q for y, *_ in outs for q in (nz(y), gap)]), SR)
     np.save(ROOT / f"out/build/render_his{TAG}_outs.npy", np.array([dict(y=y, s0=s0, e0=e0, vs=vs) for y, s0, e0, vs in outs], dtype=object), allow_pickle=True)
