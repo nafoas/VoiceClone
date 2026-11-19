@@ -89,8 +89,8 @@ def frame_resid(q):
         ok = (ch > fl) | (mb > fl + 3)   # judged where his sound, or the model's, stands above the hiss
         # each band counts as much as it is audible, his or the model's (an excess he lacks is heard too)
         w = np.clip((np.maximum(ch, mb) - fl) / 40.0, 0.05, 1.0) if os.environ.get("JUDGE", "hiss") != "old" else np.ones_like(ch)
-        w = w[ok]
-        r.append((mb - np.maximum(ch, fl))[ok] * np.sqrt(w / w.sum()))
+        w = np.where(ok, w, 0.0)        # every band kept (fixed length); unheard ones weigh nothing
+        r.append((mb - np.maximum(ch, fl)) * np.sqrt(w / max(w.sum(), 1e-9)))
     return np.concatenate(r)
 
 
