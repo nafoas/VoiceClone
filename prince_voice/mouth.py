@@ -37,6 +37,11 @@ def _vtl():
 # soft walls absorb (damping); wall_m: how much the walls yield (sets the closed-
 # tract floor resonance); visc: air friction at the walls. 1.0 = human.
 TISSUE = dict(wall_r=1.0, wall_m=1.0, visc=1.0)
+# Boundary-layer (viscous + heat) loss per unit length grows with wall perimeter over area,
+# i.e. as 1/radius. Sondhi & Schroeter's constant is for human-sized tubes; with AREA_LOSS on,
+# each section's loss is scaled by sqrt(LOSS_REF_AREA / its area) (off = the old constant loss).
+AREA_LOSS = False
+LOSS_REF_AREA = 3.0   # cm^2, a typical human vocal-tract cross-section
 
 
 def _section_matrices(area, length, w):
@@ -45,6 +50,8 @@ def _section_matrices(area, length, w):
     jw = 1j * w[None, :]
     a, b, w0sq, q = (130 * np.pi * TISSUE["wall_r"], (30 * np.pi) ** 2, (406 * np.pi) ** 2 * TISSUE["wall_m"] ** 2,
                      4.0 * TISSUE["visc"])
+    if AREA_LOSS:
+        q = q * np.sqrt(LOSS_REF_AREA / np.maximum(np.asarray(area, float), 1e-4))[:, None]
     alpha = np.sqrt(jw * q)
     beta = jw * w0sq / ((jw + a) * jw + b) + alpha
     gam = np.sqrt((alpha + jw) / (beta + jw))

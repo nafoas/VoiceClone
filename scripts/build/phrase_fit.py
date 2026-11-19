@@ -98,6 +98,43 @@ def resid(q):
     return np.r_[M.resid(z), FW * 6.0 * frame_resid(q)]
 
 
+_last = {}
+
+
+def resid_c(q):
+    """resid, remembering the last point (the parallel Jacobian reuses it)."""
+    k = q.tobytes()
+    if k not in _last:
+        _last.clear(); _last[k] = resid(q)
+    return _last[k]
+
+
+def _col(args):
+    q, i, h = args
+    qq = q.copy(); qq[i] += h
+    return (resid(qq) - resid_c(q)) / h
+
+
+def jac(q):
+    """Forward differences, one column per unknown, spread over the machine's processors."""
+    h = 1e-3 * np.maximum(1.0, np.abs(q))
+    h = np.where(q + h > HI, -h, h)          # step inward at an upper bound
+    f0 = resid_c(q)
+    with _POOL() as pool:
+        cols = pool.map(_col, [(q, i, h[i]) for i in range(len(q))], chunksize=4)
+    _N[0] += 1
+    print(f"  step {_N[0]}: whole-phrase {np.sqrt(np.sum(frame_resid(q) ** 2) / len(F)):.3f} dB", flush=True)
+    return np.array(cols).T
+
+
+_N = [0]
+
+
+def _POOL():
+    import multiprocessing as mp
+    return mp.get_context("fork").Pool(int(os.environ.get("NPROC", str(os.cpu_count()))))
+
+
 def score(q):
     fr = frame_resid(q); n = len(F)
     return float(np.sqrt(np.sum(fr ** 2) / n))
@@ -106,7 +143,7 @@ def score(q):
 def main():
     q0 = np.clip(np.r_[z0, TP], LO + 1e-6, HI - 1e-6)
     print(f"{len(F)} frames, {len(q0)} unknowns; whole-phrase likeness at start {score(q0):.2f} dB", flush=True)
-    r = least_squares(resid, q0, bounds=(LO, HI), method="trf", max_nfev=int(os.environ.get("NFEV", "120")), diff_step=1e-3,
+    r = least_squares(resid_c, q0, jac=jac, bounds=(LO, HI), method="trf", max_nfev=int(os.environ.get("NFEV", "120")),
                       x_scale="jac", xtol=1e-12, ftol=1e-10, verbose=0)
     q = r.x; z, tp = unpack(q)
     print(f"whole-phrase likeness after {score(q):.2f} dB (nfev {r.nfev})", flush=True)

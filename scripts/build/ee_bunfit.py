@@ -73,6 +73,9 @@ NOSE_SURF = 1.0   # turbinate surface: the nasal passage's wall losses vs a smoo
 GLOTTIS_AG = 0.0  # mean opening of the vocal-cord gap while voicing (cm^2); 0 = cords as a closed wall
 PS_SOFT = 8000.0  # lung pressure behind the cords, dyn/cm^2 (0.8 kPa: soft, relaxed voice; later set by effort)
 FOLD_T = 0.15     # depth of the gap through the cords (cm), small-bun folds
+import os as _os
+import prince_voice.mouth as _PMm
+_PMm.AREA_LOSS = _os.environ.get("AREA_LOSS", "1") == "1"   # losses grow as his small tubes narrow (physics)
 WALLS = True      # his yielding walls (cheeks, throat) radiate the sound that moves them
 
 
