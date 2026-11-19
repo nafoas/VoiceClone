@@ -95,7 +95,8 @@ NSH = 8 + NF
 PO = {s: slice(NSH + 9 * i, NSH + 9 * i + 9) for i, s in enumerate(SOUNDS)}
 PU0 = NSH + 9 * len(SOUNDS)
 SHARED_SRC = os.environ.get("SRC", "") in ("shared", "shared2")
-HIS_SRC = os.environ.get("SRC", "") == "his"     # his real voice, recovered from the clip (PLAN step 1), held fixed
+HIS_SRC = os.environ.get("SRC", "") == "his"
+KC = int(os.environ.get("KC", "6"))   # per-sound smooth shape terms (Da Boss approved); 0 = none     # his real voice, recovered from the clip (PLAN step 1), held fixed
 
 
 CYC_AVG = int(os.environ.get("CYC_AVG", "3"))   # Da Boss approved: each cycle averaged with its neighbours
@@ -168,7 +169,9 @@ elif os.environ.get("SRC", "") == "puff":   # his one pair of vocal cords: one p
 elif HIS_SRC:
     PU = [None] * NI; HISC = his_voice_tones(); HISB = his_voice_bank_tones(); NV = PU0; NG = PU0 + 1; NX = PU0 + 2   # + nose turbinate surface, cord-gap opening
     EX = {s_: slice(NX + 3 * i_, NX + 3 * i_ + 3) for i_, s_ in enumerate(SOUNDS)}   # + 3 anatomical controls per sound
-    NP = NX + 3 * len(SOUNDS)
+    NC0 = NX + 3 * len(SOUNDS)
+    SC = {s_: slice(NC0 + KC * i_, NC0 + KC * i_ + KC) for i_, s_ in enumerate(SOUNDS)}   # + KC smooth shape terms per sound
+    NP = NC0 + KC * len(SOUNDS)
 else:
     PU = [slice(PU0 + 5 * i, PU0 + 5 * i + 5) for i in range(NI)]
     NP = PU0 + 5 * NI
@@ -193,6 +196,7 @@ if HIS_SRC:
     LO[NG], HI[NG], Z0[NG] = -3.5, -1.0, -2.7  # log10 mean cord-gap opening, cm^2 (0.0003 .. 0.1)
     for s_ in SOUNDS:   # log factors: throat width, soft palate into the passage, lip spread (0 = none)
         LO[EX[s_]], HI[EX[s_]], Z0[EX[s_]] = [-1.6, -1.6, -0.7], [1.0, 0.3, 1.0], 0.0
+        LO[SC[s_]], HI[SC[s_]], Z0[SC[s_]] = -2.5, 2.5, 0.0
 elif not SHARED_SRC:
     for p in PU:
         LO[p], HI[p], Z0[p] = [.3, .3, .3, 0, 0], [.97, .95, 4, 1.5, 1], [.8, .5, 1.0, .2, .5]
@@ -249,8 +253,9 @@ EXNAMES = ["throat", "soft palate", "lip spread"]
 
 def pose_full(z, s):
     """A sound's whole position: the 9 bun controls + the 3 anatomical controls."""
-    ex = z[EX[s]] if HIS_SRC and len(z) >= NP else np.zeros(3)
-    return np.r_[z[PO[s]], ex]
+    ex = z[EX[s]] if HIS_SRC and len(z) >= NC0 else np.zeros(3)
+    sc = z[SC[s]] if HIS_SRC and KC and len(z) >= NP else np.zeros(KC)
+    return np.r_[z[PO[s]], ex, sc]
 
 
 def area_of(z, p):
@@ -260,6 +265,8 @@ def area_of(z, p):
     a = a0 * np.exp(dev)
     if len(p) > 9:
         a = a * np.exp(sum(v * w for v, w in zip(p[9:12], EXW)))
+    if len(p) > 12 and np.any(p[12:]):   # the sound's own smooth shape (a few slow bends along the tube)
+        a = a * np.exp(idct(np.r_[p[12:], np.zeros(NS - len(p[12:]))], norm="ortho"))
     return a, L, frac, port
 
 
@@ -316,8 +323,10 @@ def resid(z):
             Hm = 20 * np.log10(np.abs(B.tube_H_nose(a, L, RF, frac, port, z[6], z[7]) * B.head_baffle(RF, z[1])) + 1e-12)
             Hm = np.convolve(Hm, RK, mode="same")[RSEL]; d = (Hm - Hm.mean()) - rt
             r.append(RESPW * d / np.sqrt(len(d)) * np.sqrt(NH))
-    if HIS_SRC and len(z) >= NP:   # each anatomical control costs a little: used only where it earns it
-        r.append(0.3 * z[NX:NP])
+    if HIS_SRC and len(z) >= NC0:   # each anatomical control costs a little: used only where it earns it
+        r.append(0.3 * z[NX:NC0])
+    if HIS_SRC and KC and len(z) >= NP:   # the free shape terms cost more (no named muscle)
+        r.append(0.5 * z[NC0:NP])
     dev = idct(np.r_[z[SH["shape"]], np.zeros(NS - NF)], norm="ortho")
     r.append(1.0 * dev[::4] / 0.15)     # departures from a normal bun cost a little (preference, not a wall)
     if SHARED_SRC:   # his voice's spectrum is smooth
@@ -338,7 +347,7 @@ if RESPW > 0:
 
 def report(z, tag=""):
     print(f"\n=== his mouth {tag} ===")
-    if HIS_SRC and len(z) >= NP:
+    if HIS_SRC and len(z) >= NC0:
         print("anatomical controls (x width): " + "; ".join(f"{s_} " + ", ".join(f"{n} {np.exp(v):.2f}" for n, v in zip(EXNAMES, z[EX[s_]])) for s_ in SOUNDS))
     print((f"nose turbinate surface x{z[NV]:.1f}; " if HIS_SRC and len(z) > NV else "") + f"larynx {z[0] * 0.075:.2f} cm lower; head radius {z[1]:.2f} cm; laryngeal cavity {z[2] * .75:.1f} mm x{z[3]:.2f}, "
           f"inlet {z[4] * .75:.1f} mm x{z[5]:.2f}; nose length x{z[6]:.2f}, damping {z[7]:.2f}")
