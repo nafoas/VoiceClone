@@ -115,6 +115,7 @@ ARTW_LIP = float(os.environ.get("ARTW_LIP", "1"))
 # TOOL=1: the mapped controls ARE his measured movements (control = offset + scale x tool reading);
 # the fit adapts his mouth (anatomy, conversions) around them instead of overriding them.
 TOOL = os.environ.get("TOOL", "1") == "1"
+TUNE = float(os.environ.get("TUNE", "0.15"))   # how far each sound may fine-tune around his measured movement
 GAPW = float(os.environ.get("GAPW", "60")); GAPMIN = float(os.environ.get("GAPMIN", "0.6"))   # open sounds keep a real gap (mm)   # extra weight on the lips (both tools agree on them)   # per-sound free bends: off (compensations; the inversion tools give real targets)     # his real voice, recovered from the clip (PLAN step 1), held fixed
 
 
@@ -222,6 +223,10 @@ if HIS_SRC:
         LO[EX[s_].start + 2], HI[EX[s_].start + 2] = -1e-4, 1e-4   # no lip spread: both tools say his lips narrow or round, never spread
     LO[NLW], HI[NLW], Z0[NLW] = np.log(0.1), np.log(1.2), 0.0   # log width factor of the lip opening
     LO[NPAL], HI[NPAL], Z0[NPAL] = 0.0, 3.0, 0.0                 # palate arch raised, mm (reference animal)
+    if TOOL:   # the mapped controls' stored values are now each sound's small fine-tune around his movement
+        for s_ in SOUNDS:
+            for ci in ART_MAP:
+                k_ = PO[s_].start + ci; LO[k_], HI[k_], Z0[k_] = -max(TUNE, 1e-4), max(TUNE, 1e-4), 0.0
     for j_ in range(len(ART_MAP)):
         LO[NM0 + 2 * j_], HI[NM0 + 2 * j_], Z0[NM0 + 2 * j_] = -6.0, 6.0, 0.0
         LO[NM0 + 2 * j_ + 1], HI[NM0 + 2 * j_ + 1], Z0[NM0 + 2 * j_ + 1] = 0.05, 4.0, 1.0   # how strongly his movement moves the bun control
@@ -316,7 +321,9 @@ def tool_pose(z, p9, feats):
     if TOOL and HIS_SRC and len(z) >= NP and feats is not None:
         for j_, (ci, fn) in enumerate(ART_MAP.items()):   # S-shaped: near the ends, never past them (his order kept)
             lo_, hi_ = CRANGE[ci]
-            p9[ci] = lo_ + (hi_ - lo_) / (1 + np.exp(-(z[NM0 + 2 * j_] + z[NM0 + 2 * j_ + 1] * feats[fn])))
+            base = lo_ + (hi_ - lo_) / (1 + np.exp(-(z[NM0 + 2 * j_] + z[NM0 + 2 * j_ + 1] * feats[fn])))
+            # + a small per-sound fine-tune around his movement (the stored pose value; costed, +-TUNE)
+            p9[ci] = float(np.clip(base + (p9[ci] if TUNE > 0 else 0.0), lo_, hi_))
     return p9
 
 
@@ -419,6 +426,8 @@ def resid(z):
             for j_, (ci, fn) in enumerate(ART_MAP.items()):
                 a_, b_ = z[NM0 + 2 * j_], z[NM0 + 2 * j_ + 1]
                 r.append([ARTW * (ARTW_LIP if ci in (5, 6) else 1.0) * (p_[ci] - (a_ + b_ * f_[fn]))])
+    if HIS_SRC and TOOL and TUNE > 0 and len(z) >= NP:   # fine-tuning away from his movement costs
+        r.append(np.array([z[PO[s_].start + ci] for s_ in SOUNDS for ci in ART_MAP]) / max(TUNE, 1e-4) * 2.0)
     if HIS_SRC and len(z) >= NC0:   # each anatomical control costs a little: used only where it earns it
         r.append(0.3 * z[NX:NC0])
     if HIS_SRC and KC and len(z) >= NP:   # the free shape terms cost more (no named muscle)
