@@ -101,14 +101,27 @@ def his_cycles(d, i, L=1024):
     return [C[max(0, j - h): j + h + 1].mean(0) for j in range(len(C))]
 
 
+def bank_pools(d, tol=0.05):
+    """His recovered sounds grouped by pitch: sounds within 5% of each other's pitch are one
+    pool (at one pitch his voice box makes one sound; what differs between them is each vowel's
+    mouth left over from the recovery, which pooling averages out). POOL=0: one per sound."""
+    idx = [i for i, cl in enumerate(d["clean"]) if cl]
+    if os.environ.get("POOL", "1") != "1":
+        return [(float(d["f0"][i]), [i]) for i in idx]
+    pools = []
+    for i in sorted(idx, key=lambda i: d["f0"][i]):
+        if pools and d["f0"][i] / pools[-1][1][0] - 1 < tol:
+            pools[-1][1].append(float(d["f0"][i])); pools[-1][0].append(i)
+        else:
+            pools.append(([i], [float(d["f0"][i])]))
+    return [(float(np.mean(f)), sorted(ii)) for ii, f in pools]
+
+
 def his_voice_bank_tones(path=ROOT / "models/his_voice.npz", nh=NH):
-    """Per bank sound (his cycles at that pitch): (pitch, tones). The render draws each sound's
-    cycles from the bank sound nearest in pitch; the fit uses the same."""
-    d = np.load(path); out = []
-    for i, cl in enumerate(d["clean"]):
-        if cl:
-            out.append((float(d["f0"][i]), his_voice_tones(path, nh, only=i)))
-    return out
+    """Per pool (his cycles at that pitch): (pitch, tones). The render draws each sound's
+    cycles from the pool nearest in pitch; the fit uses the same."""
+    d = np.load(path)
+    return [(f0, his_voice_tones(path, nh, only=ii)) for f0, ii in bank_pools(d)]
 
 
 def his_voice_tones(path=ROOT / "models/his_voice.npz", nh=NH, only=None):
@@ -116,7 +129,7 @@ def his_voice_tones(path=ROOT / "models/his_voice.npz", nh=NH, only=None):
     each clean cycle's tones normalised to its 1st (level and timing), then averaged."""
     d = np.load(path); acc = []
     for i, cl in enumerate(d["clean"]):
-        if not cl or (only is not None and i != only):
+        if not cl or (only is not None and i not in np.atleast_1d(only)):
             continue
         for c in his_cycles(d, i):
             C = np.fft.rfft(c)[1: nh + 1]

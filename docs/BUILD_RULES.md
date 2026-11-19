@@ -219,6 +219,15 @@ air speed from a soft-voice lung pressure (0.8 kPa, later set by effort, PLAN 5b
 small-bun fold depth (1.5 mm). A zero opening is the old model exactly. Before refitting:
 whole phrase 6.77 -> 6.52 dB at 0.002 cm2; the 6 kHz ring is gone.
 
+### Losses grow as his tubes narrow (physics the model left out)
+Air rubbing on the walls (viscous + heat boundary layers) costs energy per cm in proportion
+to wall perimeter over area, i.e. 1/radius. The tube model used Sondhi & Schroeter's single
+constant, set for human-sized tubes (~3 cm2). His sections are 0.01-2 cm2, so his losses
+are several times larger, most in narrow gaps. Now each section's loss is scaled by
+sqrt(3 cm2 / its area). No new setting. Fast capacity tests (everything free): his four
+ee's 4.51 -> 4.28; all 12 steady sounds 5.33 -> 5.00 dB tone error; ee upper tones
+(4.5-7 kHz) no longer starved; head radius returns to a small bun's 2.6 cm.
+
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
 protrusion; 2.5 cm larynx travel; stamped hum; free per-frame poses; formant

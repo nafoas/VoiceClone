@@ -58,11 +58,12 @@ def mouth_ir(pose9, sealed):
 
 def bank():
     d = np.load(ROOT / "models/his_voice.npz"); B = []
-    for i, cl in enumerate(d["clean"]):
-        if cl:
-            cyc = M.his_cycles(d, i)   # his cycles, recovery error averaged away (Da Boss approved)
-            ref = np.median([np.ptp(c) for c in cyc]); cyc = [c / ref for c in cyc]   # common level: loudness is the breath's job
-            B.append(dict(f0=float(d["f0"][i]), cyc=cyc, order=list(range(len(cyc))) + list(range(len(cyc) - 2, 0, -1)), k=0))
+    for f0, ii in M.bank_pools(d):          # his cycles pooled by pitch, in the clip's order
+        cyc = []
+        for i in ii:
+            c = M.his_cycles(d, i)   # his cycles, recovery error averaged away (Da Boss approved)
+            ref = np.median([np.ptp(q) for q in c]); cyc += [q / ref for q in c]   # common level: loudness is the breath's job
+        B.append(dict(f0=f0, cyc=cyc, order=list(range(len(cyc))) + list(range(len(cyc) - 2, 0, -1)), k=0))
     return B
 
 
@@ -71,6 +72,7 @@ def at_period(c, P):
     return np.interp(np.linspace(0, 1, P, endpoint=False), np.linspace(0, 1, len(c), endpoint=False), c)
 
 
+XF = int(os.environ.get("XF", "4"))   # cycles over which the voice blends when it changes pool
 HOLD = float(os.environ.get("HOLD", "0.4"))   # share of each sound the mouth holds its position (the rest is glide)
 
 
@@ -136,9 +138,16 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
         bad = ~(np.isfinite(f0) & (f0 > 100) & (f0 < 900)); f0[bad] = np.array([vs[j]["f0"] for j in who])[bad]
         ph = np.cumsum(f0 / SR); k = np.floor(ph).astype(int)
         cut = np.r_[0, np.flatnonzero(np.diff(k)) + 1, len(k)]
+        prev, xf = None, 0
+        nxt = lambda q: (q["cyc"][q["order"][q["k"] % len(q["order"])]], q.__setitem__("k", q["k"] + 1))[0]
         for c0, c1 in zip(cut[:-1], cut[1:]):
             t = tn[c0]; v = vs[who[c0]]; src = v["src"]
-            cyc = src["cyc"][src["order"][src["k"] % len(src["order"])]]; src["k"] += 1
+            if prev is not None and src is not prev and xf == 0:
+                xf, old_src = XF, prev            # the voice changes pool: blend over a few cycles, no jump
+            cyc = nxt(src)
+            if xf > 0:
+                u = 1 - xf / (XF + 1); cyc = (1 - u) * nxt(old_src) + u * cyc; xf -= 1
+            prev = src
             g = 10 ** (np.interp(t, breath[0], breath[1]) / 20) if breath is not None else 1.0
             g *= min(1.0, 0.5 - 0.5 * np.cos(np.pi * min(1.0, (t - a) / RAMP)), 0.5 - 0.5 * np.cos(np.pi * min(1.0, max(0.0, b - t) / RAMP_OFF)))
             u = ph[c0: c1] - k[c0]

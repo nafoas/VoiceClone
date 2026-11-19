@@ -75,7 +75,8 @@ PS_SOFT = 8000.0  # lung pressure behind the cords, dyn/cm^2 (0.8 kPa: soft, rel
 FOLD_T = 0.15     # depth of the gap through the cords (cm), small-bun folds
 import os as _os
 import prince_voice.mouth as _PMm
-_PMm.AREA_LOSS = _os.environ.get("AREA_LOSS", "1") == "1"   # losses grow as his small tubes narrow (physics)
+_PMm.AREA_LOSS = _os.environ.get("AREA_LOSS", "1") == "1"
+_PMm.AREA_WALL = _os.environ.get("AREA_WALL", "0") == "1"   # losses grow as his small tubes narrow (physics)
 WALLS = True      # his yielding walls (cheeks, throat) radiate the sound that moves them
 
 
@@ -84,7 +85,10 @@ def _wall_Y(area, w):
     import prince_voice.mouth as _PM
     a, b, w0sq = 130 * np.pi * _PM.TISSUE["wall_r"], (30 * np.pi) ** 2, (406 * np.pi) ** 2 * _PM.TISSUE["wall_m"] ** 2
     jw = 1j * w[None, :]
-    return area[:, None] / (_PM.RHO * _PM.C ** 2) * jw * w0sq / ((jw + a) * jw + b)
+    Y = area[:, None] / (_PM.RHO * _PM.C ** 2) * jw * w0sq / ((jw + a) * jw + b)
+    if _PM.AREA_WALL:   # wall per unit of air grows as the tube narrows
+        Y = Y * np.sqrt(_PM.LOSS_REF_AREA / np.maximum(area, 1e-4))[:, None]
+    return Y
 
 
 def tube_H_nose(a, L, f, frac, port, nlen, damp):

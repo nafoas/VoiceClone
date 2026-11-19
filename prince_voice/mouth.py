@@ -41,6 +41,7 @@ TISSUE = dict(wall_r=1.0, wall_m=1.0, visc=1.0)
 # i.e. as 1/radius. Sondhi & Schroeter's constant is for human-sized tubes; with AREA_LOSS on,
 # each section's loss is scaled by sqrt(LOSS_REF_AREA / its area) (off = the old constant loss).
 AREA_LOSS = False
+AREA_WALL = False     # the same 1/radius scaling for the yielding-wall term (more wall per unit of air)
 LOSS_REF_AREA = 3.0   # cm^2, a typical human vocal-tract cross-section
 
 
@@ -50,10 +51,11 @@ def _section_matrices(area, length, w):
     jw = 1j * w[None, :]
     a, b, w0sq, q = (130 * np.pi * TISSUE["wall_r"], (30 * np.pi) ** 2, (406 * np.pi) ** 2 * TISSUE["wall_m"] ** 2,
                      4.0 * TISSUE["visc"])
+    sc = np.sqrt(LOSS_REF_AREA / np.maximum(np.asarray(area, float), 1e-4))[:, None]
     if AREA_LOSS:
-        q = q * np.sqrt(LOSS_REF_AREA / np.maximum(np.asarray(area, float), 1e-4))[:, None]
+        q = q * sc
     alpha = np.sqrt(jw * q)
-    beta = jw * w0sq / ((jw + a) * jw + b) + alpha
+    beta = jw * w0sq / ((jw + a) * jw + b) * (sc if AREA_WALL else 1.0) + alpha
     gam = np.sqrt((alpha + jw) / (beta + jw))
     sig = gam * (beta + jw)
     x = sig * length[:, None] / C
