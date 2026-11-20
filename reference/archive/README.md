@@ -177,3 +177,9 @@ Checkpoint 4 with the tongue starting to close for each "t" 15 ms before the vow
 loudness steps you hear after each "ee"), consonants re-tuned around it. Loudness tracking vs his
 2.95 -> 2.41 dB; diction 0.045, apparent age 12.7, naturalness 4.11, speaker likeness 0.71.
 State: models/perc_state_overnight5.json. Compare with overnight_4_glides.wav by ear.
+
+## overnight_6_best.wav (overnight tuning, checkpoint 6: CURRENT BEST)
+Checkpoint 5 plus: his voice starts when his own pitch starts (during the release of his weak, voiced p),
+consonants re-tuned. Diction mismatch 0.042 (version 1: 0.21); p heard as p 0.83 (version 1: k 0.76);
+loudness steps vs his 2.12 dB (checkpoint 4: 2.95); naturalness 4.34 (version 1: 2.51); apparent age 13.0
+(his 13.1); speaker likeness 0.75 (version 1: 0.62). State: models/perc_state_overnight6.json.
