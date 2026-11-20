@@ -10,12 +10,13 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
+ARGS = sys.argv[1:]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import perc as P  # noqa: E402
 import transitions as TRm  # noqa: E402
 
-out = sys.argv[1]
-states = [a for a in sys.argv[2:] if not a.startswith("--")] or [max([q for q in ("out/listen/perc_state.json", "models/perc_state.json") if (P.ROOT / q).exists()], key=lambda q: (P.ROOT / q).stat().st_mtime)]
+out = ARGS[0]
+states = [a for a in ARGS[1:] if not a.startswith("--")] or [max([q for q in ("out/listen/perc_state.json", "models/perc_state.json") if (P.ROOT / q).exists()], key=lambda q: (P.ROOT / q).stat().st_mtime)]
 ys = []
 for sp in states:
     st = json.loads((P.ROOT / sp).read_text())
