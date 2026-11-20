@@ -275,14 +275,17 @@ closure-and-release movements on the moving mouth (the seal breaks at his burst)
 the mouth as it moves; the breath stops where the voice starts; a sealed mouth's voice falls to half and
 then fades (fitted to his closures, 20 ms). Details and numbers: docs/CONSONANT_FINDINGS.md.
 
-### Consonant rebuild on airflow (2026-11-20; Da Boss: "scrap the consonants and redo them entirely") — IN PROGRESS
+### Consonant rebuild on airflow (2026-11-20) — REJECTED, rolled back ("Pekeke" -> "Lelele", "La La Lillies" much worse)
 The consonants of his measured spec (PRINCE_IDENTITY §3) are movements of his mouth and cords; their sounds
 come from air moving through his mouth (scripts/build/td_mouth.py: time-domain tube, lung pressure,
 Reynolds-number turbulence, jet losses, wall yielding, articulator pumping), while his voice still goes
 through the fitted frequency-domain mouth at the strength the air allows (render_td.py). Better physics
 (§3c "a time-domain tube"), no new biology. Fitted, within physical ranges: cords' mean opening 0.0038 cm²;
 parted for t 0.038 cm², for ɕ 0.031 cm²; split-lip leak 0.045 cm²; ɕ gap 0.012 cm². First pass is not yet
-better than checkpoint 8 (docs/CONSONANT_FINDINGS.md); checkpoint 8 stays the reference until it is.
+better than checkpoint 8 (docs/CONSONANT_FINDINGS.md). Da Boss: worse; rolled back. His diagnosis: the
+mouth is structurally wrong (a rigid tube, not a moving bun mouth; no vibration; no room). Checkpoint 8 is
+the reference. Also not adopted: the gesture fix (cons1, models/perc_state_cons1.json, GEST=1): "still L,
+still K, more artificial".
 
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip

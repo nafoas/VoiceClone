@@ -167,3 +167,12 @@ Open:
 - the p is too loud (his voice runs through the leaking lips at full strength; his p is ~15 dB softer)
 - the first n still reads as "l"; the m as "w"
 - the voice path itself is ~0.3 below checkpoint 8's (n/m gestures, rest posture, push)
+
+## Verdict (Da Boss): worse, rolled back
+"It went from 'Pekeke' to 'Lelele'. And the 'La La Lillies' is a lot worse." His diagnosis: structural.
+"We're blowing air through a rigid tube. He isn't actually moving his little mouth like a little bnuy
+would — and it is entirely rigid. No vibrations, no reverb, nothing — so many sounds just can't be made
+properly." Measured right after: his clip lingers ~100 ms after each sound stops (high frequencies too:
+a room), the model goes to digital silence within ~35 ms. Part of what this document treated as his mouth
+in closures (the fading hum) is likely his room.
+

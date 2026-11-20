@@ -223,3 +223,10 @@ voice goes through his mouth as before. t bursts now land where his do (4.2/4.2 
 7.5); soft S at his level. But by every measure it is not better overall yet: naturalness predictor 2.72
 (checkpoint 8: 4.32), the p 7 dB too loud, the first n still "l". Sent so Da Boss's ear can say whether the
 L and K are gone. Details: docs/CONSONANT_FINDINGS.md. State: models/perc_state_td.json + render_td.py.
+**Da Boss's verdict: worse. "Pekeke" became "Lelele" and "La La Lillies" got a lot worse. Rolled back**
+(checkpoint 8 is the active version again; the rebuild's code is in git history, commit "Rebuild the
+consonants from scratch on airflow"). His diagnosis: structural — a rigid tube with air blown through it,
+not a little bun mouth that moves; no vibration, no room. Measured afterwards: his clip lingers after each
+sound (within 15-20 dB for ~100 ms, 4-8 kHz included; ~100-600 dB/s) where the model drops to digital
+silence 5-15x faster: his recording has a room, the model is dry.
+
