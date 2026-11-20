@@ -212,3 +212,14 @@ error 9.4 -> 1.8 dB, its resonances 569/1643/2531 (his 565/1655/2561); t bursts 
 was 7.5); consonant movements vs his 6.6 -> 6.1 dB; naturalness 4.23 (checkpoint 8 4.32). Still open: the
 first "n". State: models/perc_state_cons1.json (render with GEST=1). Model alone: cons1_model.wav.
 
+
+## rebuild1_compare.wav (2026-11-20: consonants rebuilt from scratch — first pass, NOT better yet)
+Per phrase: the clip, checkpoint 8, then the rebuild. Da Boss: "scrap the consonants and redo them entirely."
+Every consonant is now a movement of his mouth or cords taken from his measured spec (soft voiced p through
+his leaking split lip; final t that never closes; crisp t from the tip sealing and his cords parting; soft
+S 2 cm back with a hum under it; hum straight through n, m, r), and every hiss, burst and pop comes from air
+moving through his mouth (scripts/build/td_mouth.py) — no pasted noise, no consonant loudness copied. His
+voice goes through his mouth as before. t bursts now land where his do (4.2/4.2 kHz vs his 4.2/4.5; before
+7.5); soft S at his level. But by every measure it is not better overall yet: naturalness predictor 2.72
+(checkpoint 8: 4.32), the p 7 dB too loud, the first n still "l". Sent so Da Boss's ear can say whether the
+L and K are gone. Details: docs/CONSONANT_FINDINGS.md. State: models/perc_state_td.json + render_td.py.

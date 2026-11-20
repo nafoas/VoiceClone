@@ -17,7 +17,7 @@ SR = 48000
 EDGES = 200 * 2 ** (np.arange(0, 19) / 3); EDGES = EDGES[EDGES <= 12800]
 # the consonants and their joins: (name, start, end, release time or None)
 STRETCH = [("n  (nann-)", 0.03, 0.20, None), ("ã-n-ɐ˞", 0.26, 0.42, None), ("ɐ˞-ɹ-m-ũ", 0.43, 0.66, None),
-           ("ũ-n-i", 0.69, 0.83, None), ("p-ee", 1.45, 1.56, 1.465), ("ee-t (closing)", 1.56, 1.66, None),
+           ("ũ-n-i", 0.69, 0.83, None), ("soft S", 1.00, 1.14, None), ("p (lips)", 1.45, 1.51, None), ("p-ee", 1.45, 1.56, 1.465), ("ee-t (closing)", 1.56, 1.66, None),
            ("t-ee", 1.70, 1.82, 1.709), ("ee-t (closing)", 1.86, 1.96, None), ("t-ee", 2.03, 2.14, 2.037)]
 
 
@@ -49,7 +49,7 @@ def report(y, x, ref_level=None, quiet=False):
             if bx is None or by is None:
                 continue
             Lx -= gx; Ly -= gy
-            if Lx > -45:   # where he is audible, the shape counts (weighted by how loud he is there)
+            if Lx > -45 and Ly > -70:   # where he is audible, the shape counts (weighted by how loud he is there)
                 ok = bx > -45
                 sh.append((float(np.sqrt(np.mean((np.maximum(by, -45) - bx)[ok] ** 2))), 1.0 + (Lx + 45) / 45))
             le.append(max(Ly, -60) - max(Lx, -60))

@@ -103,3 +103,67 @@ checkpoint 8 had been tuned overnight to please exactly this recogniser, while D
 - Tested and not kept: a slower tongue-tip closing (35-55 ms: the recogniser's "t" gets clearer, but his
   closures fit worse), a leak in the "t" closure (fits his first closure, not his second), cords spread for
   the "t" breath (fits his release worse).
+
+# The rebuild (2026-11-20, Da Boss: "scrap the consonants and redo them entirely")
+Da Boss heard the gesture fix above as still "L" and "K", and more artificial. His diagnosis: the
+provisional consonants were never the ones he says. Confirmed: our own measurements of his clip
+(PRINCE_IDENTITY.md §3, PRINCE_PHYSICS.md §6-8) describe them, and the build had ignored them:
+
+| His consonant (measured) | What the old build made |
+|---|---|
+| p: soft, ~1% noise, mostly voiced; split lip leaks (voicing continues) | an aspirated burst + hiss |
+| final t ("pee-t", "tee-t"): never closes; vowel drops ~20 dB, hum tail | a full closure (first the whole "n" shape) |
+| tʰ: tip seals fully; crisp burst, ~45 ms, 80% noise | a burst pasted through a frozen "ee" mouth |
+| ɕ: ~2 cm behind the lips, ~4 kHz, quiet, hum under it | a hiss placed by a tuner |
+| n, m, r: hum straight through | shapes bent until the hum matched |
+
+## What was scrapped
+`consonants.py` noise layers, the fitted n/m/ɹ-as-shapes, the consonant settings tuned for the recogniser,
+consonant loudness copied from the clip, today's gesture patches. (Kept: his voice, his vowels and
+movement timing from checkpoint 8, the open r-coloured "ɹ" found above, his rest posture.)
+
+## What replaced them (scripts/build/render_td.py, td_mouth.py)
+- **Each consonant is a movement** of his mouth or cords, on top of the vowel-to-vowel movement:
+  n = tip sealed + soft palate open; m = lips shut (split lip leaks) + palate open; p = lips shut (leaking),
+  his voice running through; final t = tip to a near-closure while the hum dies; tʰ = tip sealed + cords
+  parted around the release; ɕ = blade raised ~2 cm behind the lips + cords parted a little, hum under it;
+  phrase start = his rest posture (lips shut, palate open, tongue up).
+- **Air through his mouth** (td_mouth, time domain): his lungs' steady pressure through the moving mouth
+  and the parting cords; turbulence wherever a jet's Reynolds number passes ~1800 (strength ~ Re^2 - Re_c^2,
+  spectrum falling above St·v/d); jets lose their speed leaving a gap; moving articulators push air
+  (smoothed: they have mass). Every hiss, burst and pop is made here; one turbulence constant for all.
+- **His voice through his mouth** (the fitted frequency-domain mouth, as always, so his vowels are
+  unchanged), at the strength the air allows: the pressure left across his cords (a sealed mouth fills up)
+  and how far apart they are (parted cords buzz weakly). His breath is the same jet law at his cords.
+- Tried first and set aside: running his VOICE through the time-domain mouth too. Its cords load the
+  mouth differently from the fitted one, so his vowels changed ("ee" 6-12 dB brighter at 0.7-2.8 kHz); his
+  vowel shapes were fitted on the frequency-domain mouth.
+- The few physical settings (cords' opening for voice, for t and for ɕ; turbulence strength; the final-t
+  leak; the split-lip leak; the ɕ gap; the lips' opening speed) are fitted together to his clip: whole-
+  phrase likeness, the movement and loudness through every consonant, and the t bursts' spectral centre.
+
+## Where the rebuild stands (first pass: NOT better yet)
+reference/archive/rebuild1_compare.wav (clip / checkpoint 8 / rebuild); render: `python scripts/build/render_td.py
+models/perc_state_td.json` (fitted settings are render_td.S's defaults).
+
+| Against his clip | checkpoint 8 | rebuild |
+|---|---|---|
+| whole-phrase likeness (voiced frames) | 7.37 dB | 7.73 dB |
+| movement through the consonants (incl. ɕ and p) | 7.71 dB | 8.51 dB |
+| loudness through the consonants | 3.43 dB | 4.69 dB |
+| t burst centres (his 4.2 / 4.5 kHz) | 7.5 / 7.4 kHz | 4.2 / 4.2 kHz (from the airflow) |
+| soft S | 14.4 dB | 12.2 dB, -18 dB under the vowels (his -21) |
+| p | 11.2 dB | 17.7 dB (too loud: +7 dB) |
+| silence inside t closures (his -41 / -49 dB) | voiced closures | -32 / -33 dB |
+Secondary: naturalness predictor 4.32 -> 2.72; recogniser: first n "l" 0.66, m "w", ɹ "a", p "i".
+Diagnostics: checkpoint 8 with its consonants switched off scores 3.96 (its pasted noise added +0.36); the
+rebuild's voice with its breath alone 3.36-3.66; adding the airflow sounds costs ~1 point. Not the rumble
+below 100 Hz (removing it: 2.52), not the turbulence (turning it off: 2.69), not the push's ripple, not the
+nose (checkpoint 8's nose: 2.67). Not yet found. The fit's turbulence constant went to its floor (it wanted
+less hiss everywhere) and the final-t leak to its floor (nearly shut).
+
+Open:
+- what in the airflow part makes it less natural (pops at releases are the remaining suspect)
+- the p is too loud (his voice runs through the leaking lips at full strength; his p is ~15 dB softer)
+- the first n still reads as "l"; the m as "w"
+- the voice path itself is ~0.3 below checkpoint 8's (n/m gestures, rest posture, push)
