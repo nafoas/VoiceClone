@@ -46,25 +46,32 @@ starting from the best so far. Only his mouth's own settings move; anatomy stays
 5. **Two more measures** after finding blind spots: timbre balance to 12.8 kHz (the 16 kHz listener
    models cannot hear the top) and naturalness (torchaudio SQUIM subjective MOS).
 
-## 5. Scorecard: version 1 vs the current best (overnight_4_glides.wav, models/perc_state.json)
+## 5. Scorecard: version 1 vs the current best (overnight_6_best.wav, models/perc_state.json)
 | | Version 1 (listen3c) | Now |
 |---|---|---|
 | Recogniser hears | nalalmuniʃ \| kikki | his phonemes, sound by sound (below) |
 | Diction mismatch (0 = his) | 0.21 | 0.042 |
-| Apparent age (his clip 13.1) | ~7-9 | 12.9 |
+| Apparent age (his clip 13.1) | ~7-9 | 13.0 |
 | Child probability (his 0.96) | 1.00 | 0.96 |
-| Naturalness MOS (his clip 3.2) | 2.5 | 4.2 |
-| Speaker likeness to his clip | 0.62 | 0.73 |
+| Naturalness MOS (his clip 3.2) | 2.5 | 4.3 |
+| Speaker likeness to his clip | 0.62 | 0.75 |
+| Loudness steps vs his (rms dB, 10 ms) | ~3.0 | 2.1 |
 | Warmth vs his | -1.5 dB | +0.1 dB |
 | Timbre balance to 12.8 kHz | - | 1.9 dB rms |
 
 Heard per sound now (version 1 in brackets): m: m 0.85 (l 0.65) · middle n: n 0.94 (n 0.49/l 0.38) ·
-ɹ: r 0.44/l 0.33 (l 0.39) · ũ: u 0.67 (m 0.44) · p: p 0.69-0.87 (k 0.76) · t: t 0.86 / 0.82 (tʃ/k) ·
-last t: t 0.20 (his own is only t 0.52) · soft s: s 0.81-0.89 (sh 0.77) · vowels: unchanged, correct.
+ɹ: r 0.44/l 0.33 (l 0.39) · ũ: u 0.67 (m 0.44) · p: p 0.83 (k 0.76) · t: t 0.86 / 0.82 (tʃ/k) ·
+last t: weak (his own is only t 0.52) · soft s: s 0.8-0.9 (sh 0.77) · vowels: unchanged, correct.
 
-Listen: `reference/archive/overnight_4_glides.wav` (clip, then model, per phrase). Earlier checkpoints:
-overnight_1_diction (consonants + nasals), overnight_2_older (deep larynx: his age but tinny, rejected),
-overnight_3_size080 (size 0.80).
+Listen: **`reference/archive/overnight_6_best.wav`** (clip, then model, per phrase). Checkpoints in order:
+overnight_1_diction, overnight_2_older (deep larynx; rejected: tinny), overnight_3_size080,
+overnight_4_glides, overnight_5_smoother, overnight_6_best.
+
+### Later changes (checkpoints 5-6)
+- The tongue starts closing for each "t" 15 ms before the vowel's label ends (labels mark where the sound
+  changes, not where the movement starts): the loudness step after each "ee" shrinks.
+- His voice starts when his own pitch starts (during his weak, voiced p release), instead of exactly at
+  the vowel label: fewer steps, more natural.
 
 ## What I tried that did not work (and why it was dropped)
 - Deeper larynx (3.0 cm): his age, but a narrow pipe at the bottom rang at 7 kHz (tinny, less natural).
