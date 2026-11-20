@@ -117,6 +117,8 @@ def voiced_runs(vs):
 
 def render_phrase(ph, x, tt, ff0, BK, breath=None):
     """breath: (times, dB) smooth breath-pressure contour; None = steady."""
+    global _BRNG
+    _BRNG = np.random.default_rng(11 + PHRASES.index(ph))   # the same mouth makes the same sound: fixed breath noise
     s0, e0 = ph[0][1] - 0.02, ph[-1][2] + 0.03; n = int((e0 - s0) * SR)
     vs = [dict(lab=l, s=s, e=e) for l, s, e, _ in ph if l in M.SOUNDS]
     hop = 240
