@@ -28,7 +28,7 @@ if _src is not None:
 else:
     st = dict(z=P.R.Z.tolist(), tp={k: v["par"] for k, v in json.loads((ROOT / "models/transitions_F14.json").read_text()).items()},
               cp=dict(CN.CP), best=None)
-z0 = np.array(st["z"]); tp0 = {k: [list(r) for r in v] for k, v in st["tp"].items()}; cp0 = dict(st["cp"])
+z0 = P.load_state(st); tp0 = {k: [list(r) for r in v] for k, v in st["tp"].items()}; cp0 = dict(st["cp"]); SIZE = float(st.get("size", 0.75))
 names = "jaw body front tip root lips round velum larynx".split()
 
 
@@ -108,7 +108,7 @@ while not es.stop():
         z, tp, cp = apply(u); f, o, y = evaluate(z, tp, cp); F.append(f); n += 1
         if f < best["f"] - 1e-4:
             best = dict(f=f, o=o)
-            st = dict(z=z.tolist(), tp=tp, cp=cp, best=dict(f=f, **{k: o[k] for k in ("diction", "age", "child", "speaker", "spec")}))
+            st = dict(z=z.tolist(), tp=tp, cp=cp, size=SIZE, best=dict(f=f, **{k: o[k] for k in ("diction", "age", "child", "speaker", "spec")}))
             STATE.write_text(json.dumps(st)); sf.write(STATE.with_suffix(".wav"), y / np.abs(y).max() * 0.7, P.SR)
             with open(LOG, "a") as fh:
                 fh.write(f"  [{STAGE} {n}] objective {f:.3f} diction {o['diction']:.3f} age {o['age']:.1f} child {o['child']:.2f} "

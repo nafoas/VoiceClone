@@ -105,7 +105,8 @@ def tube_H_nose(a, L, f, frac, port, nlen, damp):
     P = _radiation(a[-1], w) * (1.0 + 0j); U = np.ones_like(w, dtype=complex); Ul = U.copy(); Uw = np.zeros_like(U)
     for s_ in range(n - 1, br - 1, -1):          # lips back to the velum
         Pi = A[s_] * P + Bm[s_] * U; Ui = Cm[s_] * P + D[s_] * U; Uw += 0.5 * (P + Pi) * Yw[s_]; P, U = Pi, Ui
-    m = BunMouth(0.75); na, nl = m.nasal(); nl = nl * nlen
+    import mouth_inverse as _MI
+    m = BunMouth(_MI.BUNSIZE[0]); na, nl = m.nasal(); nl = nl * nlen
     _old = _PM.TISSUE["visc"]; _PM.TISSUE["visc"] = _old * NOSE_SURF ** 2
     try:
         Kn = _chain(np.r_[port, na], np.r_[0.3, nl], w)

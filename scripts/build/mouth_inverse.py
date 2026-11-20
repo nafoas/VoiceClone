@@ -248,7 +248,7 @@ def raw_gap(pose9, neck, lar, z=None):
     if z is not None:
         PALATE[0] = float(z[NPAL]) if HIS_SRC and len(z) >= NP else 0.0
     tube(pose9, neck, lar)
-    return _rawgap[(tuple(np.round(pose9, 6)), round(float(neck), 6), tuple(np.round(lar, 6)), round(PALATE[0], 6))]
+    return _rawgap[(tuple(np.round(pose9, 6)), round(float(neck), 6), tuple(np.round(lar, 6)), round(PALATE[0], 6), BUNSIZE[0])]
 
 
 def pad(z):
@@ -284,14 +284,15 @@ def body(z):
 
 
 PALATE = [0.0]
+BUNSIZE = [float(os.environ.get("BUNSIZE", "0.75"))]   # his size vs the reference rabbit (anatomy; +-15% natural variation)
 
 
 def tube(pose9, neck, lar):
     # fine rounding: a coarse key erased the fit's small test steps, freezing the larynx depth and cavity
-    key = (tuple(np.round(pose9, 6)), round(float(neck), 6), tuple(np.round(lar, 6)), round(PALATE[0], 6))
+    key = (tuple(np.round(pose9, 6)), round(float(neck), 6), tuple(np.round(lar, 6)), round(PALATE[0], 6), BUNSIZE[0])
     if key not in _cache:
         v = Pose().vec(); v[:9] = pose9
-        m = BunMouth(0.75, neck_mm=float(neck), larcav=tuple(float(q) for q in lar), palate_mm=PALATE[0])
+        m = BunMouth(BUNSIZE[0], neck_mm=float(neck), larcav=tuple(float(q) for q in lar), palate_mm=PALATE[0])
         ar, ln, port, br = m.tube(Pose.from_vec(v))
         edges = np.r_[0, np.cumsum(ln)]; L = edges[-1]; e40 = np.linspace(0, L, NS + 1); a40 = np.empty(NS)
         for i in range(NS):

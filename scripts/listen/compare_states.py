@@ -8,7 +8,7 @@ import perc as P
 import transitions as TRm
 best = None
 for f in FILES:
-    st = json.loads(Path(f).read_text()); z = np.array(st["z"]); P.CN.CP.update(st["cp"]); TRm.Z[:] = z
+    st = json.loads(Path(f).read_text()); z = P.load_state(st)
     y, sp = P.render(z, st["tp"]); o = P.judge(y, sp); J = P.objective(o)
     print(f"{f}: MOS {o['mos']:.2f} timbre {o['timbre']:.2f} objective {J:.3f} diction {o['diction']:.3f} worst {o['diction_worst']:.3f} age {o['age']:.1f} speaker {o['speaker']:.3f} warmth {o['warmth']:+.2f} env {o['envelope']:.2f}", flush=True)
     if best is None or J < best[0]:

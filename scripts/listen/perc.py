@@ -120,6 +120,16 @@ EC = speaker_vec(to16(phrases16(X)))
 AGE_CLIP, CHILD_CLIP = age_child(to16(phrases16(X)))
 
 
+def load_state(st):
+    """Set everything a saved state carries (consonants, glide copy of the mouth, his size)."""
+    import transitions as _T
+    CN.CP.update(st["cp"]); z = np.array(st["z"]); _T.Z[:] = z
+    size = float(st.get("size", 0.75))
+    if M.BUNSIZE[0] != size:
+        M.BUNSIZE[0] = size; M._cache.clear(); R._ir.clear()
+    return z
+
+
 def render(z=None, tp=None, cons=True):
     """His phrase from mouth z (and transitions tp, list per phrase of [[c,w,lips,velum], ...])."""
     if z is not None:
