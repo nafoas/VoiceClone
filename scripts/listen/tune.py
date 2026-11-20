@@ -20,9 +20,11 @@ import perc as P  # noqa: E402
 import transitions as TRm  # noqa: E402
 
 M = P.M; CN = P.CN; ROOT = P.ROOT
-STATE = ROOT / "models/perc_state.json"; LOG = ROOT / "out/listen/tune_log.txt"
-if STATE.exists():
-    st = json.loads(STATE.read_text())
+STATE = ROOT / "out/listen/perc_state.json"; LOG = ROOT / "out/listen/tune_log.txt"   # working copy (untracked)
+_SAVED = ROOT / "models/perc_state.json"                                                 # committed at check-ins
+_src = max([q for q in (STATE, _SAVED) if q.exists()], key=lambda q: q.stat().st_mtime, default=None)
+if _src is not None:
+    st = json.loads(_src.read_text())
 else:
     st = dict(z=P.R.Z.tolist(), tp={k: v["par"] for k, v in json.loads((ROOT / "models/transitions_F14.json").read_text()).items()},
               cp=dict(CN.CP), best=None)

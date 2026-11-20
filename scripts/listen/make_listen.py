@@ -15,7 +15,7 @@ import perc as P  # noqa: E402
 import transitions as TRm  # noqa: E402
 
 out = sys.argv[1]
-states = [a for a in sys.argv[2:] if not a.startswith("--")] or ["models/perc_state.json"]
+states = [a for a in sys.argv[2:] if not a.startswith("--")] or [max([q for q in ("out/listen/perc_state.json", "models/perc_state.json") if (P.ROOT / q).exists()], key=lambda q: (P.ROOT / q).stat().st_mtime)]
 ys = []
 for sp in states:
     st = json.loads((P.ROOT / sp).read_text())
