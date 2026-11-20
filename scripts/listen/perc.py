@@ -159,7 +159,8 @@ def judge(y, spec=None, detail=False):
         dd[f"{l}@{s:.2f}"] = 0.5 * kl(p, m) + 0.5 * kl(q, m)
     ph16 = to16(phrases16(y))
     ag, ch = age_child(ph16); sv = float(np.dot(EC, speaker_vec(ph16)))
-    out = dict(diction=float(np.mean(list(dd.values()))), age=ag, child=ch, speaker=sv, spec=spec,
+    _v = np.sort(np.array(list(dd.values())))[::-1]
+    out = dict(diction=float(np.mean(_v)), diction_worst=float(np.mean(_v[:4])), age=ag, child=ch, speaker=sv, spec=spec,
                envelope=env_dist(y), warmth=warmth(y) - WARM_CLIP)
     if detail:
         out["per_sound"] = dd
@@ -201,10 +202,10 @@ def warmth(y):
 WARM_CLIP = None
 
 
-def objective(o, w=dict(diction=10.0, age=0.15, speaker=3.0, spec=0.2, envelope=0.15, warmth=0.3)):
+def objective(o, w=dict(diction=14.0, worst=6.0, age=0.15, speaker=2.0, spec=0.2, envelope=0.15, warmth=0.3)):
     """Lower is better. Diction (JS, 0..0.69 per sound) dominates; apparent age toward his; same speaker;
     the spectral judge as a guard."""
-    return (w["diction"] * o["diction"] + w["age"] * abs(o["age"] - AGE_CLIP) + w["speaker"] * (1 - o["speaker"])
+    return (w["diction"] * o["diction"] + w["worst"] * o.get("diction_worst", 0) + w["age"] * abs(o["age"] - AGE_CLIP) + w["speaker"] * (1 - o["speaker"])
             + w["spec"] * (o["spec"] or 0) + w["envelope"] * o.get("envelope", 0) + w["warmth"] * abs(o.get("warmth", 0)))
 
 
