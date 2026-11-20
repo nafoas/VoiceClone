@@ -80,7 +80,8 @@ CONS = os.environ.get("CONS", "1") == "1"   # the consonants (provisional, Da Bo
 TR_VEL = 7
 TAU_CL = float(os.environ.get("TAU_CL", "1e9"))   # s: how fast the voice's push falls once the mouth closes (pressure builds up)
 FLOOR_CL = float(os.environ.get("FLOOR_CL", "1.0"))   # the push it settles at (fraction) once the closure holds
-CL_LEAD = float(os.environ.get("CL_LEAD", "0.015"))   # s: closure movement starts this much before the vowel label ends
+CL_LEAD = float(os.environ.get("CL_LEAD", "0.015"))
+ONSET_EARLY = os.environ.get("ONSET_EARLY", "1") == "1"   # voicing starts with his own pitch, before the vowel label   # s: closure movement starts this much before the vowel label ends
 BREATH = float(os.environ.get("BREATH", "0.003"))   # pulsed aspiration (vocal-fold turbulence); 0.003 matches his measured noise between tones
 _BRNG = np.random.default_rng(11)
 XF = int(os.environ.get("XF", "4"))   # cycles over which the voice blends when it changes pool
@@ -159,6 +160,23 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
                 poses[k] = p0 + u * (close - p0)
             r_.append(b)   # where the mouth starts closing: the voice's push falls from here
             r_[1] = te
+        if ONSET_EARLY:   # his voice starts when his own pitch starts, even if that is before the vowel's label
+            for r_ in runs:
+                a = r_[0]; ta = a
+                while a - ta < 0.04 and np.interp(ta - 0.005, tt, ff0) > 0:
+                    ta -= 0.005
+                if a - ta >= 0.005:
+                    v = [q for q in vs if abs(q["s"] - a) < 0.003][0]
+                    pb = [q for q in ph if q[2] >= a - 0.003 and q[2] <= a + 0.01 and q[0] not in M.SOUNDS]
+                    pre = M.pose_full(Z, v["lab"]).copy()
+                    if pb and pb[-1][0] == "p":   # still at the lips: they are just opening
+                        pre[5] = 0.05
+                    k0 = max(0, int((ta - s0) * SR) // hop); k1 = int((a - s0) * SR) // hop
+                    p1 = poses[min(k1, nfr - 1)].copy()
+                    for k in range(k0, min(k1, nfr)):
+                        u = (k - k0) / max(1, k1 - k0); u = 0.5 - 0.5 * np.cos(np.pi * u)
+                        poses[k] = pre + u * (p1 - pre)
+                    r_[0] = ta
     y = np.zeros(n + NFT + 2000)
     y = np.zeros(n + NFT + 2000)
     for v in vs:                                    # one run of his own cycles per sound
