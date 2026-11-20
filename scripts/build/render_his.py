@@ -20,7 +20,7 @@ import parselmouth as pm
 import soundfile as sf
 from scipy.fft import idct
 from scipy.ndimage import uniform_filter1d
-from scipy.signal import resample_poly
+from scipy.signal import lfilter, resample_poly
 
 os.environ.update(SRC="his", CHMIN="0.005", F1GUARD="1")
 ROOT = Path(__file__).resolve().parents[2]
@@ -75,8 +75,11 @@ def at_period(c, P):
     return np.interp(np.linspace(0, 1, P, endpoint=False), np.linspace(0, 1, len(c), endpoint=False), c)
 
 
+_TR_OVERRIDE = None   # transitions handed in directly (perceptual tuning)
 CONS = os.environ.get("CONS", "1") == "1"   # the consonants (provisional, Da Boss: test whether their absence is the problem)
 TR_VEL = 7
+BREATH = float(os.environ.get("BREATH", "0.003"))   # pulsed aspiration (vocal-fold turbulence); 0.003 matches his measured noise between tones
+_BRNG = np.random.default_rng(11)
 XF = int(os.environ.get("XF", "4"))   # cycles over which the voice blends when it changes pool
 HOLD = float(os.environ.get("HOLD", "0.4"))   # share of each sound the mouth holds its position (the rest is glide)
 
@@ -119,7 +122,8 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
     hop = 240
     if os.environ.get("TRANS"):   # fitted movement between sounds (transitions.py)
         import transitions as TR
-        tr = json.loads((ROOT / os.environ["TRANS"]).read_text()).get(str(PHRASES.index(ph)))
+        _all = _TR_OVERRIDE if _TR_OVERRIDE is not None else json.loads((ROOT / os.environ["TRANS"]).read_text())
+        tr = _all.get(str(PHRASES.index(ph)))
         if tr:
             bnd = [(int(i), float(tb)) for i, tb in tr["bounds"]]; par = np.array(tr["par"])
             poses = np.array([TR.pose_at(s0 + k * hop / SR, vs, bnd, par) for k in range(n // hop + 1)])
@@ -178,6 +182,11 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
             g *= min(1.0, 0.5 - 0.5 * np.cos(np.pi * min(1.0, (t - a) / RAMP)), 0.5 - 0.5 * np.cos(np.pi * min(1.0, max(0.0, b - t) / RAMP_OFF)))
             u = ph[c0: c1] - k[c0]
             pulse = np.interp(u, np.linspace(0, 1, len(cyc), endpoint=False), cyc) * g
+            if BREATH > 0:   # pulsed aspiration: turbulence through the open fold gap, riding on this cycle's airflow
+                fl = pulse - pulse.min()                                    # the cycle's airflow (0 when shut)
+                nz_ = lfilter([1.0], [1.0, -0.95], _BRNG.standard_normal(len(pulse)))   # turbulence as flow: falls with
+                nz_ /= nz_.std() + 1e-12                                    # frequency, so after radiation it is broad
+                pulse = pulse + BREATH * nz_ * fl
             c = i0 + c0; pz = poses[min(c // hop, nfr - 1)]
             h = mouth_ir(pz, bool(pz[5] < 0.04))           # the lips seal as they actually close
             out = np.convolve(pulse, h); y[c: c + len(out)] += out[: len(y) - c]

@@ -32,22 +32,36 @@ def turb(f, area_cm2):
     return 1 / (1 + 1j * f / fs) ** 2          # falls ~12 dB per octave above it
 
 
+# Each consonant, physically: where the air is squeezed (place: fraction of the tube from the vocal folds,
+# ~0.95 = teeth/ridge, 1.0 = lips), how narrow the gap is (area, cm^2: sets the hiss's pitch), how open the
+# lips are then (factor on the last sections), and how long the burst lasts before breath takes over.
+CP = dict(s_place=0.80, s_area=0.013, s_lips=1.0,
+          t_place=0.80, t_area=0.013, t_lips=1.0, t_burst=0.033,
+          p_area=0.3, p_lips=1.0, p_burst=0.0)
+
+
+def _squeezed(a, place, area, lips):
+    """The base tube with a gap of `area` at `place` and the lips scaled; returns (areas, source index)."""
+    a = a.copy(); n = len(a); k = int(np.clip(round(place * n), 1, n - 1))
+    a[k - 1: k + 1] = np.minimum(a[k - 1: k + 1], area)
+    a[-2:] = a[-2:] * lips
+    return a, k
+
+
 def irs(M, Z):
-    """The mouth's response for each noise source, from the fitted mouth."""
+    """The mouth's response for each noise source, from the fitted mouth and the consonant settings CP."""
     B = M.B; f = np.maximum(fH, 1.0); M.body(Z)
     bf = B.head_baffle(f, Z[1]); out = {}
     cap = lambda a: 1 / (1 + (f / (1.84 * 35000 / (np.pi * 2 * np.sqrt(a.max() / np.pi)))) ** 8)   # plane-wave limit
     a, L, frac, port = M.area_of(Z, M.pose_full(Z, "iː"))
-    k = int(np.argmin(a[len(a) // 2:])) + len(a) // 2                 # tongue front against the palate
-    out["fric"] = _ir(B.tube_H_from(a, L, f, k + 1) * bf * cap(a) * turb(f, a[k]))
+    as_, ks = _squeezed(a, CP["s_place"], CP["s_area"], CP["s_lips"])
+    out["fric"] = _ir(B.tube_H_from(as_, L, f, ks + 1) * bf * cap(as_) * turb(f, CP["s_area"]))
+    at_, kt = _squeezed(a, CP["t_place"], CP["t_area"], CP["t_lips"])
+    out["burst_t"] = _ir(B.tube_H_from(at_, L, f, kt + 1) * bf * cap(at_) * turb(f, CP["t_area"]))
     out["asp"] = _ir(B.tube_H_nose(a, L, f, frac, port, Z[6], Z[7]) * bf * cap(a) * turb(f, 0.02))   # breath at the cords
-    pn = M.pose_full(Z, "n").copy(); pn[7] = 0.0
-    a2, L2, _, _ = M.area_of(Z, pn)
-    k2 = int(np.argmin(a2[len(a2) // 2:])) + len(a2) // 2
-    a2o = a2.copy(); a2o[k2] = max(a2o[k2], 0.01)                    # the tip just letting go: a narrow gap at the ridge
-    out["burst_t"] = _ir(B.tube_H_from(a2o, L2, f, k2 + 1) * bf * cap(a2o) * turb(f, 0.01))   # hiss through it
-    out["burst_p"] = _ir(B.tube_H_from(a, L, f, len(a) - 1) * bf * cap(a) * turb(f, 0.05))   # at the lips
-    out["asp_p"] = _ir(B.tube_H_nose(a, L, f, frac, port, Z[6], Z[7]) * bf * cap(a) * turb(f, 0.3))   # weak p: breath, lips opening wide
+    ap = a.copy(); ap[-2:] *= CP["p_lips"]
+    out["burst_p"] = _ir(B.tube_H_from(ap, L, f, len(a) - 1) * bf * cap(ap) * turb(f, 0.05))   # at the lips
+    out["asp_p"] = _ir(B.tube_H_nose(ap, L, f, frac, port, Z[6], Z[7]) * bf * cap(ap) * turb(f, CP["p_area"]))
     return out
 
 
@@ -71,9 +85,9 @@ def layer(ph, s0, n, x, M, Z, ref, seed=7):
         if lab == "ɕ":
             parts = [(a, b, "fric")]
         elif lab == "tʰ":
-            parts = [(s - 0.003, s + 0.03, "fric"), (s + 0.03, b, "asp")]   # before "ee" the blade lets go at the front palate: hiss (~30 ms), then breath
+            parts = [(s - 0.003, s + CP["t_burst"], "burst_t"), (s + CP["t_burst"], b, "asp")]   # release hiss, then breath
         else:
-            parts = [(s + 0.01, b, "asp_p")]   # his p is weak: breath through the opening lips, barely a burst
+            parts = ([(s + 0.01, s + 0.01 + CP["p_burst"], "burst_p")] if CP["p_burst"] > 0.002 else []) + [(s + 0.01 + CP["p_burst"], b, "asp_p")]   # his weak p
         for pa, pb, kind in parts:   # each part's airflow set on its own, over its own stretch of time
             i0, i1 = max(0, int((pa - s0) * SR)), min(n, int((pb - s0) * SR))
             if i1 <= i0:
@@ -88,7 +102,8 @@ def layer(ph, s0, n, x, M, Z, ref, seed=7):
             seg = through_mouth(fade)
             # how hard the air blows: set (provisionally) so the result matches his loudness over this part
             hb = _band(x[int(s0 * SR) + i0: int(s0 * SR) + i1]) * kk; mb = _band(seg[i0:i1])
-            sm = lambda q: np.convolve(q ** 2, np.hanning(4 * hop) / np.hanning(4 * hop).sum(), mode="same")   # ~20 ms
+            _k = np.hanning(max(3, min(4 * hop, L_ - 1))); _k /= _k.sum()
+            sm = lambda q: np.convolve(q ** 2, _k, mode="same")   # ~20 ms (shorter for short parts)
             eh, em = sm(hb), sm(mb)
             g = np.sqrt(eh / np.maximum(em, 1e-2 * em.max()))               # never divide by a near-silent edge
             y += through_mouth(fade * g)
