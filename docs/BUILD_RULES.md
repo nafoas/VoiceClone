@@ -253,6 +253,14 @@ they clearly help. To do: find the pattern behind them (which muscles) so they c
 sounds not in the clip. Steady-sound fit: 4.15 -> 4.04 dB. His measured mouth response (from
 the voice recovery, every frequency, 1/3-octave smooth) is an extra guide in the fit (weight 0.3).
 
+### Size 0.80 of the reference rabbit (natural variation; was 0.75)
+Overnight diagnostic: the age model hears his own clip as 4 years old when every frequency is shifted
+up 11%, and as 28 when shifted down 9%; the model's pitch is his, so its younger sound came from
+resonances a few percent too high (its first resonance was measured too high in ee, n, m). Scaling the
+whole mouth +6.7% (0.75 -> 0.80) lowers them together, with no new part: apparent age 8 -> 13 (his 13),
+naturalness up. A deeper larynx (3.0 cm) also fixed age but added a narrow pipe that rang at 7 kHz
+(tinny, less natural), so the larynx stays at ~2.4 cm. He is still a small bun (0.80 of the reference).
+
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
 protrusion; 2.5 cm larynx travel; stamped hum; free per-frame poses; formant

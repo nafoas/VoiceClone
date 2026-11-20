@@ -156,3 +156,12 @@ Per phrase: the clip, then the model. Larynx at 3.0 cm (within his approved adap
 1.1-3.4 cm; was 2.3-2.4) with the vowels, nasals, r-sounds and consonants re-tuned for that length.
 Apparent age 13.2 (his 13.1; version 1 ~7-9). Heard per sound: m 0.75, middle n 0.87, ɹ r 0.60, p 0.83,
 soft s 0.90, t 0.78/0.73; open: the last t (heard r 0.32) and ɐ˞. State: models/perc_state_overnight2.json.
+
+## overnight_3_size080.wav (overnight tuning, checkpoint 3: current best)
+Per phrase: the clip, then the model. His mouth scaled to 0.80 of the reference rabbit (was 0.75; +6.7%,
+within natural variation; still a small bun): his resonances had been several percent too high, which is
+what made him sound younger (diagnostic: shifting his own clip up 11% makes the age model hear 4 years).
+Larynx back at 2.4 cm (the deeper 3.0 cm larynx fixed age but rang at 7 kHz: tinny, less natural).
+Mouth re-tuned at the new size. Apparent age 12.9 (his 13.1), naturalness MOS 4.12 (clip 3.23;
+version 1 2.51), diction 0.060 (version 1 0.21). Heard: p 0.84, t 0.86/0.76, s 0.87, n 0.90-0.98,
+m 0.47; still wrong: ɹ (r/l 0.28 each), last t. State: models/perc_state_overnight3.json.
