@@ -161,7 +161,7 @@ def judge(y, spec=None, detail=False):
     ag, ch = age_child(ph16); sv = float(np.dot(EC, speaker_vec(ph16)))
     _v = np.sort(np.array(list(dd.values())))[::-1]
     out = dict(diction=float(np.mean(_v)), diction_worst=float(np.mean(_v[:4])), age=ag, child=ch, speaker=sv, spec=spec,
-               envelope=env_dist(y), warmth=warmth(y) - WARM_CLIP)
+               envelope=env_dist(y), warmth=warmth(y) - WARM_CLIP, timbre=timbre(y))
     if detail:
         out["per_sound"] = dd
         out["heard"] = {k: " ".join(f"{VOCAB[int(i)]}:{seg_dist(P, s, e)[i]:.2f}" for i in np.argsort(-seg_dist(P, s, e))[:3])
@@ -200,13 +200,36 @@ def warmth(y):
 
 
 WARM_CLIP = None
+_TB_N = 2048; _TB_F = np.fft.rfftfreq(_TB_N, 1 / SR)
+_TB_E = 200 * 2 ** (np.arange(0, 19) / 3); _TB_E = _TB_E[_TB_E <= 12800]
 
 
-def objective(o, w=dict(diction=14.0, worst=6.0, age=0.3, speaker=2.0, spec=0.2, envelope=0.15, warmth=0.3)):
+def _tb_bands(sig, c):
+    S = np.abs(np.fft.rfft(sig[c - _TB_N // 2: c + _TB_N // 2] * np.hanning(_TB_N))) ** 2; S /= S.sum() + 1e-30
+    return np.array([10 * np.log10(S[(_TB_F >= lo) & (_TB_F < hi)].mean() + 1e-30) for lo, hi in zip(_TB_E[:-1], _TB_E[1:])])
+
+
+_TB_T = [t for l, s, e in SEGS if l not in ("ɕ", "tʰ", "p", "_") for t in np.arange(s + 0.01, e - 0.01, 0.01)]
+_TB_CLIP = None
+
+
+def timbre(y):
+    """Timbre balance over his whole range (to 12.8 kHz, beyond what the 16 kHz listener models hear): the
+    model's average third-octave spectrum in his voiced sounds vs his, rms over bands (dB). A consistent
+    excess or shortfall in a band is what reads as tinny or muffled."""
+    global _TB_CLIP
+    if _TB_CLIP is None:
+        _TB_CLIP = np.mean([_tb_bands(X, int(t * SR)) for t in _TB_T], 0)
+    d = np.mean([_tb_bands(y, int(t * SR)) for t in _TB_T], 0) - _TB_CLIP
+    return float(np.sqrt(np.mean(d ** 2)))
+
+
+def objective(o, w=dict(diction=14.0, worst=6.0, age=0.3, speaker=2.0, spec=0.2, envelope=0.15, warmth=0.3, timbre=0.5)):
     """Lower is better. Diction (JS, 0..0.69 per sound) dominates; apparent age toward his; same speaker;
     the spectral judge as a guard."""
     return (w["diction"] * o["diction"] + w["worst"] * o.get("diction_worst", 0) + w["age"] * abs(o["age"] - AGE_CLIP) + w["speaker"] * (1 - o["speaker"])
-            + w["spec"] * (o["spec"] or 0) + w["envelope"] * o.get("envelope", 0) + w["warmth"] * abs(o.get("warmth", 0)))
+            + w["spec"] * (o["spec"] or 0) + w["envelope"] * o.get("envelope", 0) + w["warmth"] * abs(o.get("warmth", 0))
+            + w["timbre"] * o.get("timbre", 0))
 
 
 WARM_CLIP = warmth(X)
