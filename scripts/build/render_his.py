@@ -33,7 +33,10 @@ import ee_decompose as DC  # noqa: E402
 from build_catalogue import PHRASES  # noqa: E402
 
 SR = 48000; NFT = 8192
-Z = M.pad(json.loads((ROOT / os.environ.get("ZFILE", "models/mouth_inverse_H1.json")).read_text())["z"])   # brought up to the current layout
+_zj = json.loads((ROOT / os.environ.get("ZFILE", "models/mouth_inverse_H1.json")).read_text())
+Z = M.pad(_zj["z"])   # brought up to the current layout
+if "rest" in _zj:
+    M.REST[: len(_zj["rest"])] = _zj["rest"]
 TAG = os.environ.get("TAG", "")
 fH = np.fft.rfftfreq(NFT, 1 / SR)
 _ir = {}
@@ -79,14 +82,64 @@ _TR_OVERRIDE = None   # transitions handed in directly (perceptual tuning)
 CONS = os.environ.get("CONS", "1") == "1"   # the consonants (provisional, Da Boss: test whether their absence is the problem)
 TR_VEL = 7
 WANDER = float(os.environ.get("WANDER", "0"))   # PLAN step 4 ladder: 0 = frozen ... 1 = full amount
-TAU_CL = float(os.environ.get("TAU_CL", "1e9"))   # s: how fast the voice's push falls once the mouth closes (pressure builds up)
-FLOOR_CL = float(os.environ.get("FLOOR_CL", "1.0"))   # the push it settles at (fraction) once the closure holds
+TAU_CL = float(os.environ.get("TAU_CL", "0.01" if M.GEST else "1e9"))   # s: how fast the voice's push falls once the mouth closes (pressure builds up)
+FLOOR_CL = float(os.environ.get("FLOOR_CL", "0.5" if M.GEST else "1.0"))   # the push it settles at (fraction) once the closure holds
 CL_LEAD = float(os.environ.get("CL_LEAD", "0.015"))
 ONSET_EARLY = os.environ.get("ONSET_EARLY", "1") == "1"   # voicing starts with his own pitch, before the vowel label   # s: closure movement starts this much before the vowel label ends
 BREATH = float(os.environ.get("BREATH", "0.003"))   # pulsed aspiration (vocal-fold turbulence); 0.003 matches his measured noise between tones
 _BRNG = np.random.default_rng(11)
 XF = int(os.environ.get("XF", "4"))   # cycles over which the voice blends when it changes pool
 HOLD = float(os.environ.get("HOLD", "0.4"))   # share of each sound the mouth holds its position (the rest is glide)
+
+
+# GEST stops (2026-11-20): a stop is its articulator closing and opening on top of whatever the rest of
+# the mouth is doing. t: the tongue tip seals at the ridge (the same tip gesture as "n"), soft palate shut;
+# p: the lips (the same lip gesture as "m"). Before, a "t" closure pulled the WHOLE tongue into the fitted
+# "n" shape and the vowel after it started already open, with no tip release: the tongue body's swing
+# read as a "k" and nothing said "tip".
+STOPG = {"tʰ": ("n", [0, 2, 3]), "p": ("m", [0, 5])}         # whose gesture (the same as n, m), which controls (jaw (+ tongue front) + articulator)
+CLOSE_T = float(os.environ.get("CLOSE_T", "0.015"))          # s: closing movement (tip and lips are fast)
+REL_T = float(os.environ.get("REL_T", "0.025"))              # s: opening movement after the release
+TAU_OFF = float(os.environ.get("TAU_OFF", "0.02"))           # s: how fast the voice dies inside a sealed mouth (fitted to his two closures)
+REL_TP = float(os.environ.get("REL_TP", str(REL_T)))       # s: the lips' opening movement (lips are heavier than the tip)
+REST_OUT = float(os.environ.get("REST_OUT", "0.04"))        # s: the tongue body leaving rest (his "p": 2nd resonance rises ~40 ms)
+SEAL_A = 0.003                                               # cm^2: an opening this wide lets the air burst through
+
+
+def stop_gestures(ph, vs, poses, s0, hop):
+    """Superimpose each stop's closure-and-release on the mouth's movement. Weight w: 0 = the vowel
+    path, 1 = the stop's own position for its controls (soft palate shut)."""
+    poses = poses.copy(); t = s0 + np.arange(len(poses)) * hop / SR
+    for j, (lab, s, e, _) in enumerate(ph):
+        if lab not in STOPG:
+            continue
+        own_s, own = STOPG[lab]; g = M.pose_full(Z, own_s)
+        prev = [v for v in vs if v["e"] <= s + 0.003 and s - v["e"] < 0.25]
+        tc = prev[-1]["e"] - CL_LEAD if prev else -1.0                      # closing starts (or: shut from the start)
+        tr = s - 0.003 if lab == "tʰ" else s + 0.01                            # the release (the burst)
+        rc = lambda u: 0.5 - 0.5 * np.cos(np.pi * np.clip(u, 0, 1))
+        # the seal breaks part-way through the opening movement (a tip pressed into the ridge has to come
+        # off it first): find that point, and time the movement so the seal breaks AT the release
+        kr = int(np.clip(round((tr - s0) * SR / hop), 0, len(poses) - 1))
+
+        def gap(wq):
+            p_ = poses[kr].copy(); p_[own] = (1 - wq) * p_[own] + wq * g[own]; p_[TR_VEL] *= (1 - wq)
+            a_ = M.area_of(Z, p_)[0]
+            if lab == "p":   # the lips seal below 0.04 (as in the voiced render)
+                return a_[-1] if p_[5] >= 0.04 else 0.0
+            return a_[int(0.8 * len(a_)): -2].min()
+        lo_, hi_ = 0.0, 1.0                     # w at which the gap first exceeds a real opening (bisection)
+        for _ in range(14):
+            mid = 0.5 * (lo_ + hi_)
+            lo_, hi_ = (mid, hi_) if gap(mid) > SEAL_A else (lo_, mid)
+        wb = lo_ if gap(lo_) > SEAL_A else 0.0
+        rel_t = REL_TP if lab == "p" else REL_T
+        t_open = tr - np.arccos(np.clip(2 * wb - 1, -1, 1)) / np.pi * rel_t   # the movement starts here
+        w = np.where(t < t_open, rc((t - tc) / CLOSE_T), 1 - rc((t - t_open) / rel_t))
+        for c in own:
+            poses[:, c] = (1 - w) * poses[:, c] + w * g[c]
+        poses[:, TR_VEL] = (1 - w) * poses[:, TR_VEL]
+    return poses
 
 
 def pose_track(vs, s0, n, hop):
@@ -96,7 +149,8 @@ def pose_track(vs, s0, n, hop):
     knots = []
     for v in vs:
         mid, half = (v["s"] + v["e"]) / 2, (v["e"] - v["s"]) * HOLD / 2
-        knots += [(mid - half, M.pose_full(Z, v["lab"])), (mid + half, M.pose_full(Z, v["lab"]))]
+        pv = v.get("pose", M.pose_full(Z, v["lab"]))
+        knots += [(mid - half, pv), (mid + half, pv)]
     P = np.zeros((len(t), len(knots[0][1])))
     for i, ti in enumerate(t):
         if ti <= knots[0][0]:
@@ -126,6 +180,8 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
     _BRNG = np.random.default_rng(11 + PHRASES.index(ph))   # the same mouth makes the same sound: fixed breath noise
     s0, e0 = ph[0][1] - 0.02, ph[-1][2] + 0.03; n = int((e0 - s0) * SR)
     vs = [dict(lab=l, s=s, e=e) for l, s, e, _ in ph if l in M.SOUNDS]
+    for v in vs:   # each instance's position (GEST: a consonant's own gesture on the mouth its neighbours carry)
+        v["pose"] = M.pose_inst(Z, v["lab"], M.CTX.get((v["lab"], round(v["s"], 3))))
     hop = 240
     if os.environ.get("TRANS"):   # fitted movement between sounds (transitions.py)
         import transitions as TR
@@ -158,6 +214,15 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
             v = [q for q in vs if abs(q["e"] - b) < 0.003][0]
             j = next((i for i, q in enumerate(ph) if q[1] >= b - 0.003 and q[0] not in M.SOUNDS), None)
             nxt = ph[j][0] if j is not None else None
+            if M.GEST:   # the stop is a gesture of its own (below); the voice keeps going while his pitch does
+                stop = nxt in STOPG or nxt == "_"
+                r_.append(b - CL_LEAD + CLOSE_T if stop else 1e9)   # sealed from here: the push across the folds falls
+                r_[1] = te
+                if stop:     # ... and then fades inside the sealed mouth until the release, never cut dead
+                    rel = [q[1] for q in ph if q[0] in STOPG and q[1] > b]
+                    if rel and rel[0] - te > 0.005:
+                        r_.append(te); r_[1] = rel[0] - 0.004
+                continue
             close = M.pose_full(Z, v["lab"]).copy()
             if nxt in ("_", "tʰ"):            # tongue tip seals at the ridge (the "n" position, nose shut)
                 close = M.pose_full(Z, "n").copy(); close[TR_VEL] = 0.0
@@ -185,7 +250,16 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
                         u = (k - k0) / max(1, k1 - k0); u = 0.5 - 0.5 * np.cos(np.pi * u)
                         poses[k] = pre + u * (p1 - pre)
                     r_[0] = ta
-    y = np.zeros(n + NFT + 2000)
+    if CONS and M.GEST and ph[0][0] in STOPG:   # a phrase that opens with a stop starts from REST (as the first "n"
+        tq = s0 + np.arange(nfr) * hop / SR      # does): the tongue leaves rest as the lips/tip let go
+        rel0 = ph[0][1] + (0.01 if ph[0][0] == "p" else -0.003)
+        wr = np.where(tq < rel0, 1.0, 1 - (0.5 - 0.5 * np.cos(np.pi * np.clip((tq - rel0) / REST_OUT, 0, 1))))
+        rest = M.REST[: poses.shape[1]]
+        poses[:] = wr[:, None] * rest + (1 - wr[:, None]) * poses
+    if CONS and M.GEST:   # stops as gestures on the moving mouth (articulatory phonology)
+        poses[:] = stop_gestures(ph, vs, poses, s0, hop)
+    render_phrase.poses = (poses, s0, hop)   # the mouth's movement, for the consonant noises
+    render_phrase.onsets = sorted(r_[0] for r_ in runs)   # where the voice starts (the breath stops there)
     y = np.zeros(n + NFT + 2000)
     for v in vs:                                    # one run of his own cycles per sound
         ins = ff0[(tt >= v["s"]) & (tt <= v["e"]) & (ff0 > 0)]; v["f0"] = float(np.median(ins)) if len(ins) else 250.0
@@ -215,6 +289,8 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
             g *= min(1.0, 0.5 - 0.5 * np.cos(np.pi * min(1.0, (t - a) / RAMP)), 0.5 - 0.5 * np.cos(np.pi * min(1.0, max(0.0, b - t) / RAMP_OFF)))
             if len(rr_) > 2 and t > rr_[2]:   # closed mouth: air builds up behind the closure, the push across the folds falls
                 g *= FLOOR_CL + (1 - FLOOR_CL) * np.exp(-(t - rr_[2]) / TAU_CL)   # falls quickly, then holds (walls yield, a little air keeps flowing)
+            if len(rr_) > 3 and t > rr_[3]:   # GEST: past his last clear pitch the folds keep buzzing, ever weaker, as the
+                g *= np.exp(-(t - rr_[3]) / TAU_OFF)   # pressure behind the sealed mouth evens out (no dead cut)
             u = ph[c0: c1] - k[c0]
             pulse = np.interp(u, np.linspace(0, 1, len(cyc), endpoint=False), cyc) * g
             if BREATH > 0:   # pulsed aspiration: turbulence through the open fold gap, riding on this cycle's airflow
@@ -281,6 +357,7 @@ def main():
         y, s0, e0, vs = render_phrase(ph, x, tt, ff0, bank(), (bt, bd))
         if CONS:   # his consonants, from the same mouth (provisional)
             import consonants as CN
+            CN.POSES = render_phrase.poses; CN.ONSETS = render_phrase.onsets
             y = y + CN.layer(ph, s0, len(y), x, M, Z, y)
         outs.append((y, s0, e0, vs))
     nz = lambda v: v / np.abs(v).max() * 0.7

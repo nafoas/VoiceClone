@@ -19,6 +19,8 @@ out = ARGS[0]
 states = [a for a in ARGS[1:] if not a.startswith("--")] or [max([q for q in ("out/listen/perc_state.json", "models/perc_state.json") if (P.ROOT / q).exists()], key=lambda q: (P.ROOT / q).stat().st_mtime)]
 ys = []
 for sp in states:
+    if sp.endswith(".npy"):   # a render made elsewhere (e.g. under another renderer setting), on the clip's timeline
+        ys.append(np.load(P.ROOT / sp)); continue
     st = json.loads((P.ROOT / sp).read_text())
     z = P.load_state(st)
     y, _ = P.render(z, st["tp"]); ys.append(y)

@@ -65,6 +65,59 @@ def irs(M, Z):
     return out
 
 
+# GEST (2026-11-20): the noises go through the mouth AS IT MOVES (the stop gestures in render_his), every
+# 2 ms: the burst is made at the opening gap itself (the tip at the ridge, or the lips), so it starts as the
+# tiny cavity in front of the gap and grows into the whole mouth as the gap widens; the breath after it is
+# made at the vocal cords. Before, every noise went through one fixed "ee" mouth.
+# Tested and dropped: cords spread wide for the breath (0.05-0.1 cm^2) - his release spectra, the "t" and
+# naturalness all fit better with the cords as in his voice (t-ee 7.0/7.8 dB vs 7.7/8.0).
+POSES = None       # (positions every hop, start time, hop) from render_his.render_phrase
+ONSETS = None      # where the voice starts in this phrase (render_his): the cords close to buzz, the breath hiss stops
+_TV = {}
+
+
+def _tv_ir(M, Z, kind, pose, f, bf):
+    key = (kind, tuple(np.round(pose, 3)))
+    if key in _TV:
+        return _TV[key]
+    B = M.B; a, L, frac, port = M.area_of(Z, pose)
+    if pose[5] < 0.04:
+        a = M.seal(a, "m")
+    cap = 1 / (1 + (f / (1.84 * 35000 / (np.pi * 2 * np.sqrt(a.max() / np.pi)))) ** 8)
+    n = len(a); kf = int(0.8 * n)
+    if kind in ("burst_t",):            # at the tongue tip's gap
+        k = kf + int(np.argmin(a[kf:-2])); H = B.tube_H_from(a, L, f, k + 1) * turb(f, max(a[k], 0.002))
+    elif kind == "burst_p":             # at the lips (his weak p: the source as fitted before, 0.05)
+        H = B.tube_H_from(a, L, f, n - 1) * turb(f, 0.05)
+    elif kind == "asp_p":               # his weak, voiced p: the cords are NOT spread (the split lip leaks, little
+        H = B.tube_H_nose(a, L, f, frac, port, Z[6], Z[7]) * turb(f, CP["p_area"])   # pressure); the wide lip jet's hiss
+    elif kind == "fric":                # the tongue front squeezed toward the palate
+        as_, ks = _squeezed(a, CP["s_place"], CP["s_area"], CP["s_lips"]); a = as_
+        H = B.tube_H_from(as_, L, f, ks + 1) * turb(f, CP["s_area"])
+    else:                               # breath at the cords (the t's "asp"), through the mouth as it opens
+        H = B.tube_H_nose(a, L, f, frac, port, Z[6], Z[7]) * turb(f, 0.02)
+    if len(_TV) > 4000:
+        _TV.clear()
+    _TV[key] = _ir(H * bf * cap)
+    return _TV[key]
+
+
+def _through_moving_mouth(src, i0, kind, M, Z, n):
+    """src (starting at phrase sample i0) through the mouth's position at each moment (2 ms frames)."""
+    P, ps0, phop = POSES; f = np.maximum(fH, 1.0); bf = M.B.head_baffle(f, Z[1])
+    hp = 96; win = 0.5 - 0.5 * np.cos(2 * np.pi * np.arange(2 * hp) / (2 * hp))   # sums to 1 at 50% overlap
+    out = np.zeros(n + NFT)
+    for c in range(-hp, len(src), hp):
+        a_, b_ = max(c, 0), min(c + 2 * hp, len(src))
+        if b_ <= a_:
+            continue
+        seg = src[a_:b_] * win[a_ - c: b_ - c]
+        kpos = min(len(P) - 1, max(0, int(round((i0 + c + hp) / phop))))
+        o = np.convolve(seg, _tv_ir(M, Z, kind, P[kpos], f, bf)); st = i0 + a_
+        out[st: st + len(o)] += o[: len(out) - st]
+    return out
+
+
 def _band(sig, lo=1000.0):
     S = np.fft.rfft(sig); f = np.fft.rfftfreq(len(sig), 1 / SR); S[f < lo] = 0
     return np.fft.irfft(S, len(sig))
@@ -88,6 +141,10 @@ def layer(ph, s0, n, x, M, Z, ref, seed=7):
             parts = [(s - 0.003, s + CP["t_burst"], "burst_t"), (s + CP["t_burst"], b, "asp")]   # release hiss, then breath
         else:
             parts = ([(s + 0.01, s + 0.01 + CP["p_burst"], "burst_p")] if CP["p_burst"] > 0.002 else []) + [(s + 0.01 + CP["p_burst"], b, "asp_p")]   # his weak p
+        if ONSETS is not None and getattr(M, "GEST", False):   # breath ends where the voice begins
+            von = [q for q in ONSETS if q > s + 0.003]
+            if von:
+                parts = [(pa, min(pb, von[0] + 0.003) if k_ in ("asp", "asp_p") else pb, k_) for pa, pb, k_ in parts]
         for pa, pb, kind in parts:   # each part's airflow set on its own, over its own stretch of time
             i0, i1 = max(0, int((pa - s0) * SR)), min(n, int((pb - s0) * SR))
             if i1 <= i0:
@@ -97,6 +154,8 @@ def layer(ph, s0, n, x, M, Z, ref, seed=7):
 
             def through_mouth(gain):
                 """The noise source (scaled by how hard the air blows: at the SOURCE) through his mouth."""
+                if POSES is not None and getattr(M, "GEST", False):
+                    return _through_moving_mouth(src * gain, i0, kind, M, Z, n)
                 out = np.zeros(n + NFT); o = np.convolve(src * gain, R[kind]); out[i0: i0 + len(o)] += o[: len(out) - i0]
                 return out
             seg = through_mouth(fade)

@@ -79,6 +79,31 @@ START = {
 }
 START["i"] = START["iː"]; START["iːf"] = START["iː"]
 CLOSED = {"n", "m"}
+# GEST=1 (2026-11-20, Da Boss: "why does it always make L and K sounds"): a consonant is made by ITS
+# articulator, and the rest of the mouth is carried by the sounds around it (coarticulation; Ohman 1966,
+# articulatory phonology). Before, "m" and "n" were whole fitted shapes: the fit shut "m" with the
+# tongue (at 80% of the tube) instead of the lips, and sealed the tongue tip in "ɹ" - the gestures of
+# "n" and "l" - because a steady hum barely shows WHERE a mouth is shut. The ear hears that from the
+# movement, so it heard "l".
+#   m: lips shut + soft palate open (jaw helps the lips); tongue: where the neighbours put it, never sealing
+#   n: tongue tip sealed at the ridge + soft palate open (jaw helps the tip); tongue body: from the neighbours
+#   open sounds (vowels, ɹ): no contact anywhere in the mouth
+GEST = os.environ.get("GEST", "0") == "1"
+OWN = {"m": [0, 5, 7], "n": [0, 2, 3, 7]}                  # m: jaw, lips, soft palate; n: jaw, tongue front (backs the tip), tip, soft palate
+OPEN_MIN = float(os.environ.get("OPEN_MIN", "0.008"))      # cm^2: narrower than this is contact
+GESTW = float(os.environ.get("GESTW", "10"))
+# Before a phrase, his mouth is at REST: a rabbit breathes only through its nose, so the lips are shut,
+# the soft palate is open to the nose and the tongue fills the mouth. One shared rest posture (jaw, tongue
+# body, front, root fitted; tip down, lips shut, palate open): a phrase-initial consonant starts from it.
+REST = np.r_[[0.0, 0.8, 0.8, 0.0, 0.0, 0.0, 0.0, 1.0, 0.5], np.zeros(12)]
+REST_FREE = [0, 1, 2, 4]
+CTX = {}   # (consonant, start) -> (voiced sound just before, voiced sound just after)
+for _ph in PHRASES:
+    for _j, _q in enumerate(_ph):
+        if _q[0] in OWN:
+            _l = _ph[_j - 1][0] if _j > 0 and _ph[_j - 1][0] in VOICED and abs(_ph[_j - 1][2] - _q[1]) < 0.003 else None
+            _r = _ph[_j + 1][0] if _j + 1 < len(_ph) and _ph[_j + 1][0] in VOICED and abs(_ph[_j + 1][1] - _q[2]) < 0.003 else None
+            CTX[(_q[0], round(_q[1], 3))] = ("rest" if _j == 0 else _l, _r)
 
 
 def targets():
@@ -360,15 +385,26 @@ def area_of(z, p):
     return a, L, frac, port
 
 
-def sound_model(z, s):
-    a, L, frac, port = area_of(z, pose_full(z, s))
+def pose_inst(z, s, ctx=None):
+    """One instance's position. GEST: a consonant sets only its own controls (OWN); everything else is
+    the mouth the neighbouring sounds are carrying it through (their mean)."""
+    p = pose_full(z, s)
+    if not GEST or s not in OWN or not ctx or not any(ctx):
+        return p
+    base = np.mean([REST[: len(p)] if q == "rest" else pose_full(z, q) for q in ctx if q], 0)
+    base[OWN[s]] = p[OWN[s]]
+    return base
+
+
+def sound_model(z, s, ctx=None):
+    a, L, frac, port = area_of(z, pose_inst(z, s, ctx))
     dev = idct(np.r_[z[SH["shape"]], np.zeros(NS - NF)], norm="ortho")
     return seal(a, s), L, frac, port, dev
 
 
 def tones(z, t):
     body(z)
-    a, L, frac, port, _ = sound_model(z, t["lab"]); k = np.arange(1, NH + 1) * t["f0"]
+    a, L, frac, port, _ = sound_model(z, t["lab"], CTX.get((t["lab"], round(t["t"][0], 3)))); k = np.arange(1, NH + 1) * t["f0"]
     H = B.tube_H_nose(a, L, k, frac, port, z[6], z[7]) * B.head_baffle(k, z[1])
     if HIS_SRC:      # his real voice (tones and their timing), the same for every sound
         Zc = (min(HISB, key=lambda b: abs(np.log(b[0] / t["f0"])))[1] if os.environ.get("VOICE", "bank") == "bank" else HISC) * H
@@ -393,6 +429,15 @@ def resid(z):
         r.append(wl * (np.maximum(lv[1:], FLOOR) - np.maximum(np.nan_to_num(t["level"][1:], nan=FLOOR), FLOOR)))
         w = np.clip((np.nan_to_num(t["coh"][1:]) - 0.7) / 0.3, 0, 1)
         r.append(3.0 * w * np.angle(np.exp(1j * (ph[1:] - np.nan_to_num(t["phase"][1:])))))
+        if GEST:   # who closes the mouth (from the soft palate, half way along, to the lips)
+            kv = NS // 2
+            if t["lab"] == "m":     # the lips shut; behind them the mouth stays open (the tongue does not seal)
+                r.append([GESTW * max(0.0, np.log(OPEN_MIN / a[kv: NS - 2].min()))])
+            elif t["lab"] == "n":   # the tip seals at the ridge; behind it the mouth stays open
+                kr = int(0.80 * NS)
+                r.append([GESTW * max(0.0, np.log(OPEN_MIN / a[kv: kr].min())), GESTW * max(0.0, np.log(a[kr:].min() / 0.002))])
+            else:                   # open sounds: no contact anywhere
+                r.append([GESTW * max(0.0, np.log(OPEN_MIN / a[kv:].min()))])
         if t["lab"] not in CLOSED:   # an open mouth, physically
             chmin = float(os.environ.get("CHMIN", "0.02"))
             r.append([3000 * max(0, chmin - a[4:].min())])
@@ -402,7 +447,7 @@ def resid(z):
             if os.environ.get("F1GUARD", "") == "1":
                 # acoustically open: the first resonance must stay clear of the sealed-tube
                 # wall resonance (~200 Hz); a sealed mouth collapses onto it
-                _, L, frac, port, _ = sound_model(z, t["lab"])
+                _, L, frac, port, _ = sound_model(z, t["lab"], CTX.get((t["lab"], round(t["t"][0], 3))))
                 ff = np.arange(120.0, 1200.0, 5.0)
                 Hd = np.abs(X.tube_H(a, L, ff) / (1j * 2 * np.pi * ff))
                 f1 = ff[int(np.argmax(Hd))]
@@ -412,15 +457,20 @@ def resid(z):
             ft = FMT.get((t["lab"], round(t["t"][0], 3)))
             if ft is None:
                 continue
-            fm = model_formants(z, t["lab"])
-            for j in range(2):
+            fm = model_formants(z, t["lab"], CTX.get((t["lab"], round(t["t"][0], 3))))
+            for j in range(len(ft)):
+                if j == 2:   # the third: his r-colouring, matched to the nearest resonance above the first (so a weak
+                    cand = list(fm[1:]) or [8000.0]   # or missing one still pulls the right way)
+                    fq = min(cand, key=lambda q: abs(bark(q) - bark(ft[j])))
+                    r.append([FMTW * (bark(fq) - bark(ft[j]))])
+                    continue
                 r.append([FMTW * (bark(fm[j]) - bark(ft[j])) if len(fm) > j else FMTW * 3.0])
     if RESPW > 0:   # his measured mouth response (from the voice recovery), at every frequency, 1/3-octave smooth
         for t in T:
             rt = RESP.get((t["lab"], round(t["t"][0], 3)))
             if rt is None:
                 continue
-            a, L, frac, port, _ = sound_model(z, t["lab"])
+            a, L, frac, port, _ = sound_model(z, t["lab"], CTX.get((t["lab"], round(t["t"][0], 3))))
             Hm = 20 * np.log10(np.abs(B.tube_H_nose(a, L, RF, frac, port, z[6], z[7]) * B.head_baffle(RF, z[1])) + 1e-12)
             Hm = np.convolve(Hm, RK, mode="same")[RSEL]; d = (Hm - Hm.mean()) - rt
             r.append(RESPW * d / np.sqrt(len(d)) * np.sqrt(NH))
@@ -480,8 +530,8 @@ def _lpc_formants(f, P, order=10, fmax=5500.0):
 _FF = np.linspace(20, 5500, 600)
 
 
-def model_formants(z, s):
-    a, L, frac, port, _ = sound_model(z, s)
+def model_formants(z, s, ctx=None):
+    a, L, frac, port, _ = sound_model(z, s, ctx)
     H = B.tube_H_nose(a, L, _FF, frac, port, z[6], z[7]) * B.head_baffle(_FF, z[1])
     return _lpc_formants(_FF, np.abs(H) ** 2)
 
@@ -505,7 +555,10 @@ if FMTW > 0 and HIS_SRC:
     for _s in _fd["sounds"]:
         _lab = "i" if (SPLIT_I and _s["lab"] == "iː" and abs(_s["s"] - 0.79) < 0.01) else _s["lab"]
         _lab = "iːf" if (SPLIT_E and _s["lab"] == "iː" and abs(_s["s"] - 2.09) < 0.01) else _lab
-        FMT[(_lab, round(_s["s"], 3))] = _lpc_formants(_ff, 10 ** (np.array(_s["T"]) / 10))[:2].tolist()
+        # FMT3 (2026-11-20): his r-colouring lives in the THIRD resonance (~2.6 kHz in "ɐ˞", "ɹ" and the "m"
+        # between them; a high third resonance is what makes an "l"), so it is a target there too
+        _nf = 3 if (os.environ.get("FMT3", "0") == "1" and _lab in ("ɐ˞", "ɹ", "m")) else 2
+        FMT[(_lab, round(_s["s"], 3))] = _lpc_formants(_ff, 10 ** (np.array(_s["T"]) / 10))[:_nf].tolist()
 
 
 def _sparc_features():
@@ -541,7 +594,7 @@ def report(z, tag=""):
     for t in T:
         lv, ph, a = tones(z, t); el = np.maximum(lv[1:], FLOOR) - np.maximum(np.nan_to_num(t["level"][1:], nan=FLOOR), FLOOR)
         e = float(np.sqrt(np.mean(el ** 2))); errs.setdefault(t["lab"], []).append(e)
-        _, L_, fr_, po_, _ = sound_model(z, t["lab"]); ff = np.arange(120.0, 1200.0, 5.0)
+        _, L_, fr_, po_, _ = sound_model(z, t["lab"], CTX.get((t["lab"], round(t["t"][0], 3)))); ff = np.arange(120.0, 1200.0, 5.0)
         f1 = ff[int(np.argmax(np.abs(X.tube_H(a, L_, ff) / (1j * 2 * np.pi * ff))))]
         print(f"  {t['lab']:3} {t['t'][0]:.2f}s {t['f0']:.0f} Hz: tone error {e:4.1f} dB; 1st over 2nd {-lv[1]:5.1f} (his {-t['level'][1]:5.1f}); narrowest {a[4:].min():.3f} cm2; first resonance {f1:.0f} Hz")
     allv = [v for vs in errs.values() for v in vs]
@@ -565,7 +618,9 @@ def main():
     print(f"{NI} voiced sounds, {len(SOUNDS)} distinct; {NP} unknowns, fitted at once", flush=True)
     rng = np.random.default_rng(0); best = None
     if os.environ.get("WARM"):   # continue from an earlier solution
-        zw = np.array(json.loads((ROOT / os.environ["WARM"]).read_text())["z"])
+        _wj = json.loads((ROOT / os.environ["WARM"]).read_text()); zw = np.array(_wj["z"])
+        if "rest" in _wj:
+            REST[: len(_wj["rest"])] = _wj["rest"]
         if HIS_SRC:
             zw = pad(zw)
         if os.environ.get("SRC", "") == "puff" and len(zw) != NP:   # anatomy + positions kept; one puff from the median of theirs
@@ -577,8 +632,26 @@ def main():
             else:
                 zw = np.r_[zw[:PU0], Z0[GS]] if not SRC2 else np.r_[zw[:PU0], Z0[GS], Z0[GH]]
         zw = np.clip(zw, LO + 1e-6, HI - 1e-6)
-        r = least_squares(resid, zw, bounds=(LO, HI), method="trf", max_nfev=int(os.environ.get("NFEV", "60")), diff_step=1e-3, x_scale="jac", xtol=1e-12, ftol=1e-10)
-        best = (float(np.sum(r.fun ** 2)), r.x); print(f"  continued: cost {best[0]:.0f}", flush=True)
+        if os.environ.get("FREE"):   # refit only some sounds (whole positions) / only a consonant's own controls (m*, n*) / nose
+            mask = np.zeros(NP, bool)
+            for it in os.environ["FREE"].split(","):
+                if it == "nose":
+                    mask[[6, 7, NV]] = True
+                elif it.endswith("*"):
+                    mask[[PO[it[:-1]].start + c for c in OWN[it[:-1]]]] = True
+                else:
+                    mask[PO[it]] = True; mask[EX[it]] = True; mask[SC[it]] = True
+            print(f"  refitting {mask.sum()} of {NP} settings: {os.environ['FREE']}", flush=True)
+
+            def resid_sub(x):
+                zz = zw.copy(); zz[mask] = x; return resid(zz)
+            print(f"  start: cost {np.sum(resid(zw) ** 2):.0f}", flush=True)
+            r = least_squares(resid_sub, zw[mask], bounds=(LO[mask], HI[mask]), method="trf", max_nfev=int(os.environ.get("NFEV", "60")), diff_step=1e-3, x_scale="jac", xtol=1e-12, ftol=1e-10)
+            zz = zw.copy(); zz[mask] = r.x; best = (float(np.sum(r.fun ** 2)), zz)
+        else:
+            r = least_squares(resid, zw, bounds=(LO, HI), method="trf", max_nfev=int(os.environ.get("NFEV", "60")), diff_step=1e-3, x_scale="jac", xtol=1e-12, ftol=1e-10)
+            best = (float(np.sum(r.fun ** 2)), r.x)
+        print(f"  continued: cost {best[0]:.0f}", flush=True)
     from multiprocessing import Pool
     ks = list(range(int(os.environ.get("NSTART", "3"))))
     if ks:
@@ -589,7 +662,7 @@ def main():
                     best = (cost, np.array(x))
     z = best[1]; errs = report(z, "(phase A)")
     (ROOT / f"models/mouth_inverse{os.environ.get('TAG', '')}.json").write_text(json.dumps(dict(
-        z=z.tolist(), sounds=SOUNDS, targets=[dict(lab=t["lab"], t=t["t"], f0=t["f0"]) for t in T],
+        z=z.tolist(), sounds=SOUNDS, rest=REST[:9].tolist(), targets=[dict(lab=t["lab"], t=t["t"], f0=t["f0"]) for t in T],
         errors=errs), indent=1, ensure_ascii=False))
 
 

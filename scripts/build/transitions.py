@@ -65,9 +65,10 @@ def step(u):
 
 def pose_at(t, vs, bnd, par):
     """Articulator positions at time t: first sound's position + each boundary's smooth step."""
-    P = M.pose_full(Z, vs[0]["lab"]).copy()
+    pz = lambda v: v["pose"] if "pose" in v else M.pose_full(Z, v["lab"])
+    P = pz(vs[0]).copy()
     for b, (i, tb) in enumerate(bnd):
-        c, w, dl, dv = par[b]; d = M.pose_full(Z, vs[i + 1]["lab"]) - M.pose_full(Z, vs[i]["lab"])
+        c, w, dl, dv = par[b]; d = pz(vs[i + 1]) - pz(vs[i])
         lead = np.zeros(len(P)); lead[LIPS] = dl; lead[VELUM] = dv
         wv = np.full(len(P), w)
         wv[[TIP, LIPS]] = min(w, FAST)   # tongue tip and lips are fast: closures open and shut in ~15 ms

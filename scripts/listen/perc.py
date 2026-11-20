@@ -124,6 +124,8 @@ def load_state(st):
     """Set everything a saved state carries (consonants, glide copy of the mouth, his size)."""
     import transitions as _T
     CN.CP.update(st["cp"]); z = np.array(st["z"]); _T.Z[:] = z
+    if "rest" in st:   # his rest posture (phrase starts)
+        M.REST[: len(st["rest"])] = st["rest"]
     size = float(st.get("size", 0.75))
     if M.BUNSIZE[0] != size:
         M.BUNSIZE[0] = size; M._cache.clear(); R._ir.clear()
@@ -161,6 +163,7 @@ def render(z=None, tp=None, cons=True):
         bd -= bd.max(); bt = bt[ins]
         yy, s0, e0, vs = R.render_phrase(ph, X, TT, FF0, R.bank(), (bt, bd))
         if cons:
+            CN.POSES = R.render_phrase.poses; CN.ONSETS = R.render_phrase.onsets
             yy = yy + CN.layer(ph, s0, len(yy), X, M, R.Z, yy)
         spec += R.frame_score(X, yy, s0, vs, None)
         # equal loudness to the clip over his voiced sounds (one fixed playback gain per phrase)
