@@ -109,6 +109,10 @@ checkpoint 6 by the measure; which of 6 and 7 is better is for your ear.
   and diction. Not needed; left off.
 - De-nasalising the ɐ˞ (soft palate shut / nose closing earlier): heard as "e" instead; worse.
 
+- Later passes (12:00-12:30) from fresh random starts, and voice-source variants (averaging 4-5 cycles,
+  more breath), found no further gain over checkpoint 8: tuning has converged, so I stopped rather than
+  spend credits on passes that could not improve it.
+
 ## What is still open
 - The volume steps you hear are mostly right after each "ee" before a "t" (model 10-16 dB too loud for
   20-30 ms) and at the "p" onset; nothing I tried fixed it without spoiling something else.
