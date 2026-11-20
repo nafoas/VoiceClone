@@ -67,7 +67,11 @@ Listen: **`reference/archive/overnight_6_best.wav`** (clip, then model, per phra
 overnight_1_diction, overnight_2_older (deep larynx; rejected: tinny), overnight_3_size080,
 overnight_4_glides, overnight_5_smoother, overnight_6_best.
 
-### Later changes (checkpoints 5-6)
+**Checkpoint 7** (`overnight_7_r.wav`): the r-sounds re-tuned with focus on ɹ, now heard as r 0.60 /
+l 0.19; diction mismatch 0.038; apparent age 14.1; naturalness 4.21. Slightly less natural than
+checkpoint 6 by the measure; which of 6 and 7 is better is for your ear.
+
+### Later changes (checkpoints 5-7)
 - The tongue starts closing for each "t" 15 ms before the vowel's label ends (labels mark where the sound
   changes, not where the movement starts): the loudness step after each "ee" shrinks.
 - His voice starts when his own pitch starts (during his weak, voiced p release), instead of exactly at

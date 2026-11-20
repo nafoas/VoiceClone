@@ -183,3 +183,9 @@ Checkpoint 5 plus: his voice starts when his own pitch starts (during the releas
 consonants re-tuned. Diction mismatch 0.042 (version 1: 0.21); p heard as p 0.83 (version 1: k 0.76);
 loudness steps vs his 2.12 dB (checkpoint 4: 2.95); naturalness 4.34 (version 1: 2.51); apparent age 13.0
 (his 13.1); speaker likeness 0.75 (version 1: 0.62). State: models/perc_state_overnight6.json.
+
+## overnight_7_r.wav (overnight tuning, checkpoint 7)
+Checkpoint 6 with the r-sounds re-tuned with focus on ɹ: heard as r 0.60 / l 0.19 (version 1: l 0.39 /
+r 0.13; checkpoint 6: r 0.44 / l 0.33). Diction mismatch 0.038 (best), apparent age 14.1 (his 13.1),
+naturalness 4.21, speaker likeness 0.74. State: models/perc_state_overnight7.json. Compare with
+overnight_6_best.wav by ear.
