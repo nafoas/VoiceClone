@@ -261,6 +261,20 @@ whole mouth +6.7% (0.75 -> 0.80) lowers them together, with no new part: apparen
 naturalness up. A deeper larynx (3.0 cm) also fixed age but added a narrow pipe that rang at 7 kHz
 (tinny, less natural), so the larynx stays at ~2.4 cm. He is still a small bun (0.80 of the reference).
 
+### Consonants are gestures of their own articulator (2026-11-20; Da Boss: "something wrong in how you make and voice consonants")
+Every sound used to be one whole fitted shape, and the fit shut "m" with the tongue and sealed the tip in
+"ɹ" (the gestures of "n"/"l"), because a steady hum barely shows where a mouth is shut. Now (`GEST=1`):
+| Sound | Its own gesture | The rest of the mouth |
+|---|---|---|
+| m, p | lips shut (+ jaw); m: soft palate open | carried by the neighbouring sounds (coarticulation) |
+| n, t | tongue tip sealed at the ridge, tongue front behind it (+ jaw); n: soft palate open | same |
+| vowels, ɹ | none: open sounds may not touch anywhere (>= 0.008 cm²) | their own position |
+| phrase start | his REST posture: lips shut, soft palate open (a rabbit breathes through its nose), tongue filling the mouth (fitted) | the first sound moves out of it |
+Not new biology: the same controls, used by the part of the mouth that really makes each sound. Stops are
+closure-and-release movements on the moving mouth (the seal breaks at his burst); their noises go through
+the mouth as it moves; the breath stops where the voice starts; a sealed mouth's voice falls to half and
+then fades (fitted to his closures, 20 ms). Details and numbers: docs/CONSONANT_FINDINGS.md.
+
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
 protrusion; 2.5 cm larynx travel; stamped hum; free per-frame poses; formant

@@ -200,3 +200,15 @@ likeness 0.73, loudness steps 2.1 dB, warmth = his. State: models/perc_state_ove
 Per phrase: the clip, version 1 (listen3c: what you last judged), then checkpoint 8 (overnight_8_best).
 Equal loudness. Recogniser: clip "nanʌmunis | pititi", version 1 "nalalmuniʃ | kikki", checkpoint 8
 "nanmunis | pititi".
+
+## cons1_compare.wav (2026-11-20: consonants made by their own articulators)
+Per phrase: the clip, checkpoint 8 (what you last heard), then the new version. Equal loudness.
+Da Boss asked why it always made "L" and "K" sounds. Found (docs/CONSONANT_FINDINGS.md): the "m" was shut
+with the tongue and the "ɹ" with the tongue tip (the gestures of "n"/"l"); his r-colouring (a ~2.5 kHz third
+resonance) was missing; a "t" pulled the whole tongue into the "n" shape and never released the tip; the
+noises went through one fixed "ee" mouth and were turned up over his voiced vowel starts; the voice cut
+dead inside closures. Now every consonant is made by its own articulator on the moving mouth. ɹ steady
+error 9.4 -> 1.8 dB, its resonances 569/1643/2531 (his 565/1655/2561); t bursts 4.5/5.6 kHz (his 4.2/4.5;
+was 7.5); consonant movements vs his 6.6 -> 6.1 dB; naturalness 4.23 (checkpoint 8 4.32). Still open: the
+first "n". State: models/perc_state_cons1.json (render with GEST=1). Model alone: cons1_model.wav.
+

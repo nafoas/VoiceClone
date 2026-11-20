@@ -15,7 +15,7 @@ import perc as P  # noqa: E402
 import cons_check as C  # noqa: E402
 
 st = json.load(open(ARGS[0]))
-pos = [a for a in ARGS[1:] if not a.startswith("--")]
+pos = [a for i, a in enumerate(ARGS[1:], 1) if not a.startswith("--") and ARGS[i - 1] != "--save"]
 if pos:
     _j = json.load(open(pos[0])); st["z"] = _j["z"]
     if "rest" in _j:

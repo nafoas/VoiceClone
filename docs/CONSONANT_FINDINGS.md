@@ -61,6 +61,45 @@ voice stopped dead where his pitch track ended: digital silence (-90..-105 dB) i
    open on top of the vowel-to-vowel movement; the seal breaks exactly at his burst.
 6. **Noises through the moving mouth** (consonants `_through_moving_mouth`, every 2 ms): the burst is made
    at the opening gap; the breath at the vocal cords spread for breathing (0.05 cm²).
-7. **Voicing in a closure**: the push across the folds drops to half within 10 ms of the seal (pressure
-   builds behind it) and, past his last clear pitch, dies away (time constant 20 ms) until the release.
-   Fitted to his two closures: closure loudness error 10.1 -> 6.4 dB; no more dead silence.
+7. **Voicing in a closure** (aerodynamics): the mouth's outlet and the cords are two openings in series, so
+   as the mouth's gap narrows toward the cords' size the push across the cords falls (never below the
+   floor where the soft walls keep yielding, fitted: half); past his last clear pitch the voice dies away
+   (20 ms) until the release. No more dead silence (the model had -90..-105 dB in mid-phrase).
+8. **The breath stops where the voice starts.** Each noise is (provisionally) set to his loudness over its
+   own stretch; the "p" and "t" stretches ran 10-50 ms into his voiced vowel, so the breath noise was being
+   turned up to match his VOWEL and buried its start. That alone made the "p" read as "t".
+9. **His weak, voiced "p" keeps its own source** (his split lip leaks: no pressure, a soft wide hiss), and a
+   phrase that opens with a stop starts from rest: his tongue travels from rest to "ee" as the lips part (his
+   2nd resonance rises ~2.2 -> 3 kHz over ~40 ms).
+
+## Results (models/perc_state_cons1.json, render with GEST=1; reference/archive/cons1_compare.wav)
+Against his clip (primary):
+| | checkpoint 8 | now |
+|---|---|---|
+| steady fit: ɹ / ɐ˞ / m (tone error) | 9.4 / 11.5 / 4.1 dB | 1.8 / 5.0 / 1.8 dB |
+| steady fit: the three n's (WORSE) | 6.5 / 6.5 / 6.5 dB (a whole-mouth shape bent to fit) | 11.1 / 7.7 / 5.6 dB |
+| ɹ resonances (his 565 / 1655 / 2561) | 1053 / 2023 / 4295 | 569 / 1643 / 2531 |
+| how each consonant moves (spectrum through it, 5 ms) | 6.60 dB | 6.10 dB |
+| loudness through the consonants | 2.67 dB | 2.30 dB |
+| t burst centre (his 4.2 / 4.5 kHz) | 7.5 / 7.4 kHz | 4.5 / 5.6 kHz |
+| t release + vowel start | 8.5 / 8.1 dB | 6.9 / 7.9 dB |
+| silence inside closures | -90..-105 dB (dead) | fades like his |
+Secondary (models trained on human speech): naturalness 4.32 -> 4.23; phoneme recogniser: p 0.80, t 0.79 /
+0.88, m 0.82, the middle n's 0.92 / 0.98. Its overall diction score is worse (0.040 -> 0.108), but
+checkpoint 8 had been tuned overnight to please exactly this recogniser, while Da Boss still heard
+"Lannlillies / Pekeke" in it.
+
+## Still open
+- **The first "n"** (recogniser: "l" 0.72). His first "n" is a purer hum than his others (overtones 10-18 dB
+  quieter in his recovered voice there): most likely his voice starting softly at the start of a phrase,
+  i.e. the voice/effort step, not the mouth. A heavily damped nose would purify it but also erases the
+  ~2.5 kHz nose resonance that gives his "ɹ" its r-colour (his "n", "m", "ɹ", "ɐ˞" all carry it), so it would
+  turn the "ɹ" into an "l". Not done: that is one setting doing another's job.
+- **The "ɹ"**: its steady sound now matches his, but the recogniser hears it as l 0.32 / r 0.16 (his clip:
+  r 0.81). Its r-colour comes through the nose (his "ɹ" is nasal before the "m"); the movement into and out
+  of it is the next thing to check.
+- **The "ee"** is heard as "e" partly because its first resonance is high (509 Hz vs his ~405 in "peet",
+  "teet"); size 0.75 fits his "ee" better than 0.80 (tone error 4.5 vs 6.4 dB). Awaiting Da Boss.
+- Tested and not kept: a slower tongue-tip closing (35-55 ms: the recogniser's "t" gets clearer, but his
+  closures fit worse), a leak in the "t" closure (fits his first closure, not his second), cords spread for
+  the "t" breath (fits his release worse).

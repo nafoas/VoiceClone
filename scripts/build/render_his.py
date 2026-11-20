@@ -103,6 +103,7 @@ REL_T = float(os.environ.get("REL_T", "0.025"))              # s: opening moveme
 TAU_OFF = float(os.environ.get("TAU_OFF", "0.02"))           # s: how fast the voice dies inside a sealed mouth (fitted to his two closures)
 REL_TP = float(os.environ.get("REL_TP", str(REL_T)))       # s: the lips' opening movement (lips are heavier than the tip)
 REST_OUT = float(os.environ.get("REST_OUT", "0.04"))        # s: the tongue body leaving rest (his "p": 2nd resonance rises ~40 ms)
+T_LEAK = float(os.environ.get("T_LEAK", "0"))              # cm^2: what his tip's seal leaves open during a "t" closure
 SEAL_A = 0.003                                               # cm^2: an opening this wide lets the air burst through
 
 
@@ -133,9 +134,17 @@ def stop_gestures(ph, vs, poses, s0, hop):
             mid = 0.5 * (lo_ + hi_)
             lo_, hi_ = (mid, hi_) if gap(mid) > SEAL_A else (lo_, mid)
         wb = lo_ if gap(lo_) > SEAL_A else 0.0
+        wcap = 1.0
+        if lab == "tʰ" and T_LEAK > 0:   # his tip seals almost but not completely (a small leak at its sides)
+            lo2, hi2 = 0.0, 1.0
+            for _ in range(14):
+                mid = 0.5 * (lo2 + hi2)
+                lo2, hi2 = (mid, hi2) if gap(mid) > T_LEAK else (lo2, mid)
+            wcap = lo2
         rel_t = REL_TP if lab == "p" else REL_T
         t_open = tr - np.arccos(np.clip(2 * wb - 1, -1, 1)) / np.pi * rel_t   # the movement starts here
         w = np.where(t < t_open, rc((t - tc) / CLOSE_T), 1 - rc((t - t_open) / rel_t))
+        w = np.minimum(w, np.where(t < tr - 0.004, wcap, 1.0))   # (the leak closes just before the burst)
         for c in own:
             poses[:, c] = (1 - w) * poses[:, c] + w * g[c]
         poses[:, TR_VEL] = (1 - w) * poses[:, TR_VEL]
@@ -287,7 +296,13 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
             prev = src
             g = 10 ** (np.interp(t, breath[0], breath[1]) / 20) if breath is not None else 1.0
             g *= min(1.0, 0.5 - 0.5 * np.cos(np.pi * min(1.0, (t - a) / RAMP)), 0.5 - 0.5 * np.cos(np.pi * min(1.0, max(0.0, b - t) / RAMP_OFF)))
-            if len(rr_) > 2 and t > rr_[2]:   # closed mouth: air builds up behind the closure, the push across the folds falls
+            if M.GEST and CONS:   # the mouth's outlet and the cords are two openings in series: as the mouth's gap
+                pz_ = poses[min((i0 + c0) // hop, nfr - 1)]   # narrows toward the cords' size, air piles up behind it and
+                a_, _, _, port_ = M.area_of(Z, pz_)            # the push across the cords falls (aerodynamic voicing constraint)
+                a_out = (1e-4 if pz_[5] < 0.04 else float(a_[len(a_) // 2:].min())) + (port_ if pz_[TR_VEL] > 0.02 else 0.0)
+                ag_ = max(M.B.GLOTTIS_AG, 1e-4)
+                g *= np.sqrt(max(a_out ** 2 / (a_out ** 2 + ag_ ** 2), FLOOR_CL ** 2))   # (walls yield: never below the floor)
+            elif len(rr_) > 2 and t > rr_[2]:   # closed mouth: air builds up behind the closure, the push across the folds falls
                 g *= FLOOR_CL + (1 - FLOOR_CL) * np.exp(-(t - rr_[2]) / TAU_CL)   # falls quickly, then holds (walls yield, a little air keeps flowing)
             if len(rr_) > 3 and t > rr_[3]:   # GEST: past his last clear pitch the folds keep buzzing, ever weaker, as the
                 g *= np.exp(-(t - rr_[3]) / TAU_OFF)   # pressure behind the sealed mouth evens out (no dead cut)
