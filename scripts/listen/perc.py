@@ -124,7 +124,20 @@ def render(z=None, tp=None, cons=True):
         bt = np.arange(vs[0]["s"], vs[-1]["e"] + 0.005, 0.005)
         ins = np.array([any(v["s"] <= q <= v["e"] for v in vs) for q in bt])
         from scipy.ndimage import uniform_filter1d as uf
-        bd = R.envelope_db(X, 0.0, bt) - R.envelope_db(y1, s0, bt); bd = uf(bd[ins], 5); bd -= bd.max(); bt = bt[ins]
+        bd = R.envelope_db(X, 0.0, bt) - R.envelope_db(y1, s0, bt)
+        if os.environ.get("EFFORT", "copy") == "sound":
+            # breath pressure changes slowly: one level per sound (its middle), gliding between sounds (60 ms);
+            # the mouth makes the loudness changes at the joins by itself
+            lev = []
+            for v in vs:
+                k = (bt >= v["s"] + 0.3 * (v["e"] - v["s"])) & (bt <= v["e"] - 0.3 * (v["e"] - v["s"]))
+                lev.append((0.5 * (v["s"] + v["e"]), float(np.median(bd[k])) if k.any() else float(np.median(bd[ins]))))
+            tk = np.array([q[0] for q in lev]); lk = np.array([q[1] for q in lev])
+            sm_ = np.interp(bt, tk, lk); bd = uf(sm_, 13)                 # ~60 ms glide between levels
+        bd = bd[ins] if os.environ.get("EFFORT", "copy") != "sound" else bd[ins]
+        if os.environ.get("EFFORT", "copy") != "sound":
+            bd = uf(bd, 5)
+        bd -= bd.max(); bt = bt[ins]
         yy, s0, e0, vs = R.render_phrase(ph, X, TT, FF0, R.bank(), (bt, bd))
         if cons:
             yy = yy + CN.layer(ph, s0, len(yy), X, M, R.Z, yy)
@@ -146,7 +159,8 @@ def judge(y, spec=None, detail=False):
         dd[f"{l}@{s:.2f}"] = 0.5 * kl(p, m) + 0.5 * kl(q, m)
     ph16 = to16(phrases16(y))
     ag, ch = age_child(ph16); sv = float(np.dot(EC, speaker_vec(ph16)))
-    out = dict(diction=float(np.mean(list(dd.values()))), age=ag, child=ch, speaker=sv, spec=spec)
+    out = dict(diction=float(np.mean(list(dd.values()))), age=ag, child=ch, speaker=sv, spec=spec,
+               envelope=env_dist(y), warmth=warmth(y) - WARM_CLIP)
     if detail:
         out["per_sound"] = dd
         out["heard"] = {k: " ".join(f"{VOCAB[int(i)]}:{seg_dist(P, s, e)[i]:.2f}" for i in np.argsort(-seg_dist(P, s, e))[:3])
@@ -154,11 +168,47 @@ def judge(y, spec=None, detail=False):
     return out
 
 
-def objective(o, w=dict(diction=10.0, age=0.15, speaker=3.0, spec=0.2)):
+def _env(y):
+    n = int(0.01 * SR); out = []
+    for a, b in PHR:
+        for t in np.arange(a + 0.01, b - 0.01, 0.01):
+            c = int(t * SR); out.append(10 * np.log10(np.mean(y[c - n: c + n] ** 2) + 1e-12))
+    out = np.array(out); return np.maximum(out - out.max(), -45.0)
+
+
+_ENV_CLIP = None
+
+
+def env_dist(y):
+    """Loudness every 10 ms across both phrases (consonants and gaps included) vs his, rms dB."""
+    global _ENV_CLIP
+    if _ENV_CLIP is None:
+        _ENV_CLIP = _env(X)
+    return float(np.sqrt(np.mean((_env(y) - _ENV_CLIP) ** 2)))
+
+
+def warmth(y):
+    out = []
+    for l, s, e in SEGS:
+        if l in ("ɕ", "tʰ", "p", "_"):
+            continue
+        seg = y[int(s * SR): int(e * SR)]
+        S = np.abs(np.fft.rfft(seg * np.hanning(len(seg)))) ** 2; f = np.fft.rfftfreq(len(seg), 1 / SR)
+        out.append(10 * np.log10(S[f < 600].sum() / (S[(f >= 600) & (f < 3000)].sum() + 1e-20)))
+    return float(np.mean(out))
+
+
+WARM_CLIP = None
+
+
+def objective(o, w=dict(diction=10.0, age=0.15, speaker=3.0, spec=0.2, envelope=0.15, warmth=0.3)):
     """Lower is better. Diction (JS, 0..0.69 per sound) dominates; apparent age toward his; same speaker;
     the spectral judge as a guard."""
     return (w["diction"] * o["diction"] + w["age"] * abs(o["age"] - AGE_CLIP) + w["speaker"] * (1 - o["speaker"])
-            + w["spec"] * (o["spec"] or 0))
+            + w["spec"] * (o["spec"] or 0) + w["envelope"] * o.get("envelope", 0) + w["warmth"] * abs(o.get("warmth", 0)))
+
+
+WARM_CLIP = warmth(X)
 
 
 if __name__ == "__main__":
