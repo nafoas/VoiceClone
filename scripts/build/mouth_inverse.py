@@ -34,6 +34,11 @@ import ee_bunfit as B  # noqa: E402   (head_baffle, tube_H_nose)
 from build_catalogue import PHRASES  # noqa: E402
 from prince_voice.bunmouth import BunMouth, Pose  # noqa: E402
 
+# MOUTH_V1=1: exactly the mouth Da Boss judged best (listen3c, F14): no movement mapping, the free
+# bends on, the lip spread kept. The base that later improvements are added to one at a time.
+if os.environ.get("MOUTH_V1", "0") == "1":
+    for _k, _v in dict(TOOL="0", KC="6", ARTW="0", LIPSPREAD="1").items():
+        os.environ.setdefault(_k, _v)
 NH = int(os.environ.get("NH", "20")); FLOOR = -58.0; NS = 40; NF = 8
 HUMW = float(os.environ.get("HUMW", "1"))   # weight on his 2nd and 3rd tones vs the 1st (the hum)
 VOICED = ["n", "ã", "ɐ˞", "ɹ", "m", "ũ", "iː"]
@@ -220,7 +225,8 @@ if HIS_SRC:
     for s_ in SOUNDS:   # log factors: throat width, soft palate into the passage, lip spread (0 = none)
         LO[EX[s_]], HI[EX[s_]], Z0[EX[s_]] = [-1.6, -1.6, -0.7], [1.0, 0.3, 1.0], 0.0
         LO[SC[s_]], HI[SC[s_]], Z0[SC[s_]] = -2.5, 2.5, 0.0
-        LO[EX[s_].start + 2], HI[EX[s_].start + 2] = -1e-4, 1e-4   # no lip spread: both tools say his lips narrow or round, never spread
+        if os.environ.get("LIPSPREAD", "0") != "1":
+            LO[EX[s_].start + 2], HI[EX[s_].start + 2] = -1e-4, 1e-4   # no lip spread: both tools say his lips narrow or round, never spread
     LO[NLW], HI[NLW], Z0[NLW] = np.log(0.1), np.log(1.2), 0.0   # log width factor of the lip opening
     LO[NPAL], HI[NPAL], Z0[NPAL] = 0.0, 3.0, 0.0                 # palate arch raised, mm (reference animal)
     if TOOL:   # the mapped controls' stored values are now each sound's small fine-tune around his movement
@@ -261,7 +267,7 @@ def pad(z):
                       np.concatenate([ex(m(q)) for q in SOUNDS]), np.concatenate([sc(m(q)) for q in SOUNDS])]
     if HIS_SRC and len(z) == NC0 + 6 * len(SOUNDS) and KC == 0:   # layout with 6 free bends per sound: dropped
         z = z[:NC0]
-    if HIS_SRC and len(z) >= NC0:   # lip spread off
+    if HIS_SRC and len(z) >= NC0 and os.environ.get("LIPSPREAD", "0") != "1":   # lip spread off
         z = z.copy()
         for s_ in SOUNDS:
             z[EX[s_].start + 2] = 0.0
