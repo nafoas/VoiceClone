@@ -83,11 +83,17 @@ def apply(u):
     return z, tp, cp
 
 
+FOCUS = [q for q in os.environ.get("FOCUS", "").split(",") if q]   # sounds to weigh extra, e.g. "ɹ@0.47"
+
+
 def evaluate(z, tp, cp):
     CN.CP.update(cp); TRm.Z[:] = z
     y, sp = P.render(z, tp)
-    o = P.judge(y, sp)
-    return P.objective(o), o, y
+    o = P.judge(y, sp, detail=bool(FOCUS))
+    f = P.objective(o)
+    if FOCUS:
+        f += 8.0 * float(np.mean([o["per_sound"][k] for k in FOCUS]))
+    return f, o, y
 
 
 def norm(spec, v):
