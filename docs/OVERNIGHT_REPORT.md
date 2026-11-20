@@ -33,5 +33,59 @@ starting from the best so far. Only his mouth's own settings move; anatomy stays
   voice-source tilt a little. Larynx depth (your approved adaptation, within its existing limits) moves
   apparent age strongly in the probe (2.3 cm: 7 yrs; 3.4 cm: 19 yrs), so the voice-box stage tunes it.
 
-## 4. Progress log
-(filled in through the night)
+## 4. What changed his sound, in order of impact
+1. **Consonants by ear** (stage 1): where the air is squeezed, how narrow, the lips, burst length, tuned
+   until the recogniser hears his consonants. "kekeke" -> "titi": t heard as t 0.86 (was k/tʃ), p as p
+   0.84 (was k 0.76), the soft s as s 0.87 (was sh 0.77).
+2. **Nasals and r-sounds by ear**: m heard as m (was l 0.65; the "soft palate into the passage" control
+   I added had been choking his hum), the middle n as n 0.90 (was a/l). This is most of "la la lillies".
+3. **Breath in his voice** (vocal-fold turbulence at his measured level): less clean buzz, more natural.
+4. **Size 0.80** (see BUILD_RULES): the babyish sound was his resonances sitting a few percent too high.
+   Scaling his whole mouth +6.7% (still a small bun) puts the age model at 12.9 years (his clip 13.1)
+   and raises naturalness. A deeper larynx also fixed age but rang at 7 kHz (tinny) - rejected.
+5. **Two more measures** after finding blind spots: timbre balance to 12.8 kHz (the 16 kHz listener
+   models cannot hear the top) and naturalness (torchaudio SQUIM subjective MOS).
+
+## 5. Scorecard: version 1 vs now (overnight_3_size080.wav)
+| | Version 1 (listen3c) | Now |
+|---|---|---|
+| Heard as | nalalmuniʃ \| kikki | (see per sound below) |
+| Diction mismatch (0 = his) | 0.21 | 0.060 |
+| Apparent age (his 13.1) | ~7-9 | 12.9 |
+| Naturalness MOS (his clip 3.23) | 2.51 | 4.12 |
+| Speaker likeness | 0.62 | 0.70 |
+| Warmth vs his (dB) | -1.5 | +0.4 |
+
+Still wrong: ɹ (heard r and l equally), m (m 0.47 but some l), the last t (weak in his clip too).
+
+## 6. Progress log
+=== 06:13 machine restarts when idle: tuning now runs in foreground chunks
+=== stage nasal start 06:13 objective 5.849 diction 0.074 age 8.5 speaker 0.698 spec 6.02
+=== stage nasal done 06:22 after 117 evals; best objective 5.387
+=== stage r start 06:23 objective 5.832 diction 0.088 age 8.3 speaker 0.731 spec 6.18
+=== stage voicebox start 06:33 objective 5.980 diction 0.059 age 6.4 speaker 0.731 spec 6.61
+=== [deep_state.json] stage vowels start 06:45 objective 7.230 diction 0.125 age 11.8 speaker 0.626 spec 7.62
+=== [deep_state.json] stage nasal start 06:54 objective 6.816 diction 0.116 age 12.0 speaker 0.629 spec 8.09
+=== [deep_state.json] stage r start 07:03 objective 6.231 diction 0.095 age 12.4 speaker 0.636 spec 8.12
+=== [deep_state.json] stage cons start 07:13 objective 4.913 diction 0.063 age 12.9 speaker 0.642 spec 8.13
+=== stage cons done 07:21 after 120 evals; best objective 4.146
+=== [perc_state.json] stage glides start 07:23 objective 4.146 diction 0.045 age 13.2 speaker 0.680 spec 8.13
+=== stage glides done 07:31 after 112 evals; best objective 4.146
+=== [perc_state.json] stage voicebox start 07:34 objective 6.212 diction 0.045 age 13.2 speaker 0.680 spec 8.13
+=== [perc_state.json] stage vowels start 07:43 objective 5.944 diction 0.059 age 13.0 speaker 0.657 spec 7.77
+=== [perc_state.json] stage throat start 07:53 objective 5.944 diction 0.059 age 13.0 speaker 0.657 spec 7.77
+=== 08:06 naturalness added; working state back to checkpoint 1 (MOS 3.83 vs 2.66)
+=== [perc_state.json] stage voicebox start 08:06 objective 6.408 diction 0.057 age 8.4 speaker 0.757 spec 6.81
+=== stage voicebox done 08:15 after 99 evals; best objective 6.408
+=== [mid_state.json] stage vowels start 08:16 objective 9.463 diction 0.109 age 9.3 speaker 0.740 spec 7.83
+=== stage vowels done 08:24 after 96 evals; best objective 8.494
+=== [mid_state.json] stage nasal start 08:24 objective 8.494 diction 0.094 age 11.7 speaker 0.698 spec 7.47
+=== stage nasal done 08:33 after 91 evals; best objective 8.494
+=== [mid_state.json] stage r start 08:33 objective 8.494 diction 0.094 age 11.7 speaker 0.698 spec 7.47
+=== [size80_state.json] stage nasal start 08:46 objective 6.742 diction 0.078 age 12.4 speaker 0.675 spec 7.32
+=== stage nasal done 08:55 after 91 evals; best objective 6.390
+=== [size80_state.json] stage r start 08:55 objective 6.390 diction 0.087 age 12.5 speaker 0.700 spec 7.33
+=== stage r done 09:04 after 96 evals; best objective 6.021
+=== [size80_state.json] stage cons start 09:04 objective 6.021 diction 0.077 age 13.5 speaker 0.676 spec 7.30
+=== [size80_state.json] stage vowels start 09:14 objective 5.438 diction 0.060 age 12.9 speaker 0.695 spec 7.30
+=== stage vowels done 09:22 after 96 evals; best objective 5.438
