@@ -1,5 +1,9 @@
 # Overnight report (2026-11-20)
 
+**Listen first:** `reference/archive/morning_compare.wav`: for each phrase, the clip, version 1 (what you
+last judged), then the current best (checkpoint 8). Everything is still his voice through his little bun
+mouth; nothing is applied after the mouth.
+
 Da Boss's brief: tighten it as much as possible, by any means, as long as it stays his little bun mouth
 doing it and nothing is post-processed; work out how to measure the subjective qualities (diction, hum,
 babyishness, fidelity), not just spectra; research the vocal cords; keep iterating all night.
@@ -100,11 +104,18 @@ checkpoint 6 by the measure; which of 6 and 7 is better is for your ear.
 - Widening the lower throat: too old, worse diction.
 - Wider search steps once converged: no further gain.
 
+- A mouth that isn't frozen (PLAN step 4): measured the same way, his brightness moves ~18 Hz within a
+  held sound and the model already moves ~19 Hz; adding slow wanders only cut naturalness (4.3 -> 2.6)
+  and diction. Not needed; left off.
+- De-nasalising the ɐ˞ (soft palate shut / nose closing earlier): heard as "e" instead; worse.
+
 ## What is still open
 - The volume steps you hear are mostly right after each "ee" before a "t" (model 10-16 dB too loud for
   20-30 ms) and at the "p" onset; nothing I tried fixed it without spoiling something else.
 - Loudness and pitch are still copied from the clip (the effort step is not built yet).
-- ɹ is half r, half l.
+- The ʌ in "nannar" (his ɐ˞): heard as mostly "n", so the recogniser writes "nanmunis" where it writes
+  "nanʌmunis" for him. Tuning could not move it without breaking neighbours.
+- ɹ is now r 0.60 / l 0.13-0.19 (was l); the last t is weak (as in his clip).
 - My measures are proxies; your ear is the judge.
 
 ## 6. Progress log
