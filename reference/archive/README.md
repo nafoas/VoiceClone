@@ -189,3 +189,9 @@ Checkpoint 6 with the r-sounds re-tuned with focus on ɹ: heard as r 0.60 / l 0.
 r 0.13; checkpoint 6: r 0.44 / l 0.33). Diction mismatch 0.038 (best), apparent age 14.1 (his 13.1),
 naturalness 4.21, speaker likeness 0.74. State: models/perc_state_overnight7.json. Compare with
 overnight_6_best.wav by ear.
+
+## overnight_8_best.wav (overnight tuning, checkpoint 8: CURRENT BEST)
+Checkpoint 7 with the r-sounds tuned again (focus on ɐ˞ and ɹ). Recogniser transcribes "nanmunis | pititi"
+(his clip: "nanʌmunis | pititi"; version 1: "nalalmuniʃ | kikki"). ɹ heard as r 0.60, m 0.71, p 0.83,
+t 0.87-0.92, s 0.83. Diction mismatch 0.040, naturalness 4.32, apparent age 13.3 (his 13.1), speaker
+likeness 0.73, loudness steps 2.1 dB, warmth = his. State: models/perc_state_overnight8.json.

@@ -53,7 +53,7 @@ The phoneme recogniser (the measure that reproduced your "la la lillies" and "ke
 |---|---|
 | His clip | **nanʌmunis \| pititi** |
 | Version 1 | nalalmuniʃ \| kikki |
-| Checkpoints 6 and 7 | **nanmunis \| pititi** |
+| Checkpoints 6, 7, 8 | **nanmunis \| pititi** |
 
 "Peet teet tee" now comes out as his does; "nannarmunis" is one vowel (the ʌ) short of his.
 Independent scorecard: warmth 20.0 (his 19.9), apparent age 13.4 (his 13.2), loudness flutter 1.45 (his 1.53).
@@ -78,6 +78,10 @@ last t: weak (his own is only t 0.52) · soft s: s 0.8-0.9 (sh 0.77) · vowels: 
 Listen: **`reference/archive/overnight_6_best.wav`** (clip, then model, per phrase). Checkpoints in order:
 overnight_1_diction, overnight_2_older (deep larynx; rejected: tinny), overnight_3_size080,
 overnight_4_glides, overnight_5_smoother, overnight_6_best.
+
+**Checkpoint 8** (`overnight_8_best.wav`, **the one to listen to first**): checkpoint 7 tuned again on
+the r-sounds; best balance: diction 0.040, ɹ heard as r 0.60, naturalness 4.32, apparent age 13.3,
+speaker likeness 0.73, loudness steps 2.1 dB, warmth equal to his.
 
 **Checkpoint 7** (`overnight_7_r.wav`): the r-sounds re-tuned with focus on ɹ, now heard as r 0.60 /
 l 0.19; diction mismatch 0.038; apparent age 14.1; naturalness 4.21. Slightly less natural than
