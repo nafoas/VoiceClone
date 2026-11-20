@@ -78,6 +78,7 @@ def at_period(c, P):
 _TR_OVERRIDE = None   # transitions handed in directly (perceptual tuning)
 CONS = os.environ.get("CONS", "1") == "1"   # the consonants (provisional, Da Boss: test whether their absence is the problem)
 TR_VEL = 7
+WANDER = float(os.environ.get("WANDER", "0"))   # PLAN step 4 ladder: 0 = frozen ... 1 = full amount
 TAU_CL = float(os.environ.get("TAU_CL", "1e9"))   # s: how fast the voice's push falls once the mouth closes (pressure builds up)
 FLOOR_CL = float(os.environ.get("FLOOR_CL", "1.0"))   # the push it settles at (fraction) once the closure holds
 CL_LEAD = float(os.environ.get("CL_LEAD", "0.015"))
@@ -138,6 +139,13 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
     else:
         poses = pose_track(vs, s0, n, hop)
     nfr = len(poses)
+    if WANDER > 0:   # a mouth that isn't frozen (PLAN step 4): slow smooth wanders of jaw, tongue and lips
+        rng_w = np.random.default_rng(23 + PHRASES.index(ph)); tw = np.arange(nfr) * hop / SR
+        for j_, amp in ((0, 0.06), (1, 0.10), (2, 0.06), (5, 0.04)):      # jaw, tongue body, tongue front, lips
+            w_ = np.zeros(nfr)
+            for _ in range(4):                                           # a few slow components, 1-6 Hz
+                w_ += np.sin(2 * np.pi * rng_w.uniform(1.0, 6.0) * tw + rng_w.uniform(0, 2 * np.pi)) / 2.0
+            poses[:, j_] = poses[:, j_] + WANDER * amp * w_
     runs = voiced_runs(vs); RAMP = float(os.environ.get("RAMP", "0.012")); RAMP_OFF = float(os.environ.get("RAMP_OFF", "0.03"))
     if CONS:   # voiced closures: his voice keeps humming while the mouth closes for the next consonant
         labs = [q[0] for q in ph]
