@@ -171,3 +171,9 @@ Checkpoint 3 plus the glides into and out of ɹ and m retimed by ear-model (ɹ l
 movement). Heard: m 0.85, ɹ r 0.44 / l 0.33, n 0.94-0.98, ũ u 0.67, p 0.87, s 0.89, t 0.86/0.76;
 diction mismatch 0.041 (version 1: 0.21), naturalness 4.15, speaker likeness 0.74, apparent age 11.8.
 State: models/perc_state_overnight4.json.
+
+## overnight_5_smoother.wav (overnight tuning, checkpoint 5)
+Checkpoint 4 with the tongue starting to close for each "t" 15 ms before the vowel's label ends (the
+loudness steps you hear after each "ee"), consonants re-tuned around it. Loudness tracking vs his
+2.95 -> 2.41 dB; diction 0.045, apparent age 12.7, naturalness 4.11, speaker likeness 0.71.
+State: models/perc_state_overnight5.json. Compare with overnight_4_glides.wav by ear.
