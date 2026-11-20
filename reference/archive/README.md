@@ -136,3 +136,9 @@ Per phrase: the clip, then (1) previous mouth (listen3c), (2) driven by his meas
 (3) combined: his measured movements set each sound, each may fine-tune within +-0.15 (costed),
 glides refitted (T3). All with consonants. Whole phrase: 6.1 / 7.7 / 6.4 dB. In (3) the "i" of
 "munis" opens again (0.2 mm gap; 10.6 -> 7.1 dB). Verdict: pending.
+
+## step1_ee_lips.wav (version 1 + one change)
+Per phrase: the clip, version 1 (listen3c mouth), version 1 with ONE change: the "ee"s and the "i" of
+"munis" no longer round and spread their lips at once; the lips are relaxed as the inversion tool reads
+him, and only those sounds' other controls refit (tongue root forward, wider throat). Steady tone error:
+"i" 5.6 -> 4.8, "ee" 4.8/4.2/3.2 -> 4.5/3.9/2.7. Everything else untouched. Verdict: pending.
