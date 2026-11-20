@@ -80,6 +80,7 @@ CONS = os.environ.get("CONS", "1") == "1"   # the consonants (provisional, Da Bo
 TR_VEL = 7
 TAU_CL = float(os.environ.get("TAU_CL", "1e9"))   # s: how fast the voice's push falls once the mouth closes (pressure builds up)
 FLOOR_CL = float(os.environ.get("FLOOR_CL", "1.0"))   # the push it settles at (fraction) once the closure holds
+CL_LEAD = float(os.environ.get("CL_LEAD", "0.015"))   # s: closure movement starts this much before the vowel label ends
 BREATH = float(os.environ.get("BREATH", "0.003"))   # pulsed aspiration (vocal-fold turbulence); 0.003 matches his measured noise between tones
 _BRNG = np.random.default_rng(11)
 XF = int(os.environ.get("XF", "4"))   # cycles over which the voice blends when it changes pool
@@ -151,7 +152,7 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
             close = M.pose_full(Z, v["lab"]).copy()
             if nxt in ("_", "tʰ"):            # tongue tip seals at the ridge (the "n" position, nose shut)
                 close = M.pose_full(Z, "n").copy(); close[TR_VEL] = 0.0
-            k0 = int((b - s0) * SR) // hop; k1 = min(nfr - 1, int((te - s0) * SR) // hop)
+            k0 = int((b - CL_LEAD - s0) * SR) // hop; k1 = min(nfr - 1, int((te - s0) * SR) // hop)   # the tongue starts closing CL_LEAD before the label
             p0 = poses[min(k0, nfr - 1)].copy()
             for k in range(k0, k1 + 1):
                 u = min(1.0, (k - k0) * hop / SR / 0.015); u = 0.5 - 0.5 * np.cos(np.pi * u)

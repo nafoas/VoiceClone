@@ -245,7 +245,7 @@ def timbre(y):
     return float(np.sqrt(np.mean(d ** 2)))
 
 
-def objective(o, w=dict(diction=14.0, worst=6.0, age=0.3, speaker=2.0, spec=0.2, envelope=0.15, warmth=0.3, timbre=0.5, mos=1.5)):
+def objective(o, w=dict(diction=14.0, worst=6.0, age=0.3, speaker=2.0, spec=0.2, envelope=0.3, warmth=0.3, timbre=0.5, mos=1.5)):
     """Lower is better. Diction (JS, 0..0.69 per sound) dominates; apparent age toward his; same speaker;
     the spectral judge as a guard."""
     return (w["diction"] * o["diction"] + w["worst"] * o.get("diction_worst", 0) + w["age"] * abs(o["age"] - AGE_CLIP) + w["speaker"] * (1 - o["speaker"])
