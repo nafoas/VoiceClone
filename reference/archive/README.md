@@ -195,3 +195,8 @@ Checkpoint 7 with the r-sounds tuned again (focus on ɐ˞ and ɹ). Recogniser tr
 (his clip: "nanʌmunis | pititi"; version 1: "nalalmuniʃ | kikki"). ɹ heard as r 0.60, m 0.71, p 0.83,
 t 0.87-0.92, s 0.83. Diction mismatch 0.040, naturalness 4.32, apparent age 13.3 (his 13.1), speaker
 likeness 0.73, loudness steps 2.1 dB, warmth = his. State: models/perc_state_overnight8.json.
+
+## morning_compare.wav (for Da Boss, morning)
+Per phrase: the clip, version 1 (listen3c: what you last judged), then checkpoint 8 (overnight_8_best).
+Equal loudness. Recogniser: clip "nanʌmunis | pititi", version 1 "nalalmuniʃ | kikki", checkpoint 8
+"nanmunis | pititi".
