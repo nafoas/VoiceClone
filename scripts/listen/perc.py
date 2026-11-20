@@ -67,6 +67,17 @@ sv_fe = AutoFeatureExtractor.from_pretrained("microsoft/wavlm-base-plus-sv")
 sv_model = WavLMForXVector.from_pretrained("microsoft/wavlm-base-plus-sv").eval()
 _AG = "audeering/wav2vec2-large-robust-24-ft-age-gender"
 ag_proc = Wav2Vec2Processor.from_pretrained(_AG); ag_model = AgeGender.from_pretrained(_AG).eval()
+import torchaudio  # noqa: E402
+_MOS = torchaudio.pipelines.SQUIM_SUBJECTIVE.get_model().eval()
+_MOS_REF = torch.tensor(sf.read(ROOT / "out/listen/SPARC.wav")[0], dtype=torch.float32)[None]   # non-matching clean speech
+
+
+def mos(w16):
+    """Predicted naturalness (MOS 1-5, torchaudio SQUIM subjective)."""
+    with torch.no_grad():
+        return float(_MOS(torch.tensor(w16, dtype=torch.float32)[None], _MOS_REF))
+
+
 PHR = [(R.PHRASES[0][0][1] - 0.02, R.PHRASES[0][-1][2] + 0.03), (R.PHRASES[1][0][1] - 0.02, R.PHRASES[1][-1][2] + 0.03)]
 
 
@@ -161,7 +172,7 @@ def judge(y, spec=None, detail=False):
     ag, ch = age_child(ph16); sv = float(np.dot(EC, speaker_vec(ph16)))
     _v = np.sort(np.array(list(dd.values())))[::-1]
     out = dict(diction=float(np.mean(_v)), diction_worst=float(np.mean(_v[:4])), age=ag, child=ch, speaker=sv, spec=spec,
-               envelope=env_dist(y), warmth=warmth(y) - WARM_CLIP, timbre=timbre(y))
+               envelope=env_dist(y), warmth=warmth(y) - WARM_CLIP, timbre=timbre(y), mos=mos(w16))
     if detail:
         out["per_sound"] = dd
         out["heard"] = {k: " ".join(f"{VOCAB[int(i)]}:{seg_dist(P, s, e)[i]:.2f}" for i in np.argsort(-seg_dist(P, s, e))[:3])
@@ -224,15 +235,16 @@ def timbre(y):
     return float(np.sqrt(np.mean(d ** 2)))
 
 
-def objective(o, w=dict(diction=14.0, worst=6.0, age=0.3, speaker=2.0, spec=0.2, envelope=0.15, warmth=0.3, timbre=0.5)):
+def objective(o, w=dict(diction=14.0, worst=6.0, age=0.3, speaker=2.0, spec=0.2, envelope=0.15, warmth=0.3, timbre=0.5, mos=1.5)):
     """Lower is better. Diction (JS, 0..0.69 per sound) dominates; apparent age toward his; same speaker;
     the spectral judge as a guard."""
     return (w["diction"] * o["diction"] + w["worst"] * o.get("diction_worst", 0) + w["age"] * abs(o["age"] - AGE_CLIP) + w["speaker"] * (1 - o["speaker"])
             + w["spec"] * (o["spec"] or 0) + w["envelope"] * o.get("envelope", 0) + w["warmth"] * abs(o.get("warmth", 0))
-            + w["timbre"] * o.get("timbre", 0))
+            + w["timbre"] * o.get("timbre", 0) + w["mos"] * max(0.0, MOS_CLIP - o.get("mos", MOS_CLIP)))
 
 
 WARM_CLIP = warmth(X)
+MOS_CLIP = mos(X16)
 
 
 if __name__ == "__main__":

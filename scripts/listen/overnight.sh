@@ -5,7 +5,7 @@ PY=/tmp/claude-0/-home-user-VoiceClone/7e3261ab-22a0-5713-8c0c-f1044b891953/scra
 cycle=0
 while [ ! -f out/listen/STOP ]; do
   cycle=$((cycle+1)); echo "=== cycle $cycle $(date +%H:%M)" >> out/listen/tune_log.txt
-  for stage in ${STAGES:-nasal r voicebox cons vowels glides}; do
+  for stage in ${STAGES:-throat nasal r voicebox cons vowels}; do
     [ -f out/listen/STOP ] && break
     $PY scripts/listen/tune.py $stage ${EVALS:-200} > out/listen/tune_$stage.out 2>&1 || echo "stage $stage failed" >> out/listen/tune_log.txt
   done
