@@ -20,8 +20,8 @@ import perc as P  # noqa: E402
 import transitions as TRm  # noqa: E402
 
 M = P.M; CN = P.CN; ROOT = P.ROOT
-STATE = ROOT / "out/listen/perc_state.json"; LOG = ROOT / "out/listen/tune_log.txt"   # working copy (untracked)
-_SAVED = ROOT / "models/perc_state.json"                                                 # committed at check-ins
+STATE = ROOT / os.environ.get("PERC_STATE", "out/listen/perc_state.json"); LOG = ROOT / "out/listen/tune_log.txt"
+_SAVED = ROOT / ("models/perc_state.json" if "PERC_STATE" not in os.environ else os.environ["PERC_STATE"])
 _src = max([q for q in (STATE, _SAVED) if q.exists()], key=lambda q: q.stat().st_mtime, default=None)
 if _src is not None:
     st = json.loads(_src.read_text())
@@ -97,7 +97,7 @@ u0 = [norm(s, get(s, z0, tp0, cp0)) for s in SPEC]
 f0, o0, _ = evaluate(z0, tp0, cp0)
 best = dict(f=f0, o=o0)
 with open(LOG, "a") as fh:
-    fh.write(f"\n=== stage {STAGE} start {time.strftime('%H:%M')} objective {f0:.3f} diction {o0['diction']:.3f} age {o0['age']:.1f} "
+    fh.write(f"\n=== [{STATE.name}] stage {STAGE} start {time.strftime('%H:%M')} objective {f0:.3f} diction {o0['diction']:.3f} age {o0['age']:.1f} "
              f"speaker {o0['speaker']:.3f} spec {o0['spec']:.2f}\n")
 es = cma.CMAEvolutionStrategy(u0, 0.12, {"bounds": [0, 1], "maxfevals": MAXE, "verbose": -9, "seed": int(time.time()) % 10000})
 n = 0
@@ -108,7 +108,7 @@ while not es.stop():
         if f < best["f"] - 1e-4:
             best = dict(f=f, o=o)
             st = dict(z=z.tolist(), tp=tp, cp=cp, best=dict(f=f, **{k: o[k] for k in ("diction", "age", "child", "speaker", "spec")}))
-            STATE.write_text(json.dumps(st)); sf.write(ROOT / "out/listen/perc_best.wav", y / np.abs(y).max() * 0.7, P.SR)
+            STATE.write_text(json.dumps(st)); sf.write(STATE.with_suffix(".wav"), y / np.abs(y).max() * 0.7, P.SR)
             with open(LOG, "a") as fh:
                 fh.write(f"  [{STAGE} {n}] objective {f:.3f} diction {o['diction']:.3f} age {o['age']:.1f} child {o['child']:.2f} "
                          f"speaker {o['speaker']:.3f} spec {o['spec']:.2f}\n")

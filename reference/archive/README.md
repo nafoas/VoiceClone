@@ -150,3 +150,9 @@ likeness; docs/OVERNIGHT_REPORT.md), starting from version 1. Heard per sound no
 m: m 0.88 (was l 0.65); middle n: n 0.62; t: t 0.86 (was tʃ/k); p: p 0.61 (was k 0.76); soft s: s 0.80
 (was sh 0.77); ɹ: l 0.30 / r 0.24 (was l 0.39 / r 0.13). Apparent age 8.4 (his 13; version 1 ~7-9).
 Adds breath (pulsed aspiration at the folds) at his measured level. State: models/perc_state_overnight1.json.
+
+## overnight_2_older.wav (overnight tuning, checkpoint 2)
+Per phrase: the clip, then the model. Larynx at 3.0 cm (within his approved adaptation's existing range,
+1.1-3.4 cm; was 2.3-2.4) with the vowels, nasals, r-sounds and consonants re-tuned for that length.
+Apparent age 13.2 (his 13.1; version 1 ~7-9). Heard per sound: m 0.75, middle n 0.87, ɹ r 0.60, p 0.83,
+soft s 0.90, t 0.78/0.73; open: the last t (heard r 0.32) and ɐ˞. State: models/perc_state_overnight2.json.
