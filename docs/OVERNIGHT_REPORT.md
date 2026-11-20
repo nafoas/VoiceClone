@@ -46,6 +46,18 @@ starting from the best so far. Only his mouth's own settings move; anatomy stays
 5. **Two more measures** after finding blind spots: timbre balance to 12.8 kHz (the 16 kHz listener
    models cannot hear the top) and naturalness (torchaudio SQUIM subjective MOS).
 
+## Headline
+The phoneme recogniser (the measure that reproduced your "la la lillies" and "kekeke") now transcribes:
+
+| | heard as |
+|---|---|
+| His clip | **nanʌmunis \| pititi** |
+| Version 1 | nalalmuniʃ \| kikki |
+| Checkpoints 6 and 7 | **nanmunis \| pititi** |
+
+"Peet teet tee" now comes out as his does; "nannarmunis" is one vowel (the ʌ) short of his.
+Independent scorecard: warmth 20.0 (his 19.9), apparent age 13.4 (his 13.2), loudness flutter 1.45 (his 1.53).
+
 ## 5. Scorecard: version 1 vs the current best (overnight_6_best.wav, models/perc_state.json)
 | | Version 1 (listen3c) | Now |
 |---|---|---|
