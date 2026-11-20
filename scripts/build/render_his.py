@@ -78,6 +78,8 @@ def at_period(c, P):
 _TR_OVERRIDE = None   # transitions handed in directly (perceptual tuning)
 CONS = os.environ.get("CONS", "1") == "1"   # the consonants (provisional, Da Boss: test whether their absence is the problem)
 TR_VEL = 7
+TAU_CL = float(os.environ.get("TAU_CL", "1e9"))   # s: how fast the voice's push falls once the mouth closes (pressure builds up)
+FLOOR_CL = float(os.environ.get("FLOOR_CL", "1.0"))   # the push it settles at (fraction) once the closure holds
 BREATH = float(os.environ.get("BREATH", "0.003"))   # pulsed aspiration (vocal-fold turbulence); 0.003 matches his measured noise between tones
 _BRNG = np.random.default_rng(11)
 XF = int(os.environ.get("XF", "4"))   # cycles over which the voice blends when it changes pool
@@ -154,13 +156,15 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
             for k in range(k0, k1 + 1):
                 u = min(1.0, (k - k0) * hop / SR / 0.015); u = 0.5 - 0.5 * np.cos(np.pi * u)
                 poses[k] = p0 + u * (close - p0)
+            r_.append(b)   # where the mouth starts closing: the voice's push falls from here
             r_[1] = te
     y = np.zeros(n + NFT + 2000)
     y = np.zeros(n + NFT + 2000)
     for v in vs:                                    # one run of his own cycles per sound
         ins = ff0[(tt >= v["s"]) & (tt <= v["e"]) & (ff0 > 0)]; v["f0"] = float(np.median(ins)) if len(ins) else 250.0
         v["src"] = min(BK, key=lambda b: abs(np.log(b["f0"] / v["f0"])))
-    for a, b in runs:
+    for rr_ in runs:
+        a, b = rr_[0], rr_[1]
         # the folds keep one continuous rhythm through a voiced stretch; each buzz starts at its exact
         # instant (between samples where it falls), so no rounding jitter and no restart at sound joins
         i0, i1 = int(np.ceil((a - s0) * SR)), int((b - s0) * SR)
@@ -182,6 +186,8 @@ def render_phrase(ph, x, tt, ff0, BK, breath=None):
             prev = src
             g = 10 ** (np.interp(t, breath[0], breath[1]) / 20) if breath is not None else 1.0
             g *= min(1.0, 0.5 - 0.5 * np.cos(np.pi * min(1.0, (t - a) / RAMP)), 0.5 - 0.5 * np.cos(np.pi * min(1.0, max(0.0, b - t) / RAMP_OFF)))
+            if len(rr_) > 2 and t > rr_[2]:   # closed mouth: air builds up behind the closure, the push across the folds falls
+                g *= FLOOR_CL + (1 - FLOOR_CL) * np.exp(-(t - rr_[2]) / TAU_CL)   # falls quickly, then holds (walls yield, a little air keeps flowing)
             u = ph[c0: c1] - k[c0]
             pulse = np.interp(u, np.linspace(0, 1, len(cyc), endpoint=False), cyc) * g
             if BREATH > 0:   # pulsed aspiration: turbulence through the open fold gap, riding on this cycle's airflow
