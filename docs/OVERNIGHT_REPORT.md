@@ -46,17 +46,39 @@ starting from the best so far. Only his mouth's own settings move; anatomy stays
 5. **Two more measures** after finding blind spots: timbre balance to 12.8 kHz (the 16 kHz listener
    models cannot hear the top) and naturalness (torchaudio SQUIM subjective MOS).
 
-## 5. Scorecard: version 1 vs now (overnight_3_size080.wav)
+## 5. Scorecard: version 1 vs the current best (overnight_4_glides.wav, models/perc_state.json)
 | | Version 1 (listen3c) | Now |
 |---|---|---|
-| Heard as | nalalmuniʃ \| kikki | (see per sound below) |
-| Diction mismatch (0 = his) | 0.21 | 0.060 |
-| Apparent age (his 13.1) | ~7-9 | 12.9 |
-| Naturalness MOS (his clip 3.23) | 2.51 | 4.12 |
-| Speaker likeness | 0.62 | 0.70 |
-| Warmth vs his (dB) | -1.5 | +0.4 |
+| Recogniser hears | nalalmuniʃ \| kikki | his phonemes, sound by sound (below) |
+| Diction mismatch (0 = his) | 0.21 | 0.042 |
+| Apparent age (his clip 13.1) | ~7-9 | 12.9 |
+| Child probability (his 0.96) | 1.00 | 0.96 |
+| Naturalness MOS (his clip 3.2) | 2.5 | 4.2 |
+| Speaker likeness to his clip | 0.62 | 0.73 |
+| Warmth vs his | -1.5 dB | +0.1 dB |
+| Timbre balance to 12.8 kHz | - | 1.9 dB rms |
 
-Still wrong: ɹ (heard r and l equally), m (m 0.47 but some l), the last t (weak in his clip too).
+Heard per sound now (version 1 in brackets): m: m 0.85 (l 0.65) · middle n: n 0.94 (n 0.49/l 0.38) ·
+ɹ: r 0.44/l 0.33 (l 0.39) · ũ: u 0.67 (m 0.44) · p: p 0.69-0.87 (k 0.76) · t: t 0.86 / 0.82 (tʃ/k) ·
+last t: t 0.20 (his own is only t 0.52) · soft s: s 0.81-0.89 (sh 0.77) · vowels: unchanged, correct.
+
+Listen: `reference/archive/overnight_4_glides.wav` (clip, then model, per phrase). Earlier checkpoints:
+overnight_1_diction (consonants + nasals), overnight_2_older (deep larynx: his age but tinny, rejected),
+overnight_3_size080 (size 0.80).
+
+## What I tried that did not work (and why it was dropped)
+- Deeper larynx (3.0 cm): his age, but a narrow pipe at the bottom rang at 7 kHz (tinny, less natural).
+- A per-sound "breath pressure" level instead of the copied loudness: worse loudness tracking.
+- Voice push falling during closures (pressure build-up): spoils his humming tail; off.
+- Widening the lower throat: too old, worse diction.
+- Wider search steps once converged: no further gain.
+
+## What is still open
+- The volume steps you hear are mostly right after each "ee" before a "t" (model 10-16 dB too loud for
+  20-30 ms) and at the "p" onset; nothing I tried fixed it without spoiling something else.
+- Loudness and pitch are still copied from the clip (the effort step is not built yet).
+- ɹ is half r, half l.
+- My measures are proxies; your ear is the judge.
 
 ## 6. Progress log
 === 06:13 machine restarts when idle: tuning now runs in foreground chunks
