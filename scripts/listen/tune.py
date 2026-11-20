@@ -108,7 +108,7 @@ best = dict(f=f0, o=o0)
 with open(LOG, "a") as fh:
     fh.write(f"\n=== [{STATE.name}] stage {STAGE} start {time.strftime('%H:%M')} objective {f0:.3f} diction {o0['diction']:.3f} age {o0['age']:.1f} "
              f"speaker {o0['speaker']:.3f} spec {o0['spec']:.2f}\n")
-es = cma.CMAEvolutionStrategy(u0, 0.12, {"bounds": [0, 1], "maxfevals": MAXE, "verbose": -9, "seed": int(time.time()) % 10000})
+es = cma.CMAEvolutionStrategy(u0, float(os.environ.get("SIGMA", "0.12")), {"bounds": [0, 1], "maxfevals": MAXE, "verbose": -9, "seed": int(time.time()) % 10000})
 n = 0
 while not es.stop():
     U = es.ask(); F = []
