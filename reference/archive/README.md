@@ -143,3 +143,10 @@ Per phrase: the clip, version 1 (listen3c mouth), version 1 with ONE change: the
 him, and only those sounds' other controls refit with the whole-phrase judge (top end included).
 Trade-off: tones up to ~5 kHz match better, but the top end (>7 kHz, his "air") is weaker; on the "ee"
 frames the whole-phrase judge goes 6.0 -> 6.75 dB. Everything else untouched. Verdict: pending.
+
+## overnight_1_diction.wav (overnight tuning, checkpoint 1)
+Per phrase: the clip, then the model tuned by ear-models (phoneme recogniser, apparent age, speaker
+likeness; docs/OVERNIGHT_REPORT.md), starting from version 1. Heard per sound now vs version 1:
+m: m 0.88 (was l 0.65); middle n: n 0.62; t: t 0.86 (was tʃ/k); p: p 0.61 (was k 0.76); soft s: s 0.80
+(was sh 0.77); ɹ: l 0.30 / r 0.24 (was l 0.39 / r 0.13). Apparent age 8.4 (his 13; version 1 ~7-9).
+Adds breath (pulsed aspiration at the folds) at his measured level. State: models/perc_state_overnight1.json.
