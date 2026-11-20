@@ -140,5 +140,6 @@ glides refitted (T3). All with consonants. Whole phrase: 6.1 / 7.7 / 6.4 dB. In 
 ## step1_ee_lips.wav (version 1 + one change)
 Per phrase: the clip, version 1 (listen3c mouth), version 1 with ONE change: the "ee"s and the "i" of
 "munis" no longer round and spread their lips at once; the lips are relaxed as the inversion tool reads
-him, and only those sounds' other controls refit (tongue root forward, wider throat). Steady tone error:
-"i" 5.6 -> 4.8, "ee" 4.8/4.2/3.2 -> 4.5/3.9/2.7. Everything else untouched. Verdict: pending.
+him, and only those sounds' other controls refit with the whole-phrase judge (top end included).
+Trade-off: tones up to ~5 kHz match better, but the top end (>7 kHz, his "air") is weaker; on the "ee"
+frames the whole-phrase judge goes 6.0 -> 6.75 dB. Everything else untouched. Verdict: pending.
