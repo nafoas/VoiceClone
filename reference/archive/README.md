@@ -165,3 +165,9 @@ Larynx back at 2.4 cm (the deeper 3.0 cm larynx fixed age but rang at 7 kHz: tin
 Mouth re-tuned at the new size. Apparent age 12.9 (his 13.1), naturalness MOS 4.12 (clip 3.23;
 version 1 2.51), diction 0.060 (version 1 0.21). Heard: p 0.84, t 0.86/0.76, s 0.87, n 0.90-0.98,
 m 0.47; still wrong: ɹ (r/l 0.28 each), last t. State: models/perc_state_overnight3.json.
+
+## overnight_4_glides.wav (overnight tuning, checkpoint 4: current best)
+Checkpoint 3 plus the glides into and out of ɹ and m retimed by ear-model (ɹ lasts 50 ms, so it is mostly
+movement). Heard: m 0.85, ɹ r 0.44 / l 0.33, n 0.94-0.98, ũ u 0.67, p 0.87, s 0.89, t 0.86/0.76;
+diction mismatch 0.041 (version 1: 0.21), naturalness 4.15, speaker likeness 0.74, apparent age 11.8.
+State: models/perc_state_overnight4.json.

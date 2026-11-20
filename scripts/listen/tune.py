@@ -56,6 +56,8 @@ STAGES = {
     "voicebox": [zi(0), zi(2), zi(3), zi(4), zi(5), zi(M.NG), zi(1)],
     "throat": [pose(s, "root") for s in M.SOUNDS] + [ex(s, 0) for s in M.SOUNDS] + [pose(s, "larynx") for s in M.SOUNDS],
     "vowels": [pose(s, n) for s in ("ã", "iː", "i") for n in ("jaw", "body", "front", "lips", "round")] + [ex("iː", 2), ex("i", 2)],
+    "glides_r": [("tp", "0", b, j, lo, hi) for b in (2, 3, 4, 5)
+                 for j, (lo, hi) in enumerate([(-0.03, 0.03), (0.008, 0.08), (-0.03, 0.03), (-0.04, 0.04)])],
     "glides": [("tp", k, b, j, lo, hi) for k, v in tp0.items() for b in range(len(v))
                for j, (lo, hi) in enumerate([(-0.03, 0.03), (0.008, 0.08), (-0.03, 0.03), (-0.04, 0.04)])],
 }
