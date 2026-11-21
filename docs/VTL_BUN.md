@@ -50,3 +50,17 @@ output; his recording's room is only accounted for when comparing against it.
   folds are right.
 - Taken as the go-ahead for VocalTractLab's vocal folds (set once to sound like him) in place of his
   recovered voice cycles (rule 2b changes on this path); Da Boss hears each step.
+
+## Step 1: his vocal folds and his "ee" (2026-11-21)
+Calibrated ONCE, inside VocalTractLab, with his bun mouth's tube (scripts/build/vtl_calib.py; models/vtl_folds.json):
+- Judged on the tones of his three "ee"s (1.52, 1.77, 2.09 s), the same yardstick his mouth was fitted with.
+- Folds alone: tone error 27.3 -> 7.8 dB. Folds + the "ee" shape together (his bun controls, no contact):
+  5.20 dB (the old engine with his recorded voice: ~4.5-5.9 dB on the same "ee"s).
+- His folds: short (0.25 cm) and thick (0.60 cm, at the edge of the range allowed), soft lung pressure
+  (4716 dPa), resting a little apart (0.021-0.025 cm) with a leak (0.03 cm^2, at the edge), small swing
+  (0.31), aspiration at its minimum (-40 dB, at the edge). Three settings at the edges of their ranges:
+  to be looked at when more of his sounds join the fit.
+- His "ee" in VocalTractLab: tongue body high, tip down, gap 0.029 cm^2 (was 0.010), lips a little wider,
+  soft palate just open (his constant nasal colour).
+- Listening file: reference/archive/vtl_ee_step1.wav (his ee | checkpoint 8 | VocalTractLab + bun mouth, x3).
+- Library note: reloading the speaker file on every try leaks memory; the search loads it once per worker.

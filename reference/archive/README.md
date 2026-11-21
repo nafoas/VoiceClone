@@ -230,3 +230,9 @@ not a little bun mouth that moves; no vibration, no room. Measured afterwards: h
 sound (within 15-20 dB for ~100 ms, 4-8 kHz included; ~100-600 dB/s) where the model drops to digital
 silence 5-15x faster: his recording has a room, the model is dry.
 
+
+## vtl_ee_step1.wav (2026-11-21: VocalTractLab path, step 1 — his folds and his "ee")
+Three times: his "ee" from the clip, checkpoint 8's, then VocalTractLab's physics with his bun mouth on top
+and his vocal folds calibrated once (pitch follows his for this test only; breath rises and falls at the
+ends; one playback gain per piece). Tone error vs his three "ee"s 5.20 dB (old engine ~4.5-5.9).
+For Da Boss: does the third one sound like a little bun's "ee", and does it sound less rigid than the second?
