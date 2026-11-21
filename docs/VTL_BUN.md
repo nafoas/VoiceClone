@@ -32,3 +32,10 @@ Da Boss: "take VocalTractLab's full physics and engine, and simply put our Bnuy 
 4. It is a much richer tube (folds and mouth interacting, airflow, turbulence placed by articulator, side
    channels for l, nasal sinuses, larynx pockets, yielding walls), but still a tube: not a 3D soft mouth.
    And it has no room.
+
+## Da Boss's goal (2026-11-21)
+"My explicit goal was to be able to turn this into simply the way he talks, such that you don't need to
+constantly edit the sound for it to sound properly. So it's useless if you need to constantly apply post
+processing." So: calibration happens ONCE (his folds, his mouth shapes: who he is); after that every new
+line comes straight out of his folds and mouth, nothing applied to the sound. No room is added to his
+output; his recording's room is only accounted for when comparing against it.
