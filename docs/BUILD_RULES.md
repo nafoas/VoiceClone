@@ -38,7 +38,13 @@
 > 5. **One anatomy, many movements.** His anatomy (sizes, cavities) is shared
 >    by every sound; only articulation (how the mouth moves) differs per sound.
 >
-> Where older sections below are stricter about anatomy (e.g. the ±15% natural
+> > **His speech is a pattern, not a recording (Da Boss, 2026-11-21).** Pitch, loudness, timing and
+> diction are to become HIS way of talking: similar but not robotically identical pronunciations,
+> consistent and context-dependent (excited? out of breath?), built into how he speaks. No per-utterance
+> fitting or editing; the clip teaches the pattern. (Later, after the mouth and folds. Also later: he may
+> always speak in a room.)
+
+Where older sections below are stricter about anatomy (e.g. the ±15% natural
 > variation as a hard limit), this priority order wins: ±15% is now a
 > preference with a cost, not a wall.
 

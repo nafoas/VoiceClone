@@ -39,3 +39,14 @@ constantly edit the sound for it to sound properly. So it's useless if you need 
 processing." So: calibration happens ONCE (his folds, his mouth shapes: who he is); after that every new
 line comes straight out of his folds and mouth, nothing applied to the sound. No room is added to his
 output; his recording's room is only accounted for when comparing against it.
+
+## Da Boss (2026-11-21), for later
+- "You could just make it so he constantly speaks in a room. But we can do that later."
+- Pitch, loudness, timing: "fitted simply to the way the little guy talks". "nannarmunis... peet teet tee"
+  is not a one-off: it shows a broader pattern of how he talks. Wanted: a cohesive, coherent little bun
+  with similar (not robotically identical) ways of pronouncing words, and consistent, context-dependent
+  pitch and diction (excited? out of breath?) built into the way he speaks. No external fitting.
+  Matching the clip is part of learning that pattern, not the goal itself. Both come after the mouth and
+  folds are right.
+- Taken as the go-ahead for VocalTractLab's vocal folds (set once to sound like him) in place of his
+  recovered voice cycles (rule 2b changes on this path); Da Boss hears each step.
