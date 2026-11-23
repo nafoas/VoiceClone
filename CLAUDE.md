@@ -3,6 +3,8 @@
 Building the voice of Prince ("Little Prince"), Da Boss's small round white
 rabbit, from a physical model of his own little mouth and voice box.
 
+**The current ordered plan is `docs/ROADMAP.md`: follow it step by step.**
+
 **Before changing anything about how he sounds, read `docs/BUILD_RULES.md`**
 (acceptable vs unacceptable changes, the ledgers, the checklist), then:
 - `VOICE_SPEC.md`: who he is and how he speaks (idiolect, principles)

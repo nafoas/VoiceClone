@@ -1,3 +1,5 @@
+> **Superseded (2026-11-23) by `docs/ROADMAP.md`.** Kept for history.
+
 # The plan: his real voice through his one mouth
 
 Rule zero applies throughout (docs/BUILD_RULES.md): if a step fails or I want to
