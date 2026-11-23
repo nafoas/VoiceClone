@@ -103,6 +103,15 @@ Any measure that does not reproduce these verdicts is not trusted.
 2.3 Calibrate once on his "ee"s and his nasal hums, judged on his tones AND on breathiness (HNR), hum
     strength (H1-H2; F1 near his pitch in closed sounds), steadiness (jitter/shimmer). No leaky shortcut.
 2.4 🎧 his "ee" and a hum ("nnn") vs his clip. **Done when:** Da Boss hears a warm, hummy him, not breathy.
+    **Progress (2026-11-23):** the triangular glottis (self-oscillating) scaled as a whole (lengths x s,
+    masses x s^3, springs x s) vibrates in his tube at his pitch (`bun_folds.py`, `vtl_folds2.py`).
+    Finding: his folds stop if the "ee" gap is narrower than ~0.03 cm^2 (the old fits used 0.01).
+    His voice-quality targets measured (`scripts/listen/voice_quality.py`): "ee" HNR 27-31 dB, H1-H2
+    12-32 dB, jitter 0.1-0.2 %; "n" HNR 25-36, H1-H2 16-18. Scored per sound, worst cell first.
+    Best so far (`models/vtl_folds2_joint.json`): clean tone and hum inside his bands for most cells, but his
+    "ee" harmonics ~13 dB off (too strong 0.5-2.5 kHz, too weak 2.5-5 kHz); fold settings at range edges.
+    Suspect: VocalTractLab's human wall/loss values damp his tiny tube's high cluster -> measure the tube's
+    response in our build vs the old mouth model; if so, bring Step 3.1 (tissue per region) forward.
 
 ## Step 3. A soft, vibrating, shaped mouth (engine physics, in our build)
 3.1 **Tissue per region:** each region gets its own wall mass, damping and stiffness (the engine stores them

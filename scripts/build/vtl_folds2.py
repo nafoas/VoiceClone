@@ -1,0 +1,176 @@
+"""Roadmap Step 2: his vocal folds that really vibrate (VocalTractLab's self-oscillating triangular glottis,
+bun-sized), calibrated ONCE on his three "ee"s and his "n" hum.
+
+Scoring (Da Boss: every sound scored on its own, nothing traded away): each target sound has its own cells
+(tones vs his, clean tone (HNR), hum (H1-H2), pitch reached); each cell has a band; the search minimises the
+WORST cell's excess first (3x), then the mean. Folds that do not vibrate are rejected.
+
+Searched: the folds' overall size s (lengths x s, masses x s^3, springs x s: natural pitch ~ 1/s), their
+thickness, mass, stiffness and damping relative to that, how they rest (lower/upper rest gap, back gap),
+lung pressure, breath noise strength, the "ee" shape (his bun controls), the "n" soft-palate opening.
+
+    python scripts/build/vtl_folds2.py [iterations] -> models/vtl_folds2.json
+"""
+import json
+import os
+import sys
+
+ARGS = sys.argv[1:]
+os.environ.update(SRC="his", MOUTH_V1="1", NH="40", BUNSIZE="0.8")
+for p in (".", "scripts", "scripts/build", "scripts/listen", "analysis/physics"):
+    sys.path.insert(0, p)
+sys.argv = sys.argv[:1]
+import numpy as np  # noqa: E402
+import soundfile as sf  # noqa: E402
+
+import mouth_inverse as M  # noqa: E402
+
+HUMAN = dict(COL=1.3, LRT=0.24, URT=0.06, LRM=0.12, URM=0.03, LDR=0.1, UDR=0.6, LSK=80000., USK=8000., LCK=240000.,
+             UCK=24000., CSK=25000., IL=0.05, OL=0.01, NF0=129., dF0=125.51)
+# name, lo, hi, log
+SPLIT = os.environ.get("SPLIT", "1") == "1"   # each part of the fold set on its own (the closing snap: brightness)
+FP = [("s", 0.25, 0.6, False), ("thick", 0.5, 2.0, True), ("mass", 0.5, 2.0, True), ("stiff", 0.5, 2.0, True),
+      ("damp", 0.3, 3.0, True), ("XB", -0.003, 0.006, False), ("XT", -0.003, 0.004, False), ("AA", 0.0, 0.002, False),
+      ("PR", 3000.0, 14000.0, False), ("AS", -40.0, -10.0, False), ("nport", 0.01, 0.3, True)]
+if SPLIT:
+    FP += [("upper_mass", 0.3, 3.0, True), ("upper_spring", 0.3, 3.0, True), ("contact", 0.3, 4.0, True),
+           ("upper_contact", 0.3, 4.0, True), ("coupling", 0.3, 3.0, True), ("upper_damp", 0.3, 3.0, True),
+           ("upper_thick", 0.5, 2.0, True), ("inlet", 0.3, 3.0, True), ("outlet", 0.3, 3.0, True)]
+SHAPE = os.environ.get("SHAPE", "0") == "1"   # also search the "ee" shape (off: his "ee" is held, step 1's)
+BANDS = dict(tone=4.0, hnr=3.0, h1h2=3.0, f0=0.03)
+_W = {}
+
+
+def fold_static(q):
+    s = q["s"]; d = dict(HUMAN)
+    for k in ("COL", "IL", "OL"):
+        d[k] = HUMAN[k] * s
+    for k in ("LRT", "URT"):
+        d[k] = HUMAN[k] * s * q["thick"]
+    for k in ("LRM", "URM"):
+        d[k] = HUMAN[k] * s ** 3 * q["mass"]
+    for k in ("LSK", "USK", "LCK", "UCK", "CSK"):
+        d[k] = HUMAN[k] * s * q["stiff"]
+    for k in ("LDR", "UDR"):
+        d[k] = HUMAN[k] * q["damp"]
+    if SPLIT:   # the upper part relative to the lower (mass, spring, thickness, damping), contacts, coupling, inlet/outlet
+        d["URM"] *= q["upper_mass"]; d["USK"] *= q["upper_spring"]; d["URT"] *= q["upper_thick"]; d["UDR"] *= q["upper_damp"]
+        d["LCK"] *= q["contact"]; d["UCK"] *= q["upper_contact"]; d["CSK"] *= q["coupling"]
+        d["IL"] *= q["inlet"]; d["OL"] *= q["outlet"]
+    d["NF0"] = HUMAN["NF0"] / s * np.sqrt(q["stiff"] / q["mass"]); d["dF0"] = HUMAN["dF0"] / s * np.sqrt(q["stiff"] / q["mass"])
+    return d
+
+
+def pmask():
+    m = np.zeros(M.NP, bool); m[M.PO["iː"]] = True; m[M.EX["iː"]] = True; m[M.SC["iː"]] = True
+    return m
+
+
+def setup():
+    import vtl_tube as V
+    import voice_quality as Q
+    M.BUNSIZE[0] = 0.8; M._cache.clear()
+    z = M.pad(json.load(open("models/vtl_folds.json"))["z"])   # start: the step-1 "ee" (open, 0.029 cm2)
+    x, sr = sf.read("reference/source/prince_reference.wav"); x = x.mean(1)
+    tg = []
+    for t in M.T:
+        if t["lab"] == "iː" or (t["lab"] == "n" and abs(t["t"][0] - 0.73) < 0.01):
+            seg = (Q.HIS_EE[[1.52, 1.77, 2.09].index(round(t["t"][0], 2))] if t["lab"] == "iː" else Q.HIS_HUM[1])
+            tg.append(dict(t, his_q=Q.measure(x[int(seg[0] * sr): int(seg[1] * sr)], sr)))
+    an, *_ = M.area_of(z, M.pose_full(z, "n"))
+    tip = np.flatnonzero(an[24:] < 0.003) + 24
+    _W.update(V=V, Q=Q, z=z, tg=tg, tip=tip if len(tip) else np.arange(33, 37), pid=os.getpid())
+
+
+def decode(u):
+    out = {}
+    for (n, lo, hi, lg), q in zip(FP, np.clip(u[: len(FP)], 0, 1)):
+        out[n] = float(np.exp(np.log(lo) + q * (np.log(hi) - np.log(lo)))) if lg else lo + q * (hi - lo)
+    return out
+
+
+def tube_frames(z, lab, nport):
+    V = _W["V"]
+    a, L, frac, port = M.area_of(z, M.pose_full(z, "iː"))
+    vel = 0.0
+    if lab == "n":   # his "n" before the "i": tip sealed at the ridge, soft palate open, tongue body as for the "i"
+        a = a.copy(); a[_W["tip"]] = 1e-6; vel = nport
+    art = np.full(40, V.OTHER); art[12:38] = V.TONGUE; art[38] = V.INCISORS; art[39] = V.LOWER_LIP
+    return dict(lengths=np.full(40, L / 40), areas=a, artic=art, incisor=L - 0.48, velum=vel)
+
+
+def tones(y, f0, sr, nh=25):
+    seg = y[int(0.15 * sr):]; S = np.abs(np.fft.rfft(seg * np.hanning(len(seg)))); f = np.fft.rfftfreq(len(seg), 1 / sr)
+    k = np.arange(1, nh + 1) * f0
+    h = np.array([S[(f > q - f0 / 3) & (f < q + f0 / 3)].max() if q < sr / 2 - f0 else 1e-12 for q in k])
+    return 20 * np.log10(h / h[0] + 1e-12)
+
+
+def evaluate(u, detail=False):
+    if not _W:
+        setup()
+    V, Q = _W["V"], _W["Q"]
+    q = decode(u)
+    z = _W["z"].copy(); m = pmask()
+    if len(u) > len(FP):
+        z[m] = M.LO[m] + np.clip(u[len(FP):], 0, 1) * (M.HI[m] - M.LO[m])
+    path = f"/tmp/claude-0/-home-user-VoiceClone/7e3261ab-22a0-5713-8c0c-f1044b891953/scratchpad/f2_{_W['pid']}.speaker"
+    import bun_folds as BF
+    BF.make_speaker(fold_static(q), path); V.use_speaker(path)
+    cells = {}
+    F = int(0.45 * V.SR / V.STEP)
+    for t in _W["tg"]:
+        fr = tube_frames(z, t["lab"], q["nport"])
+        g = V.glottis_shape("modal"); g[:6] = [t["f0"], q["PR"], q["XB"], q["XT"], q["AA"], q["AS"]]
+        y = V.synth([fr] * F, np.tile(g, (F, 1)))
+        seg = y[int(0.15 * V.SR):]
+        mq = Q.measure(seg, V.SR)
+        name = f"{t['lab']}@{t['t'][0]:.2f}"
+        if not np.isfinite(mq["f0"]) or np.sqrt(np.mean(seg ** 2)) < 1e-5:
+            return (1e3, {name: "does not vibrate"}) if detail else 1e3
+        lv = tones(y, mq["f0"], V.SR); his = np.nan_to_num(t["level"][: len(lv)], nan=-58.0)
+        cells[name + " tones"] = (float(np.sqrt(np.mean((np.maximum(lv[1:], -58) - np.maximum(his[1:], -58)) ** 2))), BANDS["tone"], 0.0)
+        cells[name + " clean tone"] = (mq["hnr"], BANDS["hnr"], t["his_q"]["hnr"])
+        cells[name + " hum"] = (mq["h1h2"], BANDS["h1h2"], t["his_q"]["h1h2"])
+        cells[name + " pitch"] = (mq["f0"] / t["f0"] - 1, BANDS["f0"], 0.0)
+    ex = {}
+    for k, (v, band, target) in cells.items():
+        d = abs(v - target) if not k.endswith("tones") else v
+        ex[k] = max(0.0, d - band) / band   # in units of its band
+    J = 3 * max(ex.values()) + float(np.mean(list(ex.values())))
+    if detail:
+        return J, {k: (round(cells[k][0], 3), round(cells[k][2], 3), round(ex[k], 2)) for k in cells}
+    return J
+
+
+if __name__ == "__main__":
+    import cma
+    from multiprocessing import Pool
+    start = dict(s=0.4, thick=1.0, mass=1.0, stiff=1.0, damp=1.0, XB=0.00495 * 0.4, XT=0.0004 * 0.4, AA=0.0002 * 0.16,
+                 PR=8000.0, AS=-30.0, nport=0.08, upper_mass=1.0, upper_spring=1.0, contact=1.0, upper_contact=1.0,
+                 coupling=1.0, upper_damp=1.0, upper_thick=1.0, inlet=1.0, outlet=1.0)
+    if os.environ.get("START_FROM"):   # continue from an earlier result's folds
+        start.update(json.load(open(os.environ["START_FROM"]))["folds"])
+    u0 = []
+    for n, lo, hi, lg in FP:
+        v = start[n]; u0.append((np.log(v) - np.log(lo)) / (np.log(hi) - np.log(lo)) if lg else (v - lo) / (hi - lo))
+    setup(); m = pmask(); z0 = _W["z"]
+    u0 = np.r_[np.clip(u0, 0, 1), np.clip((z0[m] - M.LO[m]) / (M.HI[m] - M.LO[m]), 0, 1)] if SHAPE else np.clip(u0, 0, 1)
+    J0, d0 = evaluate(u0, detail=True); print(f"start: J {J0:.2f}", d0, flush=True)
+    _W.clear()
+    es = cma.CMAEvolutionStrategy(u0, 0.15, {"bounds": [0, 1], "popsize": 16, "maxiter": int(ARGS[0]) if ARGS else 40, "verbose": -9, "seed": 11})
+    best = (J0, u0)
+    with Pool(4, maxtasksperchild=6) as pool:   # (fresh workers often: the library leaks on speaker reloads)
+        while not es.stop():
+            U = es.ask(); Js = pool.map(evaluate, U); es.tell(U, Js)
+            k = int(np.argmin(Js))
+            if Js[k] < best[0]:
+                best = (Js[k], np.array(U[k]))
+            print(f"iter {es.countiter}: best J {best[0]:.3f}  " + " ".join(f"{n}={v:.4g}" for n, v in decode(best[1]).items()), flush=True)
+            np.save(f"out/vtlbun/folds2_best_u{os.environ.get('TAG', '')}.npy", best[1])
+    J, det = evaluate(best[1], detail=True)
+    q = decode(best[1]); z = _W["z"].copy(); m = pmask()
+    if SHAPE:
+        z[m] = M.LO[m] + np.clip(best[1][len(FP):], 0, 1) * (M.HI[m] - M.LO[m])
+    json.dump(dict(J=J, cells=det, folds=q, static=fold_static(q), z=z.tolist()), open(f"models/vtl_folds2{os.environ.get('TAG', '')}.json", "w"), indent=1)
+    print("final", J, json.dumps(det, ensure_ascii=False))
