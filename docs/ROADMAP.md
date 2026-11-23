@@ -52,6 +52,33 @@ The single ordered plan, compiled from everything Da Boss and I agreed. It super
     bun-sized.
   - VocalTractLab library note: reloading the speaker file on every try leaks memory: load once per worker.
 
+## Starting over (Da Boss, 2026-11-23: "fold the current checkpoints into this new roadmap and then start over")
+Nothing from the old fits carries forward as a starting point: the new mouth starts from bun biology and
+his measurements. The old versions become the **reference set** (what every measure in Step 4 is checked
+against, and the baseline to beat), with Da Boss's verdicts (`reference/archive/README.md`):
+
+| Version (archive file) | What it was | Da Boss |
+|---|---|---|
+| listen3 | first whole phrase with provisional consonants | "really bad": La La Lillies, Kekeke; babyish, tinny, monotone, buzz, no warmth |
+| listen3b | consonants + resonances | "straight up worse": muted, tinny, buzz, no hum, quieter |
+| **listen3c = version 1** (F14) | the same, repaired | uncanny, muffled, robotic, monotone, low fidelity; "a lot closer than how bad it's been" |
+| ab / abc | movements read from the clip | mixed / "the first is still the best" (version 1) |
+| step1_ee_lips | version 1 + relaxed lips | still babyish, muffled, volume steps, no hum, La La Lillies / Kekeke |
+| overnight_1..8 | overnight perceptual tuning | (heard as a whole in morning_compare) |
+| **morning_compare: checkpoint 8** | best so far | "Better": still muffled, harsh volume steps, Lannlillies / Pekeke, a pitch and inflection unlike him |
+| cons1_compare | consonants by their own articulators | "still isn't fixed": still L and K; increasingly artificial |
+| rebuild1_compare | consonants rebuilt on airflow | "worse": Pekeke -> Lelele, La La Lillies much worse (rolled back) |
+| vtl_ee_step1 | VocalTractLab + bun mouth "ee" | "breathier, but not in a nice, warm, hummy, him way" |
+
+Known order (best first): checkpoint 8 > version 1 > the rest; rebuild1 < cons1 < checkpoint 8.
+Any measure that does not reproduce these verdicts is not trusted.
+
+## Decided (Da Boss, 2026-11-23)
+- **Size and head radius:** "whatever makes him sound better": both are search variables (Step 5), kept or
+  changed by the grid and his ear, not fixed by me.
+- **Milestones:** "yes, but not so often it loses the benefit of it being autonomous": a few candidates at
+  the END of each search stage only (Step 6.4 stages); fully autonomous in between.
+
 ---
 
 ## Step 1. Our own build of the VocalTractLab engine
@@ -133,7 +160,8 @@ The single ordered plan, compiled from everything Da Boss and I agreed. It super
     long runs in chunks (the container is reclaimed when idle).
 6.5 **Guard against over-fitting** one 2.3 s clip: shared anatomy, biological priors, checks on sounds not
     used for tuning.
-6.6 🎧 **Milestones:** a few of the best candidates; Da Boss picks; his picks steer the next round.
+6.6 🎧 **Milestones (sparse):** only at the end of each stage in 6.4: a few of the best candidates; Da Boss
+    picks; his picks steer the next stage. Autonomous in between.
 6.7 **Done when:** every cell is inside his band (or its gap is explained) and Da Boss says it is him.
 
 ## Step 7. His way of talking (later, after the mouth and folds are right)
@@ -153,8 +181,7 @@ room is only accounted for when comparing against his recording.
 
 ---
 
-## Open decisions (waiting on Da Boss)
-- **Size:** his "ee" fits better at 0.75 than 0.80 (tone error 4.5 vs 6.4 dB); 0.80 came from the age model.
-- **Head radius:** fitted 3.9 cm since version 1 vs 2.6 cm in the ledger (unlogged departure).
-- **Milestones:** pick at milestones (default, as agreed) or fully hands-off.
-- **Licence:** the engine is GPL; fine for our use; if ever distributed, our engine changes are shared too.
+## Notes
+- Size: his "ee" fit better at 0.75 than 0.80 in the old engine (tone error 4.5 vs 6.4 dB); head radius was
+  3.9 cm in every fit vs 2.6 cm in the ledger. Both are now search variables (see Decided).
+- Licence: the engine is GPL; fine for our use; if ever distributed, our engine changes are shared too.

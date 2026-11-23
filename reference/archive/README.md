@@ -102,7 +102,7 @@ measured-mouth guide). New, all from the same mouth (scripts/build/consonants.py
   plane-wave limit applied as for the voice
 PROVISIONAL: each consonant's loudness over time is matched to the clip (relative to his vowels).
 Brightness centre his/model: t 4.1-4.9/4.5-5 kHz; soft s 4.4-5.2/~7 kHz; p ~2/~4.5 kHz.
-Voiced-sound whole-phrase likeness 5.56 dB. Verdict: pending.
+Voiced-sound whole-phrase likeness 5.56 dB. Verdict: Da Boss: "really bad"; "Nannarmunis" -> "La La Lillies", "Peet teet tee" -> "Kekeke"; babyish, higher, more tinny, monotone; static buzz; volume steps, choppy; no warmth, no hum.
 
 ## listen3b_consonants_resonances.wav (PROVISIONAL, with consonants)
 After Da Boss on listen3 ("La La Lillies", "Kekeke", higher/tinny/monotone, static buzz, no warmth):
@@ -114,7 +114,7 @@ After Da Boss on listen3 ("La La Lillies", "Kekeke", higher/tinny/monotone, stat
 - the judge counts audible excess (a buzz where he is quiet) as well as shortfall
 Refit F14. Pitch identical to his. Whole phrase (current judge) listen3 6.33 -> 6.12 dB.
 NOT fixed: nasal buzz (his voice in hums has weak upper tones; the model's voice is recovered from
-open vowels only), warmth of the first "ee" and "ã". Verdict: pending.
+open vowels only), warmth of the first "ee" and "ã". Verdict: Da Boss: "straight up worse": muted, tinny, bad diction (La La Lillies, Kekeke), no hum, buzz and static, no warmth, no bnuyness, muffled, much quieter.
 
 ## listen3c_fixed_spike_same_loudness.wav (listen3b, repaired)
 listen3b had a bug: the consonant loudness matching divided by a near-silent frame edge and made a
@@ -122,27 +122,27 @@ spike in the first "t" hiss ~30 dB above everything; the file scales each phrase
 "peet teet tee" played ~30 dB too quiet. Fixed (smoothed energies, capped gain). Also, clip and model
 are now played at the same loudness (rms over his voiced sounds) instead of the same peak (the
 model's voice is a little peakier, so it always played 1-2 dB quieter than the clip). Same mouth
-(F14) as listen3b. Verdict: pending.
+(F14) as listen3b. Verdict: Da Boss: "louder but not in a good way": uncanny, muffled, robotic, monotone, low fidelity. Later: "a lot closer compared to how bad it's been, but still about as bad". This is VERSION 1.
 
 ## ab_previous_vs_his_movements.wav (A/B for Da Boss)
 Per phrase: the clip, then the previous mouth (listen3c, F14), then the mouth driven by his measured
 movements (inversion tool, SPARC: jaw, tongue height, tongue forward, lips, rounding come from his
 movements; the mouth's anatomy and conversions fitted around them; refit T2). Both with consonants.
 Scores say the new one is worse (whole phrase 6.1 -> 7.9 dB; the "i" of "munis" nearly closes, the
-middle "n" and "ũ" worse). Your ear decides. Verdict: pending.
+middle "n" and "ũ" worse). Your ear decides. Verdict: Da Boss: "a mixed bag": the new movements slightly more computery and low fidelity, muffled, a bit of static; diction a bit better; still babyish.
 
 ## abc_previous_movements_combined.wav (A/B/C for Da Boss)
 Per phrase: the clip, then (1) previous mouth (listen3c), (2) driven by his measured movements (T2),
 (3) combined: his measured movements set each sound, each may fine-tune within +-0.15 (costed),
 glides refitted (T3). All with consonants. Whole phrase: 6.1 / 7.7 / 6.4 dB. In (3) the "i" of
-"munis" opens again (0.2 mm gap; 10.6 -> 7.1 dB). Verdict: pending.
+"munis" opens again (0.2 mm gap; 10.6 -> 7.1 dB). Verdict: Da Boss: "The first is still the best" (version 1); the new movements were tailored into the mouth instead of the mouth taking them; keep 1 and improve it holistically.
 
 ## step1_ee_lips.wav (version 1 + one change)
 Per phrase: the clip, version 1 (listen3c mouth), version 1 with ONE change: the "ee"s and the "i" of
 "munis" no longer round and spread their lips at once; the lips are relaxed as the inversion tool reads
 him, and only those sounds' other controls refit with the whole-phrase judge (top end included).
 Trade-off: tones up to ~5 kHz match better, but the top end (>7 kHz, his "air") is weaker; on the "ee"
-frames the whole-phrase judge goes 6.0 -> 6.75 dB. Everything else untouched. Verdict: pending.
+frames the whole-phrase judge goes 6.0 -> 6.75 dB. Everything else untouched. Verdict: Da Boss: still babyish, still muffled, still volume steps, no warm bnuyish hum, still "la la lillies" / "kekeke".
 
 ## overnight_1_diction.wav (overnight tuning, checkpoint 1)
 Per phrase: the clip, then the model tuned by ear-models (phoneme recogniser, apparent age, speaker
@@ -200,6 +200,7 @@ likeness 0.73, loudness steps 2.1 dB, warmth = his. State: models/perc_state_ove
 Per phrase: the clip, version 1 (listen3c: what you last judged), then checkpoint 8 (overnight_8_best).
 Equal loudness. Recogniser: clip "nanʌmunis | pititi", version 1 "nalalmuniʃ | kikki", checkpoint 8
 "nanmunis | pititi".
+**Verdict:** Da Boss on checkpoint 8: "Better." Still muffled; still computery (harsh volume steps); "Lannlillies" for "Nannarmunis", "Pekeke" for "peet teet tee"; the age focus gave a pitch and inflection unlike him (he is a little bun, not a person of an age).
 
 ## cons1_compare.wav (2026-11-20: consonants made by their own articulators)
 Per phrase: the clip, checkpoint 8 (what you last heard), then the new version. Equal loudness.
@@ -211,7 +212,7 @@ dead inside closures. Now every consonant is made by its own articulator on the 
 error 9.4 -> 1.8 dB, its resonances 569/1643/2531 (his 565/1655/2561); t bursts 4.5/5.6 kHz (his 4.2/4.5;
 was 7.5); consonant movements vs his 6.6 -> 6.1 dB; naturalness 4.23 (checkpoint 8 4.32). Still open: the
 first "n". State: models/perc_state_cons1.json (render with GEST=1). Model alone: cons1_model.wav.
-
+**Verdict:** Da Boss: "It still isn't fixed": still an L in "Nannarmunis"; "peet teet tee" less "Pekeke" but still a K; increasingly artificial: harsh volume steps, muffled, muted, low fidelity, a bit tinny, computery, no bnuy warmth or charm. "Scrap the consonants and redo them entirely."
 
 ## rebuild1_compare.wav (2026-11-20: consonants rebuilt from scratch — first pass, NOT better yet)
 Per phrase: the clip, checkpoint 8, then the rebuild. Da Boss: "scrap the consonants and redo them entirely."
@@ -236,3 +237,6 @@ Three times: his "ee" from the clip, checkpoint 8's, then VocalTractLab's physic
 and his vocal folds calibrated once (pitch follows his for this test only; breath rises and falls at the
 ends; one playback gain per piece). Tone error vs his three "ee"s 5.20 dB (old engine ~4.5-5.9).
 For Da Boss: does the third one sound like a little bun's "ee", and does it sound less rigid than the second?
+**Da Boss's verdict:** "It's breathier? But not in a nice, warm, hummy, *him* way." (The fold fit found a
+leaky-folds shortcut: breathiness was not measured.)
+
