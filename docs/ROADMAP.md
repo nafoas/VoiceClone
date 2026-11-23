@@ -88,6 +88,10 @@ Any measure that does not reproduce these verdicts is not trusted.
 1.2 Point the bridge (`vtl_tube.py`) at our library (switchable: installed vs ours).
 1.3 **Done when:** our unmodified build gives sample-identical (or within rounding) output to the installed
     library for the same tube and folds, and runs at least as fast.
+    **DONE (2026-11-23):** `engine/VocalTractLabBackend` (vendored, GPL), `bash engine/build.sh` (-O3, ~30 s) ->
+    `engine/build/libVocalTractLabApi_bun.so`; `vtl_tube.py` talks to either library through the C API
+    (`VTL_LIB=ours|installed`, default ours). Bun "ee", "ã", "n", "m" and a moving closure/release:
+    identical or within 3e-13 of peak; speed equal (0.98-1.02 s vs 1.02-1.05 s for the test set).
 
 ## Step 2. Folds that really vibrate (the source of his hum)
 2.1 Switch from the prescribed-opening glottis to a **self-oscillating** model (two-mass or triangular

@@ -26,7 +26,6 @@ if "z" in d:
 V = VC._W["V"]
 path = "/tmp/claude-0/-home-user-VoiceClone/7e3261ab-22a0-5713-8c0c-f1044b891953/scratchpad/bun_demo.speaker"
 open(path, "w").write(VC.speaker_text(p)); V.use_speaker(path)
-import vocaltractlab_cython as cy  # noqa: E402
 
 X, sr = sf.read("reference/source/prince_reference.wav"); X = X.mean(1)
 P = pm.Sound(X, sr).to_pitch_ac(time_step=0.0025, pitch_floor=150, pitch_ceiling=700); tt = P.xs(); f0 = P.selected_array["frequency"]
@@ -39,7 +38,7 @@ for a, b in SEG:
     ok = f0 > 0; fv = np.interp(T, tt[ok], f0[ok])
     G = []
     for t, fq in zip(T, fv):
-        g = np.array(cy.get_shape("modal", "glottis"), float)
+        g = V.glottis_shape("modal")
         g[VC.GI["F0"]] = fq; g[VC.GI["DP"]] = 0.0; g[VC.GI["FL"]] = 10.0
         for n in ("PR", "XB", "XT", "CA", "PL", "RA", "PS", "AS"):
             g[VC.GI[n]] = p[n]

@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 out/
 analysis/physics/ee_decomp_r[hm].npz
+engine/build/

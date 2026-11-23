@@ -84,8 +84,7 @@ def run(p, f0, dur=0.3):
         q = dict(p); q.update(FIXED or {})
         path = f"/tmp/claude-0/-home-user-VoiceClone/7e3261ab-22a0-5713-8c0c-f1044b891953/scratchpad/bun_{_W['pid']}.speaker"
         open(path, "w").write(speaker_text(q)); V.use_speaker(path); _W["loaded"] = True
-    import vocaltractlab_cython as cy
-    g = np.array(cy.get_shape("modal", "glottis"), float)
+    g = V.glottis_shape("modal")
     g[GI["F0"]] = f0; g[GI["DP"]] = 0.0; g[GI["FL"]] = 0.0
     for n in ("PR", "XB", "XT", "CA", "PL", "RA", "PS", "AS"):
         g[GI[n]] = p[n]
