@@ -17,6 +17,9 @@ import sys
 
 ARGS = sys.argv[1:]
 os.environ.update(SRC="his", MOUTH_V1="1", NH="40", BUNSIZE="0.8")
+# one maths thread per process: OpenBLAS's thread pool deadlocks with the forked workers (seen at 60 variables)
+for _v in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ.setdefault(_v, "1")
 for p in (".", "scripts", "scripts/build", "scripts/listen", "analysis/physics"):
     sys.path.insert(0, p)
 sys.argv = sys.argv[:1]
