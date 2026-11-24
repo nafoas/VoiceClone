@@ -4,7 +4,9 @@ self-oscillating vocal folds (one fit for all four: models/vtl_folds2{TAG}.json)
 
 The pitch follows his for this comparison only (his way of setting pitch is ROADMAP Step 7); breath rises
 and falls at each end (lung pressure); nothing is done to the sound except one playback gain per piece
-(matched loudness, so the comparison is of quality, not level). At the end: the model alone, an "ee" and a
+(matched loudness, so the comparison is of quality, not level). His folds reach a little under the pitch
+they are asked for (the fit's pitch cells): the pitch command is his contour divided by one constant, the
+fit's mean ratio, the same for all four sounds (test only, like following his contour). At the end: the model alone, an "ee" and a
 "nnn" held for 0.6 s at his pitch, to hear the hum itself.
 
     python scripts/build/vtl_listen2.py [models/vtl_folds2_tissue.json] -> reference/archive/vtl_step2_ee_n.wav
@@ -30,6 +32,9 @@ import bun_folds as BF  # noqa: E402
 import vtl_folds2 as F  # noqa: E402
 
 q = d["folds"]
+_pc = [v[0] for k, v in d["cells"].items() if k.endswith("pitch")]
+CMD = 1.0 / (1.0 + float(np.mean(_pc)))   # pitch command per Hz wanted (his folds land this much low)
+print(f"pitch command x{CMD:.3f} (the fit's pitch cells: {np.round(_pc, 3).tolist()})")
 F.setup(); F._W["z"] = F.M.pad(d["z"]); V = F._W["V"]
 path = "/tmp/claude-0/-home-user-VoiceClone/7e3261ab-22a0-5713-8c0c-f1044b891953/scratchpad/listen2.speaker"
 BF.make_speaker(F.fold_static(q), path); V.use_speaker(path)
@@ -51,7 +56,7 @@ def model(lab, T, fv, his_len):
     fr = F.tube_frames(F._W["z"], lab, q["nport"])
     G = []
     for t, fq in zip(T, fv):
-        g = V.glottis_shape("modal"); g[:6] = [fq, q["PR"], q["XB"], q["XT"], q["AA"], q["AS"]]
+        g = V.glottis_shape("modal"); g[:6] = [fq * CMD, q["PR"], q["XB"], q["XT"], q["AA"], q["AS"]]
         g[1] *= min(rc((t - T[0]) / (F.ONSET_MS / 1000)), 1 - rc((t - (T[-1] - 0.03)) / 0.03))   # breath in (as in the fit), out
         G.append(g)
     lead = int(0.1 * V.SR / V.STEP)   # 100 ms run-in at rest (folds settle), cut off afterwards

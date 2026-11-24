@@ -127,6 +127,16 @@ Any measure that does not reproduce these verdicts is not trusted.
     2.5-5 kHz deficit halved (-12..-16.5 -> -6..-7.5 dB); still too strong at 1-2.5 kHz (+5..+13 dB) and
     hum short on the 389 Hz "ee" (22.9 vs his 31.9 dB). Walls rigid makes it worse (one "ee" changes
     regime), so tissue needs bun values, not none: Step 3.1 next.
+    **Step 3.1 brought forward (2026-11-24):** tissue per region (larynx, throat, soft palate, mouth, gums,
+    lips, nose: mass, damping, stiffness) and the slit width used for air friction (human 0.6 cm) are now
+    engine settings (`vtlSetWalls`, `vtlTdsSetSlitHalfWidth`; the synthesis reset used to put the mouth walls
+    back to human: fixed) and search variables (`vtl_folds2.py TISSUE=1`). First fit J 3.41, but its folds
+    were pressed shut and voiced only when the breath was switched on all at once (never with a natural
+    rise): the fit now starts every sound from rest with his breath rising over 30 ms. Result
+    (`models/vtl_folds2_onset2.json`): **J 3.90**; voices with any breath rise 0-100 ms; HNR and hum in his
+    bands; "ee" harmonics ~8.3 dB off (were 10-14); pitch ~6 % under the command (a constant). Tissue found
+    (x human): light throat, mouth and nose walls (mass x0.16-0.33), stiff larynx and gums (x7-11), damped
+    larynx and lips (x2.7-3.8); slit 0.38 cm. 🎧 `reference/archive/vtl_step2_ee_n.wav`.
 
 ## Step 3. A soft, vibrating, shaped mouth (engine physics, in our build)
 3.1 **Tissue per region:** each region gets its own wall mass, damping and stiffness (the engine stores them

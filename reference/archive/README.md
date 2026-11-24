@@ -240,3 +240,19 @@ For Da Boss: does the third one sound like a little bun's "ee", and does it soun
 **Da Boss's verdict:** "It's breathier? But not in a nice, warm, hummy, *him* way." (The fold fit found a
 leaky-folds shortcut: breathiness was not measured.)
 
+
+
+## vtl_step2_ee_n.wav (2026-11-24: ROADMAP Step 2 + 3.1 — folds that vibrate, his anatomy, his tissue)
+Four times: his "n" (0.73 s) and his three "ee"s, each as his clip | checkpoint 8 | the engine. Then the engine
+alone: an "ee" held 0.6 s at 350 Hz and an "nnn" held at 265 Hz (to hear the hum itself).
+The engine: VocalTractLab (our build) with his bun mouth, his own windpipe/nose (no human side parts any more),
+his tissue per region, and self-oscillating bun-sized vocal folds, all fitted ONCE on these four sounds
+(models/vtl_folds2_onset2.json, J 3.90). Every sound starts from rest with his breath rising (30 ms) and fades
+at the end; one playback gain per piece. Pitch: his contour (test only), the command scaled by one constant
+(x1.062: his folds land ~6 % under the pitch asked for). The engine "n" starts from silence (his runs on from
+the sound before), so its first fold contact is audible as a crisp start.
+Measured (engine vs his): HNR 31-33 vs 27-36 dB; H1-H2 15/26/23/18 vs 16/32/18/12 dB; held: jitter
+0.24-0.29 % (his 0.1-0.2), shimmer 0.22-0.24 dB (his 0.09-0.26); harmonics ~8.3 dB rms off (1-2.5 kHz
++5..+9 dB too strong, 2.5-5 kHz -7..-9 dB too weak).
+For Da Boss: is the third piece of each a warm, hummy him (not breathy)? Better or worse than the second?
+**Da Boss's verdict:** (pending)

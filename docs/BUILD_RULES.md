@@ -301,6 +301,14 @@ sinuses, no fossa, nose at his velum (`bun_vtl.py`, engine `vtlSetSideAnatomy`).
 the engine use the anatomy he already had. Step 2 refit: J 8.36 -> 6.60, pitch on target, "ee" 2.5-5 kHz
 deficit halved. Docs: VTL_BUN.md, ROADMAP Step 2.
 
+### His tissue per region (fixing the model itself; ROADMAP 3.1, 2026-11-24)
+The engine gave every wall one human value (2.4 g/cm2, 5000 dyn s/cm3, 100000 dyn/cm3) and treated narrow
+sections as human-wide slits for air friction. Now each region (larynx, throat, soft palate, mouth, gums,
+lips, nose) has its own mass, damping, stiffness, found by the one-time fit within bun-plausible ranges
+(mass x0.05-2, damping x0.1-5, stiffness x0.2-30; slit 0.1-0.6 cm), not set by hand. Found: light walls
+in throat, mouth and nose, stiff larynx and gums, damped larynx and lips; slit 0.38 cm. Not new anatomy:
+values for tissue he has. Fit scored with natural breath onsets (a jolt-only voice is rejected).
+
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
 protrusion; 2.5 cm larynx travel; stamped hum; free per-frame poses; formant

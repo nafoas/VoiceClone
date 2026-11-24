@@ -84,3 +84,17 @@ Calibrated ONCE, inside VocalTractLab, with his bun mouth's tube (scripts/build/
 - Walls: rigid walls leave the response above 1 kHz unchanged (relative), and damp only the first
   resonance (~4.5 dB). Not the cause of the weak 2.5-5 kHz cluster. In the voiced "ee", rigid walls make
   it worse (the 389 Hz "ee" changes regime): walls matter through the folds, so bun tissue (Step 3.1).
+
+## Step 3.1 brought forward: his tissue (2026-11-24)
+- Engine: `vtlSetWalls` (mass, damping, stiffness per section and for the nose; kept through the synthesis
+  reset, which used to put every mouth wall back to the human value: the first tissue run searched inert
+  variables) and `vtlTdsSetSlitHalfWidth` (VocalTractLab treats every narrow section as a slit 1.2 cm wide
+  for its air friction: a human mouth's). Unset: output bit-identical to the unmodified library.
+- Regions over the re-cut tube (`bun_vtl.REGIONS`): larynx, throat, soft palate, mouth, gums, lips; + nose.
+- Lesson: scored with the breath switched on all at once, the fit chose folds pressed shut that only a jolt
+  of air starts (J 3.41, `models/vtl_folds2_tissue.json`, unusable: silent "ee"s in speech). Every sound now
+  starts from rest with a 30 ms breath rise (`vtl_folds2.ONSET_MS`); the result voices with rises of 0-100 ms.
+- Result `models/vtl_folds2_onset2.json`, J 3.90: per-band harmonics (model minus his) 1-2.5 kHz +5..+9 dB,
+  2.5-5 kHz -7..-9 dB; pitch ~6 % under the command; HNR 31-35, H1-H2 in his bands.
+- Housekeeping: OpenBLAS's thread pool deadlocked with the forked workers at 60 variables (one maths thread per
+  process now); non-finite engine output counts as a failed try.
