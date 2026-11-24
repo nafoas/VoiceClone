@@ -153,9 +153,11 @@ def evaluate(u, detail=False):
         fr = tube_frames(z, t["lab"], q["nport"])
         g = V.glottis_shape("modal"); g[:6] = [t["f0"], q["PR"], q["XB"], q["XT"], q["AA"], q["AS"]]
         y = V.synth([fr] * F, np.tile(g, (F, 1)))
+        name = f"{t['lab']}@{t['t'][0]:.2f}"
+        if not np.isfinite(y).all() or np.abs(y).max() > 10:   # the engine's solver went unstable
+            return (1e3, {name: "unstable"}) if detail else 1e3
         seg = y[int(0.15 * V.SR):]
         mq = Q.measure(seg, V.SR)
-        name = f"{t['lab']}@{t['t'][0]:.2f}"
         if not np.isfinite(mq["f0"]) or np.sqrt(np.mean(seg ** 2)) < 1e-5:
             return (1e3, {name: "does not vibrate"}) if detail else 1e3
         lv = tones(y, mq["f0"], V.SR); his = np.nan_to_num(t["level"][: len(lv)], nan=-58.0)
@@ -168,6 +170,8 @@ def evaluate(u, detail=False):
         d = abs(v - target) if not k.endswith("tones") else v
         ex[k] = max(0.0, d - band) / band   # in units of its band
     J = 3 * max(ex.values()) + float(np.mean(list(ex.values())))
+    if not np.isfinite(J):
+        return (1e3, {"score": "not finite"}) if detail else 1e3
     if detail:
         return J, {k: (round(cells[k][0], 3), round(cells[k][2], 3), round(ex[k], 2)) for k in cells}
     return J
