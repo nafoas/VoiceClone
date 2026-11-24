@@ -38,6 +38,9 @@ if SPLIT:
            ("upper_thick", 0.5, 2.0, True), ("inlet", 0.3, 3.0, True), ("outlet", 0.3, 3.0, True)]
 SHAPE = os.environ.get("SHAPE", "0") == "1"   # also search the "ee" shape (off: his "ee" is held, step 1's)
 BANDS = dict(tone=4.0, hnr=3.0, h1h2=3.0, f0=0.03)
+# His side anatomy (windpipe, nose, sinuses, throat pockets) inside the engine: bun_vtl. HUMAN_SIDE=1 gives the
+# old behaviour (VocalTractLab's human side parts, nose branching after section 16), for comparison only.
+HUMAN_SIDE = os.environ.get("HUMAN_SIDE", "0") == "1"
 _W = {}
 
 
@@ -80,6 +83,9 @@ def setup():
     an, *_ = M.area_of(z, M.pose_full(z, "n"))
     tip = np.flatnonzero(an[24:] < 0.003) + 24
     _W.update(V=V, Q=Q, z=z, tg=tg, tip=tip if len(tip) else np.arange(33, 37), pid=os.getpid())
+    if not HUMAN_SIDE:
+        import bun_vtl as BV
+        BV.set_his_side(M.BUNSIZE[0], z[6])
 
 
 def decode(u):
@@ -96,7 +102,10 @@ def tube_frames(z, lab, nport):
     if lab == "n":   # his "n" before the "i": tip sealed at the ridge, soft palate open, tongue body as for the "i"
         a = a.copy(); a[_W["tip"]] = 1e-6; vel = nport
     art = np.full(40, V.OTHER); art[12:38] = V.TONGUE; art[38] = V.INCISORS; art[39] = V.LOWER_LIP
-    return dict(lengths=np.full(40, L / 40), areas=a, artic=art, incisor=L - 0.48, velum=vel)
+    if HUMAN_SIDE:
+        return dict(lengths=np.full(40, L / 40), areas=a, artic=art, incisor=L - 0.48, velum=vel)
+    import bun_vtl as BV
+    return BV.frame(a, L, frac, art, L - 0.48, vel)
 
 
 def tones(y, f0, sr, nh=25):

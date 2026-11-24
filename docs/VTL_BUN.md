@@ -64,3 +64,23 @@ Calibrated ONCE, inside VocalTractLab, with his bun mouth's tube (scripts/build/
   soft palate just open (his constant nasal colour).
 - Listening file: reference/archive/vtl_ee_step1.wav (his ee | checkpoint 8 | VocalTractLab + bun mouth, x3).
 - Library note: reloading the speaker file on every try leaks memory; the search loads it once per worker.
+
+## Step 2 finding: the engine used human side parts (2026-11-24)
+- `vtlSynthesisAddTube` takes only the pharynx-mouth tube and the velum opening. The synthesizer's own
+  working tube is built once with VocalTractLab's human defaults and `Tube::interpolate` copies only the
+  moving parts, so every synthesis so far (step 1, step 2) ran his 9.8 cm bun tube with a human 23 cm
+  windpipe (2.5-4 cm^2), a human nose (Dang & Honda subject 1, 0.8-4.2 cm^2) with 57 cm^3 of sinuses and a
+  human 3 cm / 2 cm^3 piriform fossa. models/bun.speaker's windpipe, nose and fossa never reached the sound.
+  The nose also always branches after section 16 of the 40 (0.40 of his length; his velum is at 0.51).
+- Fix in our build: `Tube::copyStaticParts` (the working tube takes the side parts of the tube it is
+  given) and `vtlSetSideAnatomy` (windpipe length/area, 19 nose sections, sinus scale, fossa). Without the
+  call, output is bit-identical to the unmodified library.
+- His side parts (`scripts/build/bun_vtl.py`, all search variables later): windpipe 6 cm x 0.33 cm^2
+  (rabbit trachea ~6-7 mm across), the bun model's nose (0.30-0.12 cm^2 x size^2) behind a 0.3 cm velum
+  port, sinuses negligible (the bun model had none), no piriform fossa (the bun model rejected it); his
+  tube re-cut into 16 + 24 sections so the nose branches at his velum (1/area averaged: seals stay sealed).
+- Tube response (`scripts/build/vtl_probe.py`, pulse above closed folds): peaks 0.34/2.34/3.24/4.6/6.0 kHz
+  with the human parts, 0.37/3.21/4.6/5.42 with his; the old bun mouth model: 0.38/3.2/4.69/5.56.
+- Walls: rigid walls leave the response above 1 kHz unchanged (relative), and damp only the first
+  resonance (~4.5 dB). Not the cause of the weak 2.5-5 kHz cluster. In the voiced "ee", rigid walls make
+  it worse (the 389 Hz "ee" changes regime): walls matter through the folds, so bun tissue (Step 3.1).

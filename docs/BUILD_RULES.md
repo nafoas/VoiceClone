@@ -293,6 +293,14 @@ mouth is structurally wrong (a rigid tube, not a moving bun mouth; no vibration;
 the reference. Also not adopted: the gesture fix (cons1, models/perc_state_cons1.json, GEST=1): "still L,
 still K, more artificial".
 
+### His side parts inside VocalTractLab (fixing the model itself, 2026-11-24)
+The engine had been running his bun tube with HUMAN side parts (windpipe 23 cm x 2.5-4 cm^2, nose
+0.8-4.2 cm^2 + 57 cm^3 sinuses, piriform fossa 3 cm / 2 cm^3), whatever models/bun.speaker said, and
+branching his nose at the wrong place. Now his: windpipe 6 cm x 0.33 cm^2, the bun model's nose, no
+sinuses, no fossa, nose at his velum (`bun_vtl.py`, engine `vtlSetSideAnatomy`). No new anatomy: it makes
+the engine use the anatomy he already had. Step 2 refit: J 8.36 -> 6.60, pitch on target, "ee" 2.5-5 kHz
+deficit halved. Docs: VTL_BUN.md, ROADMAP Step 2.
+
 ### Rejected (do not reintroduce without new evidence)
 2× size; puffed cheeks; wider jaw drop; wider lip opening; extra lip
 protrusion; 2.5 cm larynx travel; stamped hum; free per-frame poses; formant

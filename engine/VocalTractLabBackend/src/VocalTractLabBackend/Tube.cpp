@@ -484,6 +484,9 @@ void Tube::interpolate(const Tube *leftTube, const Tube *rightTube, const double
 
   double ratio1 = 1.0 - ratio;
 
+  // [bun] The side parts are the speaker's (taken from the target tube), not this tube's defaults.
+  copyStaticParts(rightTube);
+
   for (i=0; i < NUM_PHARYNX_MOUTH_SECTIONS; i++)
   {
     area_cm2[i]  = ratio1*leftTube->pharynxMouthSection[i].area_cm2 + ratio*rightTube->pharynxMouthSection[i].area_cm2;
@@ -749,6 +752,79 @@ void Tube::print()
 // ****************************************************************************
 /// Overwrite the assignment operator!
 // ****************************************************************************
+
+// ****************************************************************************
+/// [bun] Copy the static side parts from another tube.
+// ****************************************************************************
+
+void Tube::copyStaticParts(const Tube *t)
+{
+  int i;
+  for (i = 0; i < NUM_TRACHEA_SECTIONS; i++) { tracheaSection[i] = t->tracheaSection[i]; }
+  for (i = 0; i < NUM_NOSE_SECTIONS; i++) { noseSection[i] = t->noseSection[i]; }
+  for (i = 0; i < NUM_SINUS_SECTIONS; i++) { sinusSection[i] = t->sinusSection[i]; }
+  for (i = 0; i < NUM_FOSSA_SECTIONS; i++) { fossaSection[i] = t->fossaSection[i]; }
+  subglottalCavityLength_cm = t->subglottalCavityLength_cm;
+  nasalCavityLength_cm = t->nasalCavityLength_cm;
+  piriformFossaLength_cm = t->piriformFossaLength_cm;
+  piriformFossaVolume_cm3 = t->piriformFossaVolume_cm3;
+}
+
+
+// ****************************************************************************
+/// [bun] Set the side anatomy: windpipe (length, area; the last two sections
+/// toward the lungs widen x1.6 and x1.2 as in the human default), the nose
+/// (19 section lengths and areas; the first 4 are re-blended from the velum
+/// opening by setVelumOpening), the sinuses (human volumes x scale^3, neck
+/// areas x scale^2, neck lengths x scale), and the piriform fossa.
+// ****************************************************************************
+
+void Tube::setSideAnatomy(const double tracheaLength_cm, const double tracheaArea_cm2,
+  const double *noseLength_cm, const double *noseArea_cm2, const double sinusScale,
+  const double fossaLength_cm, const double fossaVolume_cm3)
+{
+  int i;
+  Section *ts = NULL;
+  const double SINUS_VOLUME_CM3[NUM_SINUS_SECTIONS] = { 11.3, 6.8, 33.0, 6.2 };
+  const double NECK_LENGTH_CM[NUM_SINUS_SECTIONS]   = { 0.3,   0.3,   0.45,  1.0 };
+  const double NECK_AREA_CM2[NUM_SINUS_SECTIONS]    = { 0.185, 0.185, 0.145, 0.11 };
+
+  subglottalCavityLength_cm = tracheaLength_cm;
+  for (i = 0; i < NUM_TRACHEA_SECTIONS; i++)
+  {
+    ts = &tracheaSection[i];
+    ts->area_cm2 = tracheaArea_cm2 * (i == 0 ? 1.6 : (i == 1 ? 1.2 : 1.0));
+    ts->length_cm = tracheaLength_cm / (double)NUM_TRACHEA_SECTIONS;
+    ts->volume_cm3 = ts->area_cm2 * ts->length_cm;
+  }
+
+  double total = 0.0;
+  for (i = 0; i < NUM_NOSE_SECTIONS; i++)
+  {
+    ts = &noseSection[i];
+    ts->area_cm2 = noseArea_cm2[i] < MIN_AREA_CM2 ? MIN_AREA_CM2 : noseArea_cm2[i];
+    ts->length_cm = noseLength_cm[i];
+    ts->volume_cm3 = ts->area_cm2 * ts->length_cm;
+    total += ts->length_cm;
+  }
+  nasalCavityLength_cm = total;
+
+  double s = sinusScale;
+  for (i = 0; i < NUM_SINUS_SECTIONS; i++)
+  {
+    ts = &sinusSection[i];
+    ts->area_cm2 = NECK_AREA_CM2[i] * s * s < MIN_AREA_CM2 ? MIN_AREA_CM2 : NECK_AREA_CM2[i] * s * s;
+    ts->length_cm = NECK_LENGTH_CM[i] * s;
+    ts->volume_cm3 = SINUS_VOLUME_CM3[i] * s * s * s;
+  }
+
+  piriformFossaLength_cm = -1.0;   // force re-init
+  initPiriformFossa(fossaLength_cm, fossaVolume_cm3);
+
+  setVelumOpening(rawVelumOpening_cm2);
+  calcPositions();
+}
+
 
 void Tube::operator=(const Tube &t)
 {

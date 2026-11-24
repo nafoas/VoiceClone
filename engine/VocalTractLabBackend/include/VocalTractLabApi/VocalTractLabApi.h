@@ -828,6 +828,19 @@ C_EXPORT int vtlTdsResetMotion();
 C_EXPORT int vtlSetFossaDims(double length_cm, double volume_cm3);
 
 // ****************************************************************************
+// [bun] Set the side anatomy of the tube used by vtlSynthesisAddTube and
+// vtlTdsSetTubeAndRun: windpipe length and area, the 19 nose section lengths
+// and areas (glottis side first; the first 4 are re-blended from the velum
+// opening), the sinus scale (human sinuses x scale: volumes ^3, necks ^2 and
+// ^1) and the piriform fossa (length, total volume).
+// Without this call the tube carries VocalTractLab's human defaults.
+// ****************************************************************************
+
+C_EXPORT int vtlSetSideAnatomy(double tracheaLength_cm, double tracheaArea_cm2,
+                               double *noseLength_cm, double *noseArea_cm2, double sinusScale,
+                               double fossaLength_cm, double fossaVolume_cm3);
+
+// ****************************************************************************
 // Set tube geometry on the TDS model and run one time step.
 // Returns all internal state for component-level testing.
 //

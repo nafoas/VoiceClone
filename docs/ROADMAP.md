@@ -112,6 +112,21 @@ Any measure that does not reproduce these verdicts is not trusted.
     "ee" harmonics ~13 dB off (too strong 0.5-2.5 kHz, too weak 2.5-5 kHz); fold settings at range edges.
     Suspect: VocalTractLab's human wall/loss values damp his tiny tube's high cluster -> measure the tube's
     response in our build vs the old mouth model; if so, bring Step 3.1 (tissue per region) forward.
+    **Suspect checked (2026-11-24):** not the walls. The tube's own response (`vtl_probe.py`: a pulse above
+    the folds, sound out of lips, nostrils, skin) is the same with walls rigid above 1 kHz; walls only damp
+    his first resonance (~4.5 dB: his hum region). The real fault: driven with a tube, VocalTractLab's
+    synthesizer always used HUMAN side parts, whatever the speaker file said: a 23 cm windpipe of
+    2.5-4 cm^2, a human nose (0.8-4.2 cm^2, ~10x his) with 57 cm^3 of sinuses, a 3 cm / 2 cm^3 piriform
+    fossa (~10x his) on his 9.8 cm throat, and the nose branching after section 16 of 40 wherever that
+    fell. The fossa made an extra resonance at 2.34 kHz and a hole at 4-5.5 kHz. Fixed in our build
+    (`Tube::copyStaticParts`, `vtlSetSideAnatomy`; default output unchanged, bit-identical) and set to his
+    (`bun_vtl.py`: windpipe 6 cm x 0.33 cm^2, the bun model's nose behind a 0.3 cm velum port, no sinuses,
+    no fossa, tube re-cut so the nose branches at his velum). Resonances now match the old bun mouth
+    model (0.37/3.2/4.6/5.4 vs 0.38/3.2/4.69/5.56 kHz). Refit (`models/vtl_folds2_his.json`): J 8.36 ->
+    6.60; pitch on target in every cell (was -8..-10 %); "ee" tones 12.7-13.9 -> 10.2-10.9 dB; the
+    2.5-5 kHz deficit halved (-12..-16.5 -> -6..-7.5 dB); still too strong at 1-2.5 kHz (+5..+13 dB) and
+    hum short on the 389 Hz "ee" (22.9 vs his 31.9 dB). Walls rigid makes it worse (one "ee" changes
+    regime), so tissue needs bun values, not none: Step 3.1 next.
 
 ## Step 3. A soft, vibrating, shaped mouth (engine physics, in our build)
 3.1 **Tissue per region:** each region gets its own wall mass, damping and stiffness (the engine stores them

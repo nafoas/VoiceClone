@@ -154,6 +154,13 @@ public:
   void setAspirationStrength(const double aspirationStrength_dB);
 
   void interpolate(const Tube *leftTube, const Tube *rightTube, const double ratio);
+  // [bun] Copy the static side parts (windpipe, nose beyond the velum, sinuses, piriform fossa)
+  // from another tube, so a synthesizer's working tube carries the speaker's own anatomy.
+  void copyStaticParts(const Tube *t);
+  // [bun] Set the side anatomy directly (his windpipe, nose, sinuses, fossa).
+  void setSideAnatomy(const double tracheaLength_cm, const double tracheaArea_cm2,
+    const double *noseLength_cm, const double *noseArea_cm2, const double sinusScale,
+    const double fossaLength_cm, const double fossaVolume_cm3);
 
   double getVelumOpening_cm2() const;
 

@@ -2496,6 +2496,20 @@ int vtlTdsResetMotion()
   return 0;
 }
 
+int vtlSetSideAnatomy(double tracheaLength_cm, double tracheaArea_cm2,
+                      double *noseLength_cm, double *noseArea_cm2, double sinusScale,
+                      double fossaLength_cm, double fossaVolume_cm3)
+{
+  if (!vtlApiInitialized)
+  {
+    printf("Error: The API has not been initialized.\n");
+    return 1;
+  }
+  tube->setSideAnatomy(tracheaLength_cm, tracheaArea_cm2, noseLength_cm, noseArea_cm2,
+                       sinusScale, fossaLength_cm, fossaVolume_cm3);
+  return 0;
+}
+
 int vtlSetFossaDims(double length_cm, double volume_cm3)
 {
   if (!vtlApiInitialized)
