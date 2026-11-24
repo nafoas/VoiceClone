@@ -185,6 +185,11 @@ public:
 
 private:
   bool staticPartsInitialized;
+  // [bun] The wall setting of the pharynx-mouth sections (setWalls), kept through resetDynamicPart().
+  bool customWalls;
+  double customWallMass[NUM_PHARYNX_MOUTH_SECTIONS];
+  double customWallResistance[NUM_PHARYNX_MOUTH_SECTIONS];
+  double customWallStiffness[NUM_PHARYNX_MOUTH_SECTIONS];
   double subglottalCavityLength_cm;
   double nasalCavityLength_cm;
   double piriformFossaLength_cm;

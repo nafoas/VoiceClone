@@ -96,6 +96,7 @@ Tube::Tube()
 
   // Init the static parts.
   staticPartsInitialized = false;
+  customWalls = false;   // [bun] human walls until setWalls()
 
   initSubglottalCavity();
   initNasalCavity();
@@ -344,9 +345,9 @@ void Tube::resetDynamicPart()
     ts->length_cm  = 16.0 / (double)NUM_PHARYNX_MOUTH_SECTIONS;
     ts->volume_cm3 = ts->area_cm2 * ts->length_cm;
 
-    ts->wallMass_cgs       = STANDARD_WALL_MASS_CGS;
-    ts->wallResistance_cgs = STANDARD_WALL_RESISTANCE_CGS;
-    ts->wallStiffness_cgs = STANDARD_WALL_STIFFNESS_CGS;
+    ts->wallMass_cgs       = customWalls ? customWallMass[i] : STANDARD_WALL_MASS_CGS;   // [bun] keep setWalls()
+    ts->wallResistance_cgs = customWalls ? customWallResistance[i] : STANDARD_WALL_RESISTANCE_CGS;
+    ts->wallStiffness_cgs  = customWalls ? customWallStiffness[i] : STANDARD_WALL_STIFFNESS_CGS;
 
     ts->articulator = OTHER_ARTICULATOR;
   }
@@ -840,8 +841,10 @@ void Tube::setWalls(const double *mass, const double *resistance, const double *
   const double noseMass, const double noseResistance, const double noseStiffness)
 {
   int i;
+  customWalls = true;
   for (i = 0; i < NUM_PHARYNX_MOUTH_SECTIONS; i++)
   {
+    customWallMass[i] = mass[i]; customWallResistance[i] = resistance[i]; customWallStiffness[i] = stiffness[i];
     pharynxMouthSection[i].wallMass_cgs = mass[i];
     pharynxMouthSection[i].wallResistance_cgs = resistance[i];
     pharynxMouthSection[i].wallStiffness_cgs = stiffness[i];
