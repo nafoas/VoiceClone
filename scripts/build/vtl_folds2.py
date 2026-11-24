@@ -211,7 +211,7 @@ if __name__ == "__main__":
     u0 = np.r_[np.clip(u0, 0, 1), np.clip((z0[m] - M.LO[m]) / (M.HI[m] - M.LO[m]), 0, 1)] if SHAPE else np.clip(u0, 0, 1)
     J0, d0 = evaluate(u0, detail=True); print(f"start: J {J0:.2f}", d0, flush=True)
     _W.clear()
-    es = cma.CMAEvolutionStrategy(u0, 0.15, {"bounds": [0, 1], "popsize": 16, "maxiter": int(ARGS[0]) if ARGS else 40, "verbose": -9, "seed": 11})
+    es = cma.CMAEvolutionStrategy(u0, float(os.environ.get("SIGMA", 0.15)), {"bounds": [0, 1], "popsize": 16, "maxiter": int(ARGS[0]) if ARGS else 40, "verbose": -9, "seed": 11})
     best = (J0, u0)
     with Pool(4, maxtasksperchild=6) as pool:   # (fresh workers often: the library leaks on speaker reloads)
         while not es.stop():
