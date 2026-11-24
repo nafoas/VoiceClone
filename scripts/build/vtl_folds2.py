@@ -53,6 +53,16 @@ if TISSUE:
     FP += [("slit", 0.1, 0.6, False)]
 SHAPE = os.environ.get("SHAPE", "0") == "1"   # also search the "ee" shape (off: his "ee" is held, step 1's)
 BANDS = dict(tone=4.0, hnr=3.0, h1h2=3.0, f0=0.03)
+# Every sound starts the way he starts one: folds at rest, then his breath rising over ONSET_MS (raised cosine).
+# (2026-11-24: with breath switched on all at once, the fit found folds pressed shut that only a jolt of air
+# could start: they never voiced with a natural rise, even 5 ms.)
+ONSET_MS = float(os.environ.get("ONSET_MS", 30.0))
+REST_MS = 10.0
+
+
+def breath(nframes, step_s):
+    t = np.arange(nframes) * step_s * 1000.0 - REST_MS
+    return 0.5 - 0.5 * np.cos(np.pi * np.clip(t / ONSET_MS, 0, 1))
 # His side anatomy (windpipe, nose, sinuses, throat pockets) inside the engine: bun_vtl. HUMAN_SIDE=1 gives the
 # old behaviour (VocalTractLab's human side parts, nose branching after section 16), for comparison only.
 HUMAN_SIDE = os.environ.get("HUMAN_SIDE", "0") == "1"
@@ -155,7 +165,8 @@ def evaluate(u, detail=False):
     for t in _W["tg"]:
         fr = tube_frames(z, t["lab"], q["nport"])
         g = V.glottis_shape("modal"); g[:6] = [t["f0"], q["PR"], q["XB"], q["XT"], q["AA"], q["AS"]]
-        y = V.synth([fr] * F, np.tile(g, (F, 1)))
+        G = np.tile(g, (F, 1)); G[:, 1] *= breath(F, V.STEP / V.SR)
+        y = V.synth([fr] * F, G)
         name = f"{t['lab']}@{t['t'][0]:.2f}"
         if not np.isfinite(y).all() or np.abs(y).max() > 10:   # the engine's solver went unstable
             return (1e3, {name: "unstable"}) if detail else 1e3

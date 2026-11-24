@@ -52,7 +52,7 @@ def model(lab, T, fv, his_len):
     G = []
     for t, fq in zip(T, fv):
         g = V.glottis_shape("modal"); g[:6] = [fq, q["PR"], q["XB"], q["XT"], q["AA"], q["AS"]]
-        g[1] *= min(rc((t - T[0]) / 0.02), 1 - rc((t - (T[-1] - 0.03)) / 0.03))   # breath in, breath out
+        g[1] *= min(rc((t - T[0]) / (F.ONSET_MS / 1000)), 1 - rc((t - (T[-1] - 0.03)) / 0.03))   # breath in (as in the fit), out
         G.append(g)
     lead = int(0.1 * V.SR / V.STEP)   # 100 ms run-in at rest (folds settle), cut off afterwards
     y = V.synth([fr] * (lead + len(T)), np.r_[np.tile(np.r_[G[0][:1], 0.0, G[0][2:]], (lead, 1)), np.array(G)])
