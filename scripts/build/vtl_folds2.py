@@ -36,6 +36,18 @@ if SPLIT:
     FP += [("upper_mass", 0.3, 3.0, True), ("upper_spring", 0.3, 3.0, True), ("contact", 0.3, 4.0, True),
            ("upper_contact", 0.3, 4.0, True), ("coupling", 0.3, 3.0, True), ("upper_damp", 0.3, 3.0, True),
            ("upper_thick", 0.5, 2.0, True), ("inlet", 0.3, 3.0, True), ("outlet", 0.3, 3.0, True)]
+# His tissue per region (ROADMAP Step 3.1, brought forward): wall mass, damping, stiffness per region, as
+# multiples of VocalTractLab's one human value (2.4 g/cm2, 5000 dyn s/cm3, 100000 dyn/cm3). Ranges: human
+# tissue measured relaxed..tense (Ishizaka et al. 1975: mass x0.6-0.9, damping x0.16-0.3, stiffness x0.3-3.3)
+# widened for a small animal's thinner tissue (less mass per cm2, stiffer and more damped per cm2) and for
+# bone under the hard palate (stiff). Plus the slit half-width for air friction (human 0.6 cm; his mouth
+# and throat are narrower).
+TISSUE = os.environ.get("TISSUE", "0") == "1"
+if TISSUE:
+    import bun_vtl as _BV
+    for _r in _BV.TISSUE_KEYS:
+        FP += [(f"{_r}_mass", 0.05, 2.0, True), (f"{_r}_damp", 0.1, 5.0, True), (f"{_r}_stiff", 0.2, 30.0, True)]
+    FP += [("slit", 0.1, 0.6, False)]
 SHAPE = os.environ.get("SHAPE", "0") == "1"   # also search the "ee" shape (off: his "ee" is held, step 1's)
 BANDS = dict(tone=4.0, hnr=3.0, h1h2=3.0, f0=0.03)
 # His side anatomy (windpipe, nose, sinuses, throat pockets) inside the engine: bun_vtl. HUMAN_SIDE=1 gives the
@@ -64,6 +76,12 @@ def fold_static(q):
     return d
 
 
+def apply_tissue(q):
+    if TISSUE and not HUMAN_SIDE:
+        import bun_vtl as BV
+        BV.set_his_tissue({r: (q[f"{r}_mass"], q[f"{r}_damp"], q[f"{r}_stiff"]) for r in BV.TISSUE_KEYS}, slit=q["slit"])
+
+
 def pmask():
     m = np.zeros(M.NP, bool); m[M.PO["iː"]] = True; m[M.EX["iː"]] = True; m[M.SC["iː"]] = True
     return m
@@ -74,6 +92,8 @@ def setup():
     import voice_quality as Q
     M.BUNSIZE[0] = 0.8; M._cache.clear()
     z = M.pad(json.load(open("models/vtl_folds.json"))["z"])   # start: the step-1 "ee" (open, 0.029 cm2)
+    if os.environ.get("START_FROM") and "z" in json.load(open(os.environ["START_FROM"])):   # or an earlier result's
+        z = M.pad(json.load(open(os.environ["START_FROM"]))["z"])
     x, sr = sf.read("reference/source/prince_reference.wav"); x = x.mean(1)
     tg = []
     for t in M.T:
@@ -126,6 +146,7 @@ def evaluate(u, detail=False):
     path = f"/tmp/claude-0/-home-user-VoiceClone/7e3261ab-22a0-5713-8c0c-f1044b891953/scratchpad/f2_{_W['pid']}.speaker"
     import bun_folds as BF
     BF.make_speaker(fold_static(q), path); V.use_speaker(path)
+    apply_tissue(q)
     cells = {}
     F = int(0.45 * V.SR / V.STEP)
     for t in _W["tg"]:
@@ -158,6 +179,11 @@ if __name__ == "__main__":
     start = dict(s=0.4, thick=1.0, mass=1.0, stiff=1.0, damp=1.0, XB=0.00495 * 0.4, XT=0.0004 * 0.4, AA=0.0002 * 0.16,
                  PR=8000.0, AS=-30.0, nport=0.08, upper_mass=1.0, upper_spring=1.0, contact=1.0, upper_contact=1.0,
                  coupling=1.0, upper_damp=1.0, upper_thick=1.0, inlet=1.0, outlet=1.0)
+    if TISSUE:   # start: VocalTractLab's human tissue and slit
+        import bun_vtl as _BV
+        for _r in _BV.TISSUE_KEYS:
+            start.update({f"{_r}_mass": 1.0, f"{_r}_damp": 1.0, f"{_r}_stiff": 1.0})
+        start["slit"] = 0.6
     if os.environ.get("START_FROM"):   # continue from an earlier result's folds
         start.update(json.load(open(os.environ["START_FROM"]))["folds"])
     u0 = []

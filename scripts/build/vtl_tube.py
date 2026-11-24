@@ -52,6 +52,29 @@ def set_options(**kw):
     _LIB.vtlTdsSetOptions(o["noise"], o["turbulence"], o["walls"], o["skin"], o["fossa"], o["inner"], o["transvelar"])
 
 
+WALLS = [None]  # wall tissue per section (our build), re-applied after every speaker load
+SLIT = [None]   # loss slit half-width (our build), likewise
+HUMAN_WALL = (2.4, 5000.0, 100000.0)   # VocalTractLab's one value for every wall: g/cm2, dyn s/cm3, dyn/cm3
+if hasattr(_LIB, "vtlSetWalls"):
+    _LIB.vtlSetWalls.argtypes = [_D, _D, _D, ctypes.c_double, ctypes.c_double, ctypes.c_double]; _LIB.vtlSetWalls.restype = ctypes.c_int
+    _LIB.vtlTdsSetSlitHalfWidth.argtypes = [ctypes.c_double]; _LIB.vtlTdsSetSlitHalfWidth.restype = ctypes.c_int
+
+
+def set_walls(mass, resistance, stiffness, nose=HUMAN_WALL):
+    """Wall tissue of the 40 tube sections (glottis to lips) and of the nose, per cm2 of wall (our build)."""
+    arr = [np.ascontiguousarray(np.broadcast_to(np.asarray(v, np.float64), (40,))) for v in (mass, resistance, stiffness)]
+    WALLS[0] = (arr, tuple(float(v) for v in nose))
+    if _LIB.vtlSetWalls(*[a.ctypes.data_as(_D) for a in arr], *WALLS[0][1]) != 0:
+        raise RuntimeError("vtlSetWalls failed")
+
+
+def set_slit(half_width_cm):
+    """Narrow sections are slits this wide (cm, half-width) for their air friction; VocalTractLab: 0.6 (human)."""
+    SLIT[0] = float(half_width_cm)
+    if _LIB.vtlTdsSetSlitHalfWidth(SLIT[0]) != 0:
+        raise RuntimeError("vtlTdsSetSlitHalfWidth failed")
+
+
 SIDE = [None]   # his side anatomy (windpipe, nose, sinuses, fossa), re-applied after every speaker load
 if hasattr(_LIB, "vtlSetSideAnatomy"):
     _LIB.vtlSetSideAnatomy.argtypes = [ctypes.c_double, ctypes.c_double, _D, _D, ctypes.c_double, ctypes.c_double, ctypes.c_double]
@@ -85,6 +108,10 @@ def use_speaker(path):
         set_side_anatomy(*SIDE[0])
     if OPTIONS:
         set_options()
+    if WALLS[0] is not None:
+        set_walls(*WALLS[0][0], nose=WALLS[0][1])
+    if SLIT[0] is not None:
+        set_slit(SLIT[0])
     c = [ctypes.c_int() for _ in range(5)]; d = ctypes.c_double()
     _LIB.vtlGetConstants(*[ctypes.byref(q) for q in c], ctypes.byref(d))
     global SR, NT, NTRACT, NGLOT, STEP

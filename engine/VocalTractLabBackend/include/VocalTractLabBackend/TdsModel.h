@@ -263,6 +263,8 @@ public:
   Constriction *constrictionBuffer;
 
   Options options;
+  /// [bun] Half-width (cm) of the slit a narrow section is assumed to be, for its air friction (human 0.6).
+  double minEllipseHalfAxis_cm;
 
 
   // ************************************************************************

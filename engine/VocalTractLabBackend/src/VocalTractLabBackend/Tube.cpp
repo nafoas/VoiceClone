@@ -764,6 +764,12 @@ void Tube::copyStaticParts(const Tube *t)
   for (i = 0; i < NUM_NOSE_SECTIONS; i++) { noseSection[i] = t->noseSection[i]; }
   for (i = 0; i < NUM_SINUS_SECTIONS; i++) { sinusSection[i] = t->sinusSection[i]; }
   for (i = 0; i < NUM_FOSSA_SECTIONS; i++) { fossaSection[i] = t->fossaSection[i]; }
+  for (i = 0; i < NUM_PHARYNX_MOUTH_SECTIONS; i++)   // the walls only (the geometry is interpolated)
+  {
+    pharynxMouthSection[i].wallMass_cgs = t->pharynxMouthSection[i].wallMass_cgs;
+    pharynxMouthSection[i].wallResistance_cgs = t->pharynxMouthSection[i].wallResistance_cgs;
+    pharynxMouthSection[i].wallStiffness_cgs = t->pharynxMouthSection[i].wallStiffness_cgs;
+  }
   subglottalCavityLength_cm = t->subglottalCavityLength_cm;
   nasalCavityLength_cm = t->nasalCavityLength_cm;
   piriformFossaLength_cm = t->piriformFossaLength_cm;
@@ -823,6 +829,29 @@ void Tube::setSideAnatomy(const double tracheaLength_cm, const double tracheaAre
 
   setVelumOpening(rawVelumOpening_cm2);
   calcPositions();
+}
+
+
+// ****************************************************************************
+/// [bun] Wall tissue per pharynx-mouth section, and for the nose.
+// ****************************************************************************
+
+void Tube::setWalls(const double *mass, const double *resistance, const double *stiffness,
+  const double noseMass, const double noseResistance, const double noseStiffness)
+{
+  int i;
+  for (i = 0; i < NUM_PHARYNX_MOUTH_SECTIONS; i++)
+  {
+    pharynxMouthSection[i].wallMass_cgs = mass[i];
+    pharynxMouthSection[i].wallResistance_cgs = resistance[i];
+    pharynxMouthSection[i].wallStiffness_cgs = stiffness[i];
+  }
+  for (i = 0; i < NUM_NOSE_SECTIONS; i++)
+  {
+    noseSection[i].wallMass_cgs = noseMass;
+    noseSection[i].wallResistance_cgs = noseResistance;
+    noseSection[i].wallStiffness_cgs = noseStiffness;
+  }
 }
 
 

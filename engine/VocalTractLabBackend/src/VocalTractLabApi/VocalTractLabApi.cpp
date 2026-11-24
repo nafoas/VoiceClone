@@ -2510,6 +2510,29 @@ int vtlSetSideAnatomy(double tracheaLength_cm, double tracheaArea_cm2,
   return 0;
 }
 
+int vtlSetWalls(double *mass, double *resistance, double *stiffness,
+                double noseMass, double noseResistance, double noseStiffness)
+{
+  if (!vtlApiInitialized)
+  {
+    printf("Error: The API has not been initialized.\n");
+    return 1;
+  }
+  tube->setWalls(mass, resistance, stiffness, noseMass, noseResistance, noseStiffness);
+  return 0;
+}
+
+int vtlTdsSetSlitHalfWidth(double halfWidth_cm)
+{
+  if (!vtlApiInitialized)
+  {
+    printf("Error: The API has not been initialized.\n");
+    return 1;
+  }
+  tdsModel->minEllipseHalfAxis_cm = halfWidth_cm;
+  return 0;
+}
+
 int vtlSetFossaDims(double length_cm, double volume_cm3)
 {
   if (!vtlApiInitialized)

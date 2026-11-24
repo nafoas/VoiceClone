@@ -28,6 +28,31 @@ FOSSA = None if os.environ.get("FOSSA", "off") == "off" else (1.375, 0.2496)
 PORT_LEN = 0.3   # cm, the velum port (as in the frequency-domain mouth)
 
 
+# His tissue, region by region (ROADMAP Step 3.1), over the 40 re-cut sections (16 glottis->velum, 24 velum->lips;
+# the mouth sections are ~0.2 cm). One tube section has one wall: each region's value is the tissue that lines
+# it most. Values are multiples of VocalTractLab's human wall (2.4 g/cm2, 5000 dyn s/cm3, 100000 dyn/cm3).
+REGIONS = {"larynx": range(0, 2),        # laryngeal cavity above the folds (~0.6 cm)
+           "throat": range(2, 16),       # pharynx, up to the velum
+           "soft_palate": range(16, 20), # velum and the back of the mouth
+           "mouth": range(20, 36),       # hard palate over the tongue, cheeks at the sides
+           "gums": range(36, 38),        # around the incisors
+           "lips": range(38, 40)}        # his (split) lips
+TISSUE_KEYS = list(REGIONS) + ["nose"]
+
+
+def set_his_tissue(t, slit=None):
+    """t: {region: (mass x, resistance x, stiffness x)} for REGIONS and "nose" (missing: human x1).
+    slit: the loss slit half-width in cm (None: VocalTractLab's 0.6)."""
+    m = np.zeros(40); r = np.zeros(40); k = np.zeros(40)
+    for name, idx in REGIONS.items():
+        fm, fr, fk = t.get(name, (1.0, 1.0, 1.0))
+        m[list(idx)] = V.HUMAN_WALL[0] * fm; r[list(idx)] = V.HUMAN_WALL[1] * fr; k[list(idx)] = V.HUMAN_WALL[2] * fk
+    fm, fr, fk = t.get("nose", (1.0, 1.0, 1.0))
+    V.set_walls(m, r, k, nose=(V.HUMAN_WALL[0] * fm, V.HUMAN_WALL[1] * fr, V.HUMAN_WALL[2] * fk))
+    if slit is not None:
+        V.set_slit(slit)
+
+
 def his_nose(size, nlen):
     """19 nose sections (velum side first): 4 for the velum port (re-blended by the engine from the opening),
     15 for his nasal passage, resampled from the bun model's 10."""

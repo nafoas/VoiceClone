@@ -50,6 +50,7 @@ TdsModel::TdsModel()
 {
   constrictionBuffer = new Constriction[CONSTRICTION_BUFFER_SIZE];
   constrictionMonitorTubeSection = 0;
+  minEllipseHalfAxis_cm = 0.6;   // [bun] settable: vtlTdsSetSlitHalfWidth
 
   // ****************************************************************
   // Acoustic options
@@ -964,7 +965,7 @@ void TdsModel::prepareTimeStep()
       // just before supraglottal or glottal closures and make it
       // roughly equivalent to that of a rectangular slit.
 
-      double MIN_RADIUS_CM = 0.6;    // = 5 mm (corresponds to area of 1.1 cm^2)
+      double MIN_RADIUS_CM = minEllipseHalfAxis_cm;    // human: 0.6 cm (area of 1.1 cm^2); [bun] settable
       if (a < MIN_RADIUS_CM)
       {
         a = MIN_RADIUS_CM;

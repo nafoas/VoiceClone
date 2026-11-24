@@ -157,6 +157,10 @@ public:
   // [bun] Copy the static side parts (windpipe, nose beyond the velum, sinuses, piriform fossa)
   // from another tube, so a synthesizer's working tube carries the speaker's own anatomy.
   void copyStaticParts(const Tube *t);
+  // [bun] Wall tissue per pharynx-mouth section (mass g/cm^2, resistance dyn s/cm^3, stiffness dyn/cm^3,
+  // per cm^2 of wall) and one value for the nose. Kept when the geometry changes; carried by copyStaticParts.
+  void setWalls(const double *mass, const double *resistance, const double *stiffness,
+    const double noseMass, const double noseResistance, const double noseStiffness);
   // [bun] Set the side anatomy directly (his windpipe, nose, sinuses, fossa).
   void setSideAnatomy(const double tracheaLength_cm, const double tracheaArea_cm2,
     const double *noseLength_cm, const double *noseArea_cm2, const double sinusScale,

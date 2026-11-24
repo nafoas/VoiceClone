@@ -836,6 +836,15 @@ C_EXPORT int vtlSetFossaDims(double length_cm, double volume_cm3);
 // Without this call the tube carries VocalTractLab's human defaults.
 // ****************************************************************************
 
+// [bun] Wall tissue of the 40 pharynx-mouth sections (mass g/cm^2, resistance dyn s/cm^3, stiffness
+// dyn/cm^3, per cm^2 of wall; VocalTractLab's human value everywhere: 2.4, 5000, 100000) and of the nose.
+C_EXPORT int vtlSetWalls(double *mass, double *resistance, double *stiffness,
+                         double noseMass, double noseResistance, double noseStiffness);
+
+// [bun] Half-width (cm) of the slit that a narrow tube section is taken to be for its air friction
+// (VocalTractLab: 0.6 cm, a human mouth's). Sections rounder than this are circles.
+C_EXPORT int vtlTdsSetSlitHalfWidth(double halfWidth_cm);
+
 C_EXPORT int vtlSetSideAnatomy(double tracheaLength_cm, double tracheaArea_cm2,
                                double *noseLength_cm, double *noseArea_cm2, double sinusScale,
                                double fossaLength_cm, double fossaVolume_cm3);
