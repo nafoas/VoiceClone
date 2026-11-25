@@ -156,6 +156,8 @@ Any measure that does not reproduce these verdicts is not trusted.
     NO pitch-loudness link (whole clip r = -0.09; within sounds 6 of 11 rise, median +0.04 semitone/dB): no
     cell added. (c) For Step 7, an option for Da Boss: he hears himself and corrects his pitch (a feedback
     loop inside him), instead of a fixed dial.
+    Refit with the measured dial (`models/vtl_folds2_dial.json`): J 5.50 -> 5.17 in 300 rounds, worse than
+    the rule-of-thumb dial's 4.31: not adopted. Active: `models/vtl_folds2_buzz2.json` (J 4.31).
 
 ## Step 3. A soft, vibrating, shaped mouth (engine physics, in our build)
 3.1 **Tissue per region:** each region gets its own wall mass, damping and stiffness (the engine stores them
