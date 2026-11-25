@@ -94,6 +94,8 @@ def fold_static(q):
         d["LCK"] *= q["contact"]; d["UCK"] *= q["upper_contact"]; d["CSK"] *= q["coupling"]
         d["IL"] *= q["inlet"]; d["OL"] *= q["outlet"]
     d["NF0"] = HUMAN["NF0"] / s * np.sqrt(q["stiff"] / q["mass"]); d["dF0"] = HUMAN["dF0"] / s * np.sqrt(q["stiff"] / q["mass"])
+    if "dial_NF0" in q:   # his pitch dial, measured from his folds (pitch_dial.py), instead of the rule of thumb
+        d["NF0"] = q["dial_NF0"]; d["dF0"] = q["dial_dF0"]
     return d
 
 
@@ -115,6 +117,10 @@ def setup():
     z = M.pad(json.load(open("models/vtl_folds.json"))["z"])   # start: the step-1 "ee" (open, 0.029 cm2)
     if os.environ.get("START_FROM") and "z" in json.load(open(os.environ["START_FROM"])):   # or an earlier result's
         z = M.pad(json.load(open(os.environ["START_FROM"]))["z"])
+    if os.environ.get("START_FROM"):   # his measured pitch dial travels with his folds (not searched)
+        _f = json.load(open(os.environ["START_FROM"]))["folds"]
+        if "dial_NF0" in _f:
+            _W["dial"] = {"dial_NF0": _f["dial_NF0"], "dial_dF0": _f["dial_dF0"]}
     x, sr = sf.read("reference/source/prince_reference.wav"); x = x.mean(1)
     tg = []
     for t in M.T:
@@ -166,7 +172,7 @@ def evaluate(u, detail=False):
     if not _W:
         setup()
     V, Q = _W["V"], _W["Q"]
-    q = decode(u)
+    q = decode(u); q.update(_W.get("dial", {}))
     z = _W["z"].copy(); m = pmask()
     if len(u) > len(FP):
         z[m] = M.LO[m] + np.clip(u[len(FP):], 0, 1) * (M.HI[m] - M.LO[m])
@@ -248,7 +254,7 @@ if __name__ == "__main__":
             print(f"iter {es.countiter}: best J {best[0]:.3f}  " + " ".join(f"{n}={v:.4g}" for n, v in decode(best[1]).items()), flush=True)
             np.save(f"out/vtlbun/folds2_best_u{os.environ.get('TAG', '')}.npy", best[1])
     J, det = evaluate(best[1], detail=True)
-    q = decode(best[1]); z = _W["z"].copy(); m = pmask()
+    q = decode(best[1]); q.update(_W.get("dial", {})); z = _W["z"].copy(); m = pmask()
     if SHAPE:
         z[m] = M.LO[m] + np.clip(best[1][len(FP):], 0, 1) * (M.HI[m] - M.LO[m])
     json.dump(dict(J=J, cells=det, folds=q, static=fold_static(q), z=z.tolist()), open(f"models/vtl_folds2{os.environ.get('TAG', '')}.json", "w"), indent=1)

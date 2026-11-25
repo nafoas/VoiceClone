@@ -147,6 +147,15 @@ Any measure that does not reproduce these verdicts is not trusted.
     searched), so the search stops bending fold mechanics to hit pitch; the interaction left as physics; and
     the listening-file constant goes; (b) Step 4 gets a cell "pitch rises with breath, as in his clip"
     (measure his f0-loudness relation); (c) Step 7 turns intended pitch into tension through his dial.
+    **Done (2026-11-25):** (a) `pitch_dial.py` measures his dial (NF0 657, dF0 653 Hz per unit tension; the rule
+    of thumb gave 644/627: nearly the same). The dial was not the cause: his "n" follows it within +-2.5 %
+    over 230-350 Hz, but his "ee" sags exactly at his "ee" pitches (350: -5 %, 390: -7 %, 430: on target): his
+    first "ee" resonance (~370 Hz, the one tuned to his pitch for the hum) pulls the folds down and they cannot
+    climb past it. Physics, not calibration. His real "ee"s do reach 389/350 Hz, so in him the pull is weaker
+    or his resonance sits differently: the pitch cells keep pushing the search toward that. (b) His clip shows
+    NO pitch-loudness link (whole clip r = -0.09; within sounds 6 of 11 rise, median +0.04 semitone/dB): no
+    cell added. (c) For Step 7, an option for Da Boss: he hears himself and corrects his pitch (a feedback
+    loop inside him), instead of a fixed dial.
 
 ## Step 3. A soft, vibrating, shaped mouth (engine physics, in our build)
 3.1 **Tissue per region:** each region gets its own wall mass, damping and stiffness (the engine stores them

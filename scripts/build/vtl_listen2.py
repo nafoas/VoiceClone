@@ -34,6 +34,8 @@ import vtl_folds2 as F  # noqa: E402
 q = d["folds"]
 _pc = [v[0] for k, v in d["cells"].items() if k.endswith("pitch")]
 CMD = 1.0 / (1.0 + float(np.mean(_pc)))   # pitch command per Hz wanted (his folds land this much low)
+if "dial_NF0" in d["folds"]:   # his own measured pitch dial: the command is the pitch he wants
+    CMD = 1.0
 print(f"pitch command x{CMD:.3f} (the fit's pitch cells: {np.round(_pc, 3).tolist()})")
 F.setup(); F._W["z"] = F.M.pad(d["z"]); V = F._W["V"]
 path = "/tmp/claude-0/-home-user-VoiceClone/7e3261ab-22a0-5713-8c0c-f1044b891953/scratchpad/listen2.speaker"
