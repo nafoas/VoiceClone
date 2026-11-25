@@ -257,3 +257,16 @@ Measured (engine vs his): HNR 31-33 vs 27-36 dB; H1-H2 15/26/23/18 vs 16/32/18/1
 For Da Boss: is the third piece of each a warm, hummy him (not breathy)? Better or worse than the second?
 **Da Boss's verdict:** "Okay it sounds purely like a computer tone now. It isn't a hum, it is a tonal buzz that sounds
 purely like a computer."
+
+## vtl_step2b_buzzfix.wav (2026-11-25: the buzz scored)
+Same layout as vtl_step2_ee_n.wav (his | checkpoint 8 | engine, x4, then a held "ee" and "nnn"). After the
+verdict "a tonal buzz", three things the fit had never scored were measured and added for every sound
+(scripts/listen/voice_cells.py): how far the strongest 1-2.5 kHz harmonics sit under the first (his 42-49 dB;
+the buzzing file 31-34), the 2.5-5 kHz cluster, and how pure the harmonics are per band (his are partly airy
+above 1 kHz; the buzzing file's were pure lines). Validated: checkpoint 8 scores 8.6, the buzzing file 17.5.
+Refit (models/vtl_folds2_buzz.json, J 5.72 on all cells): mid harmonics now 38-45 dB under the first, purity
+1-2.5 kHz 20-26 dB (his 13-29); a little more breath noise at the folds, stiffer thin walls, a narrow mouth
+for air friction. Average "ee" tone error went up (8.3 -> 10-11 dB): the old average hid the buzz.
+Pitch command x1.062 as before (folds land ~6 % low).
+For Da Boss: less buzzy / less computer? Any closer to his hum?
+**Da Boss's verdict:** (pending)
