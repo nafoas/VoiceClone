@@ -255,4 +255,5 @@ Measured (engine vs his): HNR 31-33 vs 27-36 dB; H1-H2 15/26/23/18 vs 16/32/18/1
 0.24-0.29 % (his 0.1-0.2), shimmer 0.22-0.24 dB (his 0.09-0.26); harmonics ~8.3 dB rms off (1-2.5 kHz
 +5..+9 dB too strong, 2.5-5 kHz -7..-9 dB too weak).
 For Da Boss: is the third piece of each a warm, hummy him (not breathy)? Better or worse than the second?
-**Da Boss's verdict:** (pending)
+**Da Boss's verdict:** "Okay it sounds purely like a computer tone now. It isn't a hum, it is a tonal buzz that sounds
+purely like a computer."
