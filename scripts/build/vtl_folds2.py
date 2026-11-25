@@ -49,7 +49,9 @@ TISSUE = os.environ.get("TISSUE", "0") == "1"
 if TISSUE:
     import bun_vtl as _BV
     for _r in _BV.TISSUE_KEYS:
-        FP += [(f"{_r}_mass", 0.05, 2.0, True), (f"{_r}_damp", 0.1, 5.0, True), (f"{_r}_stiff", 0.2, 30.0, True)]
+        # stiffness per cm2 = tissue elasticity / thickness: 1-10 kPa-ish soft tissue over 1-3 mm gives x3-x100
+        # of VocalTractLab's value (the cap was x30 until the buzz fit pressed against it, 2026-11-25)
+        FP += [(f"{_r}_mass", 0.05, 2.0, True), (f"{_r}_damp", 0.1, 5.0, True), (f"{_r}_stiff", 0.2, 100.0, True)]
     FP += [("slit", 0.1, 0.6, False)]
 SHAPE = os.environ.get("SHAPE", "0") == "1"   # also search the "ee" shape (off: his "ee" is held, step 1's)
 BANDS = dict(tone=4.0, hnr=3.0, h1h2=3.0, f0=0.03)
