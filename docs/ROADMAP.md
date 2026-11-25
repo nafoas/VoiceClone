@@ -137,6 +137,16 @@ Any measure that does not reproduce these verdicts is not trusted.
     bands; "ee" harmonics ~8.3 dB off (were 10-14); pitch ~6 % under the command (a constant). Tissue found
     (x human): light throat, mouth and nose walls (mass x0.16-0.33), stiff larynx and gums (x7-11), damped
     larynx and lips (x2.7-3.8); slit 0.38 cm. 🎧 `reference/archive/vtl_step2_ee_n.wav`.
+    **Pitch dial (measured 2026-11-25):** the engine turns the pitch command into fold tension with a straight
+    line calibrated on HUMAN folds in a human throat (NF0 129 Hz, dF0 125.5 Hz), which we scale by a rule of
+    thumb (size, stiffness/mass). His fitted folds then miss by -6..+3 % depending on pitch and sound ("ee" at
+    350: -5.9 %, "n" at 350: -2.5 %; both on target near 400-450): partly the dial's calibration, partly real
+    fold-mouth interaction (his "ee" pitch sits on his first resonance: the hum), which pulls hardest near it.
+    And more breath LOWERS his pitch (350 cmd: 334 Hz at x0.8 breath, 324 at x1.25): the opposite of real
+    voices. To do: (a) his dial measured from his folds and set once in every fit (NF0/dF0 derived, not
+    searched), so the search stops bending fold mechanics to hit pitch; the interaction left as physics; and
+    the listening-file constant goes; (b) Step 4 gets a cell "pitch rises with breath, as in his clip"
+    (measure his f0-loudness relation); (c) Step 7 turns intended pitch into tension through his dial.
 
 ## Step 3. A soft, vibrating, shaped mouth (engine physics, in our build)
 3.1 **Tissue per region:** each region gets its own wall mass, damping and stiffness (the engine stores them
