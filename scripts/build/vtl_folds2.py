@@ -53,6 +53,12 @@ if TISSUE:
     FP += [("slit", 0.1, 0.6, False)]
 SHAPE = os.environ.get("SHAPE", "0") == "1"   # also search the "ee" shape (off: his "ee" is held, step 1's)
 BANDS = dict(tone=4.0, hnr=3.0, h1h2=3.0, f0=0.03)
+# Buzz cells (scripts/listen/voice_cells.py; Da Boss 2026-11-25: "a tonal buzz that sounds purely like a
+# computer"): the strongest 1-2.5 kHz and 2.5-5 kHz harmonics under the first, and harmonic purity per band.
+BUZZ = os.environ.get("BUZZ", "1") == "1"
+BUZZ_BANDS = {"mid_buzz": 3.0, "upper": 3.0, "purity_1-2.5k": 4.0, "purity_2.5-5k": 4.0, "purity_5-9k": 4.0}
+# his windows for them (the listening file's: each sound's middle)
+BUZZ_WIN = {0.73: (0.74, 0.78), 1.52: (1.53, 1.59), 1.77: (1.78, 1.89), 2.09: (2.10, 2.29)}
 # Every sound starts the way he starts one: folds at rest, then his breath rising over ONSET_MS (raised cosine).
 # (2026-11-24: with breath switched on all at once, the fit found folds pressed shut that only a jolt of air
 # could start: they never voiced with a natural rise, even 5 ms.)
@@ -113,6 +119,12 @@ def setup():
         if t["lab"] == "iː" or (t["lab"] == "n" and abs(t["t"][0] - 0.73) < 0.01):
             seg = (Q.HIS_EE[[1.52, 1.77, 2.09].index(round(t["t"][0], 2))] if t["lab"] == "iː" else Q.HIS_HUM[1])
             tg.append(dict(t, his_q=Q.measure(x[int(seg[0] * sr): int(seg[1] * sr)], sr)))
+            if BUZZ:
+                import voice_cells as C
+                a, b = BUZZ_WIN[round(t["t"][0], 2)]
+                tg[-1]["his_c"] = C.cells(x[int(a * sr): int(b * sr)], sr, tg[-1]["his_q"]["f0"]); tg[-1]["buzz_len"] = b - a
+                _W.setdefault("floor", C.recording_floor(x, sr))
+                tg[-1]["one_sided"] = C.floor_limited(x, sr, (a, b), _W["floor"])
     an, *_ = M.area_of(z, M.pose_full(z, "n"))
     tip = np.flatnonzero(an[24:] < 0.003) + 24
     _W.update(V=V, Q=Q, z=z, tg=tg, tip=tip if len(tip) else np.arange(33, 37), pid=os.getpid())
@@ -179,15 +191,27 @@ def evaluate(u, detail=False):
         cells[name + " clean tone"] = (mq["hnr"], BANDS["hnr"], t["his_q"]["hnr"])
         cells[name + " hum"] = (mq["h1h2"], BANDS["h1h2"], t["his_q"]["h1h2"])
         cells[name + " pitch"] = (mq["f0"] / t["f0"] - 1, BANDS["f0"], 0.0)
+        if BUZZ:
+            import voice_cells as C
+            w = seg[-int(t["buzz_len"] * V.SR):]   # same length as his window, from the steady part
+            mc = C.cells(w, V.SR, mq["f0"])
+            for k, band in BUZZ_BANDS.items():
+                cells[f"{name} {k}"] = (mc[k], band, t["his_c"][k], 1 if t["one_sided"].get(k) else 0)
     ex = {}
-    for k, (v, band, target) in cells.items():
-        d = abs(v - target) if not k.endswith("tones") else v
+    for k, c in cells.items():
+        v, band, target = c[:3]
+        if k.endswith("tones"):
+            d = v
+        elif len(c) > 3 and c[3] > 0:   # his value is floor-limited: only "too impure / too strong" counts
+            d = max(0.0, target - v)
+        else:
+            d = abs(v - target)
         ex[k] = max(0.0, d - band) / band   # in units of its band
     J = 3 * max(ex.values()) + float(np.mean(list(ex.values())))
     if not np.isfinite(J):
         return (1e3, {"score": "not finite"}) if detail else 1e3
     if detail:
-        return J, {k: (round(cells[k][0], 3), round(cells[k][2], 3), round(ex[k], 2)) for k in cells}
+        return J, {k: (round(cells[k][0], 3), round(cells[k][2], 3), round(ex[k], 2)) + (("one-sided",) if len(cells[k]) > 3 and cells[k][3] else ()) for k in cells}
     return J
 
 
